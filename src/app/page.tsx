@@ -28,43 +28,20 @@ function ScheduleManager() {
     semanas: {}
   });
 
-  // Function to get store ID from Softr DOM
-  function getStoreRecordIdFromDOM(): string | null {
+  // Function to get store ID from URL parameters
+  function getStoreRecordIdFromURL(): string | null {
     if (typeof window === 'undefined') return null; // Check if we're in browser environment
     
-    // Try multiple possible selectors
-    const possibleElements = [
-      // Original selector
-      document.querySelector('.list-details[data-recordid]'),
-      // Try section element with data-recordid
-      document.querySelector('section[data-recordid]'),
-      // Try the specific block class
-      document.querySelector('.block-d251b643-0a11-4e15-bc71-ff7fd0bdd4cf'),
-      // Try any element with data-recordid
-      document.querySelector('[data-recordid]'),
-      // Try section with specific classes
-      document.querySelector('section.b47fa8f_15bqpe66.block-div')
-    ];
-
-    // Find first element that exists and has a record ID
-    for (const element of possibleElements) {
-      if (element && element.getAttribute('data-recordid')) {
-        const recordId = element.getAttribute('data-recordid');
-        console.log('Found store record ID in DOM:', recordId);
-        return recordId;
-      }
+    // Get the URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const storeId = urlParams.get('storeId');
+    
+    if (storeId) {
+      console.log('Found store record ID in URL:', storeId);
+      return storeId;
     }
-
-    // Add debug information
-    console.error('Debug: DOM elements checked:', {
-      'list-details': document.querySelector('.list-details'),
-      'section-with-recordid': document.querySelector('section[data-recordid]'),
-      'specific-block': document.querySelector('.block-d251b643-0a11-4e15-bc71-ff7fd0bdd4cf'),
-      'any-recordid': document.querySelector('[data-recordid]'),
-      'specific-section': document.querySelector('section.b47fa8f_15bqpe66')
-    });
-
-    console.error('Could not find store record ID in DOM');
+    
+    console.error('Could not find store record ID in URL parameters');
     return null;
   }
 
@@ -73,31 +50,18 @@ function ScheduleManager() {
     console.log("ScheduleManager - horasEfectivasActualizadas cambió:", horasEfectivasActualizadas);
   }, [horasEfectivasActualizadas]);
 
-  // Efecto para obtener el ID de la tienda únicamente del DOM
+  // Efecto para obtener el ID de la tienda desde los parámetros URL
   useEffect(() => {
-    // Intentar obtener el ID de la tienda desde el DOM
-    const domStoreId = getStoreRecordIdFromDOM();
+    // Intentar obtener el ID de la tienda desde la URL
+    const urlStoreId = getStoreRecordIdFromURL();
     
-    if (domStoreId) {
-      console.log('Usando Store ID del DOM de Softr:', domStoreId);
-      setStoreRecordId(domStoreId);
+    if (urlStoreId) {
+      console.log('Usando Store ID de los parámetros URL:', urlStoreId);
+      setStoreRecordId(urlStoreId);
     } else {
-      // Si no se encuentra en el DOM, intentar de nuevo después de un retardo
-      // para asegurarnos que el DOM de Softr esté completamente cargado
-      const timer = setTimeout(() => {
-        const retryDomStoreId = getStoreRecordIdFromDOM();
-        if (retryDomStoreId) {
-          console.log('Usando Store ID del DOM de Softr (segundo intento):', retryDomStoreId);
-          setStoreRecordId(retryDomStoreId);
-        } else {
-          // Si no se puede encontrar el ID en el DOM, mostrar un mensaje de error
-          console.error('No se pudo encontrar el ID de la tienda en el DOM de Softr');
-          // No podemos usar setError directamente porque no está expuesto en el contexto
-          // La aplicación mostrará un estado de error genérico al no tener storeRecordId
-        }
-      }, 2000); // Esperar 2 segundos para asegurarnos que el DOM está cargado
-      
-      return () => clearTimeout(timer);
+      console.error('No se pudo encontrar el ID de la tienda en los parámetros URL');
+      // No podemos usar setError directamente porque no está expuesto en el contexto
+      // La aplicación mostrará un estado de error genérico al no tener storeRecordId
     }
   }, [setStoreRecordId]);
 
@@ -255,11 +219,11 @@ function ScheduleManager() {
         <div className="bg-red-50 text-red-600 p-6 rounded-lg shadow-md">
           <h3 className="text-lg font-medium mb-3">No se pudo encontrar el ID de la tienda</h3>
           <p className="mb-4">
-            Esta aplicación necesita ejecutarse dentro de Softr para obtener automáticamente el ID de la tienda.
-            Por favor, asegúrese de estar visualizando esta página desde su página en Softr.
+            Esta aplicación necesita recibir el ID de la tienda a través del parámetro "storeId" en la URL.
+            Por favor, asegúrese de que la URL incluya este parámetro.
           </p>
           <p className="text-sm text-gray-700">
-            Si está probando la aplicación localmente, intente cargarla desde Softr en lugar de acceder directamente.
+            Ejemplo: <code>https://tu-app.vercel.app/?storeId=recXXXXXXXXXXXXXX</code>
           </p>
         </div>
       );
