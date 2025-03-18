@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function Home() {
+// Componente que utiliza useSearchParams
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -44,5 +45,22 @@ export default function Home() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Componente de carga mientras suspense está activo
+function LoadingHome() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingHome />}>
+      <HomeContent />
+    </Suspense>
   );
 } 
