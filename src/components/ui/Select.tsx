@@ -35,7 +35,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         case 'BAJA MÉDICA': return 'bg-purple-100 text-purple-800 border-purple-300';
         case 'FORMACIÓN': return 'bg-orange-100 text-orange-800 border-orange-300';
         case 'LACTANCIA': return 'bg-pink-100 text-pink-800 border-pink-300';
-        default: return 'bg-white border-gray-300';
+        default: return 'bg-white border-gray-300 text-gray-800';
       }
     };
 
@@ -53,7 +53,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           value={value}
           className={cn(
-            'block rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-base font-medium appearance-none',
+            'block rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-base font-medium appearance-none text-gray-800',
             selectedOption?.value ? getEstadoClasses(selectedOption.value) : getEstadoClasses(estado),
             error ? 'border-red-300' : 'border-gray-300',
             fullWidth ? 'w-full' : '',
@@ -72,7 +72,10 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             <option 
               key={option.value} 
               value={option.value}
-              className={option.value ? getEstadoClasses(option.value) : ''}
+              className={cn(
+                option.value ? getEstadoClasses(option.value) : 'text-gray-800',
+                'font-medium'
+              )}
             >
               {option.label}
             </option>

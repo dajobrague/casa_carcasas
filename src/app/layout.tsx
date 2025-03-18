@@ -2,7 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Gestor de Horarios - Casa Carcasas',
+  title: 'LCDLC - Horarios',
   description: 'Aplicación para gestionar los horarios de los empleados de Casa Carcasas',
 };
 

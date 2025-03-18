@@ -87,39 +87,42 @@ export function YearView({ onSelectMonth }: YearViewProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div className="space-y-4 md:space-y-6">
+      {/* Solo un selector de año con diseño responsivo */}
+      <div className="flex items-center justify-between mb-2 md:mb-4">
+        <div className="flex items-center gap-1 md:gap-2">
           <Button 
             variant="ghost" 
             size="sm"
             onClick={handlePrevYear}
             disabled={availableYears.indexOf(currentYear) === 0}
+            className="p-1 md:p-2"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>
           </Button>
-          <h1 className="text-xl font-semibold text-gray-900">{currentYear}</h1>
+          <h1 className="text-lg md:text-xl font-semibold text-gray-900">{currentYear}</h1>
           <Button 
             variant="ghost" 
             size="sm"
             onClick={handleNextYear}
             disabled={availableYears.indexOf(currentYear) === availableYears.length - 1}
+            className="p-1 md:p-2"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
         {mesesDelAño.length > 0 ? (
           mesesDelAño.map((month) => (
             <div 
               key={month.name}
-              className="relative p-6 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-blue-500 transition-colors text-left cursor-pointer"
+              className="relative p-4 md:p-6 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-blue-500 transition-colors text-left cursor-pointer"
               onClick={() => {
                 const [mes, año] = month.name.split(' ');
                 onSelectMonth(mes, año);
@@ -127,12 +130,12 @@ export function YearView({ onSelectMonth }: YearViewProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-medium">{month.name}</h3>
+                  <h3 className="text-base md:text-lg font-medium">{month.name}</h3>
                 </div>
-                <Calendar className={`w-5 h-5 ${month.isCurrent ? 'text-green-500' : 'text-gray-400'}`} />
+                <Calendar className={`w-4 h-4 md:w-5 md:h-5 ${month.isCurrent ? 'text-green-500' : 'text-gray-400'}`} />
               </div>
               {month.isCurrent && (
-                <div className="absolute top-3 right-3">
+                <div className="absolute top-2 right-2 md:top-3 md:right-3">
                   <span className="absolute hidden group-hover:block bg-green-100 text-green-800 text-xs px-2 py-1 rounded right-0 top-6 whitespace-nowrap">
                     Mes actual
                   </span>
@@ -141,11 +144,11 @@ export function YearView({ onSelectMonth }: YearViewProps) {
             </div>
           ))
         ) : (
-          <div className="col-span-full text-center text-gray-500">
+          <div className="col-span-full text-center text-gray-500 py-4">
             No hay meses disponibles para el año {currentYear}
           </div>
         )}
       </div>
     </div>
   );
-} 
+}

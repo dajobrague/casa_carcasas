@@ -23,7 +23,7 @@ export function Modal({
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Manejar tecla Escape
+  // Manejar tecla Escape y prevenir scroll del body
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -33,8 +33,9 @@ export function Modal({
 
     document.addEventListener('keydown', handleEscape);
     
-    // Bloquear scroll del body cuando el modal está abierto
-    if (isOpen) {
+    // En dispositivos móviles no bloqueamos el scroll para permitir interacción fluida
+    // Solo bloqueamos en dispositivos desktop
+    if (isOpen && window.innerWidth >= 640) {
       document.body.style.overflow = 'hidden';
     }
 
@@ -44,9 +45,10 @@ export function Modal({
     };
   }, [isOpen, onClose]);
 
-  // Cerrar al hacer clic fuera del modal
+  // Cerrar al hacer clic fuera del modal - sólo en desktop
   const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+    // En móviles, no cerrar al hacer clic fuera
+    if (window.innerWidth >= 640 && modalRef.current && !modalRef.current.contains(e.target as Node)) {
       onClose();
     }
   };
@@ -62,21 +64,31 @@ export function Modal({
 
   if (!isOpen) return null;
 
+  // Determinar si estamos en móvil
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity"
+      className={`fixed inset-0 z-50 ${
+        isMobile 
+          ? 'bg-white' 
+          : 'flex items-center justify-center bg-black bg-opacity-50 transition-opacity overflow-y-auto'
+      }`}
       onClick={handleOutsideClick}
     >
       <div 
         ref={modalRef}
         className={cn(
-          'bg-white rounded-lg shadow-xl overflow-hidden transform transition-all',
-          sizeClasses[size],
+          isMobile 
+            ? 'w-full h-full flex flex-col'
+            : 'bg-white shadow-xl transform transition-all max-h-[85vh] w-full sm:rounded-lg',
+          !isMobile && sizeClasses[size],
           className
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
             <h3 className="text-lg font-medium text-gray-900">{title}</h3>
             <button
               type="button"
@@ -87,7 +99,12 @@ export function Modal({
             </button>
           </div>
         )}
-        <div className="p-6">{children}</div>
+        <div className={cn(
+          'flex-1 overflow-y-auto',
+          !className?.includes('p-0') ? 'p-6' : ''
+        )}>
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -960,7 +960,8 @@ export function mostrarPreviewPDF(doc: jsPDF): void {
 export async function generarYMostrarPDFSemana(
   semanaIdOrData: string | SemanasLaboralesRecord,
   storeId: string,
-  mostrarCargando?: (estado: boolean) => void
+  mostrarCargando?: (estado: boolean) => void,
+  directDownload: boolean = false
 ): Promise<void> {
   try {
     // Mostrar indicador de carga si se proporciona la función
@@ -1003,8 +1004,19 @@ export async function generarYMostrarPDFSemana(
       throw new Error('No se pudo generar el PDF');
     }
     
-    // Mostrar vista previa
-    mostrarPreviewPDF(doc);
+    // Si es descarga directa (para móviles), descargar el PDF sin mostrar la vista previa
+    if (directDownload) {
+      // Crear nombre de archivo con información de la semana
+      const nombreArchivo = `Horarios_Semana_${semana.fields.Name?.replace(/\s+/g, '_')}.pdf`;
+      
+      // Descargar el archivo directamente
+      doc.save(nombreArchivo);
+      
+      console.log('PDF descargado directamente:', nombreArchivo);
+    } else {
+      // Mostrar vista previa para desktop
+      mostrarPreviewPDF(doc);
+    }
     
     return;
   } catch (error) {

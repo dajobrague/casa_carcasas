@@ -22,8 +22,9 @@ import {
 } from '@/lib/utils';
 import { obtenerDatosTrafico } from '@/lib/api';
 import { HoursIndicators } from './HoursIndicators';
-import { ScheduleTable } from './ScheduleTable';
+import { ScheduleCard } from './ScheduleCard';
 import { TrafficTable } from './TrafficTable';
+import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface DayModalProps {
   isOpen: boolean;
@@ -55,6 +56,25 @@ export function DayModal({
   const [columnasTiempo, setColumnasTiempo] = useState<string[]>([]);
   const [datosTraficoDia, setDatosTraficoDia] = useState<DatosTraficoDia | null>(null);
   const [personalEstimado, setPersonalEstimado] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState<'schedule' | 'traffic'>('schedule');
+  const [expandedSections, setExpandedSections] = useState({
+    hours: true,
+    schedule: true,
+    traffic: false
+  });
+
+  // Toggles para las secciones
+  const toggleSection = (section: keyof typeof expandedSections, e?: React.MouseEvent) => {
+    // Si se proporciona un evento, detener la propagación
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   // Inicializar las horas efectivas semanales con el valor heredado
   useEffect(() => {
@@ -253,186 +273,233 @@ export function DayModal({
           if (!success) {
             allSuccess = false;
             errores++;
-            // Si hay demasiados errores, detener el proceso
-            if (errores > 3) {
-              break;
-            }
           }
-        } catch (error) {
+        } catch (err) {
+          console.error(`Error al actualizar horario para el tiempo ${tiempo}:`, err);
           allSuccess = false;
           errores++;
-          console.error(`Error al actualizar horario para ${tiempo}:`, error);
-          // Si hay demasiados errores, detener el proceso
-          if (errores > 3) {
-            break;
-          }
         }
+      }
+      
+      // Actualizar estado local inmediatamente para mejor UX
+      setActividades(prev => 
+        prev.map(actividad => {
+          if (actividad.id === actividadId) {
+            const updatedFields = { ...actividad.fields };
+            columnasTiempo.forEach(tiempo => {
+              updatedFields[tiempo] = valor;
+            });
+            return { ...actividad, fields: updatedFields };
+          }
+          return actividad;
+        })
+      );
+      
+      // Recalcular horas efectivas
+      if (tiendaData) {
+        const actividadesActualizadas = actividades.map(a => {
+          if (a.id === actividadId) {
+            const updatedFields = { ...a.fields };
+            columnasTiempo.forEach(tiempo => {
+              updatedFields[tiempo] = valor;
+            });
+            return { ...a, fields: updatedFields };
+          }
+          return a;
+        });
+        
+        const horasEfectivas = calcularHorasEfectivasDiarias(
+          actividadesActualizadas,
+          {
+            PAIS: tiendaData.fields.PAIS,
+            Apertura: tiendaData.fields.Apertura,
+            Cierre: tiendaData.fields.Cierre
+          }
+        );
+        
+        // Log para verificar cambios en horas efectivas
+        console.log('Actualización de horario para todo el día:', {
+          tipo: valor,
+          horasEfectivasAntes: horasEfectivasDiarias,
+          horasEfectivasDespues: horasEfectivas,
+          diferencia: horasEfectivas - horasEfectivasDiarias
+        });
+        
+        // Actualizar las horas efectivas diarias
+        setHorasEfectivasDiarias(horasEfectivas);
+        
+        // Actualizar también las horas efectivas semanales
+        const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
+        setHorasEfectivasSemanales(prev => 
+          // Asegurarse de que no sea negativo
+          Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
+        );
       }
       
       if (allSuccess) {
-        // Actualizar el estado local
-        setActividades(prev => 
-          prev.map(actividad => {
-            if (actividad.id === actividadId) {
-              const updatedFields = { ...actividad.fields };
-              columnasTiempo.forEach(tiempo => {
-                updatedFields[tiempo] = valor;
-              });
-              return { ...actividad, fields: updatedFields };
-            }
-            return actividad;
-          })
-        );
-        
-        // Recalcular horas efectivas
-        if (tiendaData) {
-          const updatedActividades = actividades.map(a => {
-            if (a.id === actividadId) {
-              const updatedFields = { ...a.fields };
-              columnasTiempo.forEach(tiempo => {
-                updatedFields[tiempo] = valor;
-              });
-              return { ...a, fields: updatedFields };
-            }
-            return a;
-          });
-          
-          const horasEfectivas = calcularHorasEfectivasDiarias(
-            updatedActividades,
-            {
-              PAIS: tiendaData.fields.PAIS,
-              Apertura: tiendaData.fields.Apertura,
-              Cierre: tiendaData.fields.Cierre
-            }
-          );
-          setHorasEfectivasDiarias(horasEfectivas);
-          
-          // Actualizar también las horas efectivas semanales
-          // Calculando la diferencia respecto al día original y sumándola al total semanal
-          const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
-          setHorasEfectivasSemanales(prev => 
-            // Asegurarse de que no sea negativo
-            Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
-          );
-          
-          // Log para verificar cambios en horas efectivas
-          console.log('Asignación a todo el día:', {
-            tipo: valor,
-            horasEfectivasAntes: horasEfectivasDiarias,
-            horasEfectivasDespues: horasEfectivas,
-            diferenciaDiaria,
-            horasEfectivasDiariasIniciales,
-            nuevasHorasEfectivasSemanales: Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
-          });
-        }
-        
-        mostrarNotificacion('Horarios actualizados correctamente', 'success');
-      } else if (errores > 3) {
-        mostrarNotificacion(`Se detuvieron las actualizaciones después de ${errores} errores`, 'error');
+        mostrarNotificacion('Horario actualizado para todo el día', 'success');
       } else {
-        mostrarNotificacion('Error al actualizar algunos horarios', 'error');
+        mostrarNotificacion(`Horario parcialmente actualizado. ${errores} errores encontrados.`, 'success');
       }
+      
     } catch (err) {
-      console.error('Error general al actualizar los horarios:', err);
-      mostrarNotificacion('Error al actualizar los horarios', 'error');
+      console.error('Error global al asignar a todo el día:', err);
+      mostrarNotificacion('Error al asignar horario para todo el día', 'error');
     }
   };
 
-  // Opciones para el dropdown
-  const options: Option[] = [
-    { value: '', label: '', color: undefined }, // Opción vacía
-    ...opcionesDropdown.map(opcion => ({
-      value: opcion,
-      label: opcion,
-      color: opcion === 'TRABAJO' ? 'green' : 
-             opcion === 'VACACIONES' ? 'blue' : 
-             opcion === 'LIBRE' ? 'red' : 
-             opcion === 'BAJA MÉDICA' ? 'purple' : 
-             opcion === 'FORMACIÓN' ? 'orange' : 
-             opcion === 'LACTANCIA' ? 'pink' : undefined
-    }))
-  ];
-
-  // Opciones para asignar a todo el día (excluir TRABAJO)
-  const optionsAsignar: Option[] = [
-    { value: '', label: 'Seleccionar estado', color: undefined },
-    ...options.filter(op => op.value !== 'TRABAJO')
-  ];
-
-  // Formatear fecha para el título
+  // Formatear la fecha para mostrarla en el título
   const formatearFechaParaTitulo = (fecha: Date | null) => {
-    if (!fecha) return '';
+    if (!fecha) return 'Día sin fecha';
     
-    const diaSemana = fecha.toLocaleDateString('es-ES', { weekday: 'long' });
-    const dia = fecha.getDate();
-    const mes = fecha.toLocaleDateString('es-ES', { month: 'long' });
+    // Formato más compacto para dispositivos móviles en una sola línea
+    const opciones: Intl.DateTimeFormatOptions = { 
+      weekday: 'short', 
+      day: 'numeric',
+      month: 'long'
+    };
     
-    return `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)} - ${dia} de ${mes}`;
-  };
-
-  // Manejar el cierre del modal y actualizar las horas efectivas
-  const handleClose = () => {
-    if (onCloseWithUpdatedHours && diaId) {
-      // Calculamos las horas efectivas semanales actualizadas
-      // Tomamos las horas efectivas semanales iniciales y restamos las iniciales del día, luego sumamos las actuales
-      const horasEfectivasSemanalesActualizadas = 
-        horasEfectivasSemanalesIniciales - horasEfectivasDiariasIniciales + horasEfectivasDiarias;
-      
-      console.log('Cerrando modal con datos actualizados:', {
-        diaId,
-        horasEfectivasDiariasIniciales,
-        horasEfectivasDiarias,
-        diferenciaDia: horasEfectivasDiarias - horasEfectivasDiariasIniciales,
-        horasEfectivasSemanalesIniciales,
-        horasEfectivasSemanalesActualizadas,
-        semanaId: window.localStorage.getItem(`dia_semana_${diaId}`)
-      });
-      
-      // Llamamos al callback con los valores actualizados
-      onCloseWithUpdatedHours(diaId, horasEfectivasDiarias, horasEfectivasSemanalesActualizadas);
-    } else {
-      console.log('Cerrando modal sin actualizar horas (callback no disponible o diaId null)');
+    // Añadir año sólo si no es el año actual
+    if (fecha.getFullYear() !== new Date().getFullYear()) {
+      opciones.year = 'numeric';
     }
     
-    // Llamamos al callback original de cierre
+    const fechaFormateada = fecha.toLocaleDateString('es-ES', opciones);
+    // Capitalizar primera letra
+    return fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
+  };
+
+  // Función personalizada para cerrar el modal
+  const handleClose = () => {
+    // Llamar a la función onCloseWithUpdatedHours si existe
+    if (onCloseWithUpdatedHours && diaId) {
+      onCloseWithUpdatedHours(diaId, horasEfectivasDiarias, horasEfectivasSemanales);
+    }
     onClose();
   };
 
+  // Opciones para los dropdowns con formato correcto
+  const options: Option[] = [
+    { value: '', label: 'Seleccionar...', color: '#E5E7EB' }, // Opción vacía con etiqueta clara
+    ...opcionesDropdown.map(opcion => ({
+      value: opcion,
+      label: opcion,
+      color: opcion === 'TRABAJO' ? '#10B981' : // verde
+             opcion === 'VACACIONES' ? '#3B82F6' : // azul
+             opcion === 'LIBRE' ? '#EF4444' : // rojo
+             opcion === 'BAJA MÉDICA' ? '#8B5CF6' : // púrpura
+             opcion === 'FORMACIÓN' ? '#F97316' : // naranja
+             opcion === 'LACTANCIA' ? '#EC4899' : // rosa
+             '#D1D5DB' // gris por defecto
+    }))
+  ];
+
+  // Opciones para asignar a todo el día (sin la opción vacía)
+  const optionsAsignar: Option[] = options.filter(opt => opt.value !== '');
+
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose}
-      title={formatearFechaParaTitulo(fecha)}
-      size="full"
-      className="max-h-[95vh] max-w-[95vw] w-full mx-auto overflow-hidden flex flex-col"
-    >
-      <div className="space-y-3 w-full mx-auto overflow-y-auto p-3 pt-2 flex-grow">
-        {/* Indicadores de Horas */}
-        <HoursIndicators 
-          horasEfectivasDiarias={horasEfectivasDiarias}
-          horasAprobadasSemanales={horasAprobadasSemanales}
-          horasEfectivasSemanales={horasEfectivasSemanales}
-        />
-
-        {/* Tabla de Horarios */}
-        <ScheduleTable 
-          actividades={actividades}
-          columnasTiempo={columnasTiempo}
-          options={options}
-          optionsAsignar={optionsAsignar}
-          isLoading={isLoading}
-          error={error}
-          handleUpdateHorario={handleUpdateHorario}
-          handleAsignarATodoElDia={handleAsignarATodoElDia}
-        />
-
-        {/* Tabla de Tráfico */}
-        <TrafficTable 
-          datosTraficoDia={datosTraficoDia}
-          isLoading={isLoading}
-          error={error}
-        />
+    <div className={`fixed inset-0 z-50 bg-gray-50 flex flex-col`} style={{ display: isOpen ? 'flex' : 'none' }}>
+      {/* Header fijo en la parte superior */}
+      <div className="bg-white py-3 px-3 border-b border-gray-200 sticky top-0 z-10 shadow-sm flex-shrink-0">
+        <div className="flex items-center">
+          <button 
+            onClick={handleClose}
+            className="p-1.5 mr-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors flex-shrink-0"
+            aria-label="Volver"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          
+          <h2 className="text-base font-semibold text-gray-800 text-center mx-auto pr-9">
+            {formatearFechaParaTitulo(fecha)}
+          </h2>
+        </div>
       </div>
-    </Modal>
+      
+      {/* Contenido con scroll */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-4 pb-28">
+          {/* Sección de Horas */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div 
+              className="flex justify-between items-center p-3 border-b border-gray-100 cursor-pointer" 
+              onClick={(e) => toggleSection('hours', e)}
+            >
+              <h3 className="text-sm font-medium text-gray-800">Indicadores de Horas</h3>
+              {expandedSections.hours ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </div>
+            
+            {expandedSections.hours && (
+              <div className="p-3">
+                <HoursIndicators
+                  horasEfectivasDiarias={horasEfectivasDiarias}
+                  horasAprobadasSemanales={horasAprobadasSemanales}
+                  horasEfectivasSemanales={horasEfectivasSemanales}
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* Sección de Horarios */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div 
+              className="flex justify-between items-center p-3 border-b border-gray-100 cursor-pointer" 
+              onClick={(e) => toggleSection('schedule', e)}
+            >
+              <h3 className="text-sm font-medium text-gray-800">Horarios del Día</h3>
+              {expandedSections.schedule ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </div>
+            
+            {expandedSections.schedule && (
+              <div className="p-3">
+                <ScheduleCard
+                  actividades={actividades}
+                  columnasTiempo={columnasTiempo}
+                  options={options}
+                  optionsAsignar={optionsAsignar} 
+                  isLoading={isLoading}
+                  error={error}
+                  handleUpdateHorario={handleUpdateHorario}
+                  handleAsignarATodoElDia={handleAsignarATodoElDia}
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* Sección de Tráfico */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div 
+              className="flex justify-between items-center p-3 border-b border-gray-100 cursor-pointer" 
+              onClick={(e) => toggleSection('traffic', e)}
+            >
+              <h3 className="text-sm font-medium text-gray-800">Tráfico por Hora</h3>
+              {expandedSections.traffic ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </div>
+            
+            {expandedSections.traffic && (
+              <div className="p-3">
+                <TrafficTable
+                  datosTraficoDia={datosTraficoDia}
+                  isLoading={isLoading}
+                  error={error}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 } 

@@ -306,17 +306,34 @@ export function MonthSummaryView({ mes, año, onBack }: MonthSummaryViewProps) {
                 }
               );
               
-              // Calcular horas contratadas (suma de horas de contrato)
-              const horasContratadas = actividades.reduce((sum, act) => {
-                const horasContrato = parseFloat(String(act.fields['Horas de Contrato'] || 0)) || 0;
-                console.log(`Actividad ${act.id}: Horas de Contrato = ${horasContrato}`);
-                return sum + horasContrato;
-              }, 0);
+              // Calcular horas contratadas (contando columnas de tiempo con "TRABAJO")
+              let horasContratadas = 0;
+              actividades.forEach(actividad => {
+                // Contar cuántas columnas de tiempo tienen asignado "TRABAJO"
+                const horasTrabajo = Object.entries(actividad.fields)
+                  .filter(([campo, valor]) => 
+                    // Solo contamos los campos que son columnas de tiempo (formato HH:MM)
+                    /^\d{2}:\d{2}$/.test(campo) && 
+                    // Y que tengan valor "TRABAJO"
+                    valor === 'TRABAJO'
+                  ).length;
+                
+                // Ajustar según el país (Francia usa intervalos de 15 minutos, otros 30 minutos)
+                const intervaloPais = tiendaData.fields?.PAIS?.toUpperCase() === 'FRANCIA' ? 0.25 : 0.5;
+                
+                // Sumar las horas de trabajo para esta actividad
+                horasContratadas += horasTrabajo * intervaloPais;
+                console.log(`Actividad ${actividad.id}: Horas de trabajo calculadas = ${horasTrabajo} x ${intervaloPais} = ${(horasTrabajo * intervaloPais).toFixed(1)}`);
+              });
               
               console.log(`Total horas contratadas para día ${fechaStr}: ${horasContratadas.toFixed(1)}`);
               
               // Calcular horas aprobadas (si existen, de lo contrario usar el valor del campo de tienda)
-              const horasAprobadas = tiendaData.fields?.['Horas Aprobadas'] || 0;
+              // Dividimos las horas aprobadas entre 7 para obtener las horas aprobadas diarias
+              const horasAprobadasTotales = tiendaData.fields?.['Horas Aprobadas'] || 0;
+              const horasAprobadas = horasAprobadasTotales / 7;
+              
+              console.log(`Horas aprobadas totales: ${horasAprobadasTotales} -> Horas aprobadas diarias: ${horasAprobadas.toFixed(1)}`);
               
               // Determinar si es fin de semana basado en el índice del día (5=sábado, 6=domingo)
               const isWeekend = i >= 5;
@@ -648,15 +665,37 @@ export function MonthSummaryView({ mes, año, onBack }: MonthSummaryViewProps) {
       <div ref={resumenRef} className="bg-white rounded-lg shadow-sm p-4 mb-6">
         <h3 className="text-base font-semibold text-gray-800 mb-2">Resumen Mensual</h3>
         
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="bg-blue-50 p-3 rounded-lg">
+        <div className="flex flex-nowrap overflow-x-auto gap-3 pb-2">
+          <div className="bg-blue-50 p-3 rounded-lg flex-shrink-0 min-w-[180px]">
             <div className="text-xs text-blue-700 font-medium">Total Días Laborales</div>
             <div className="text-lg font-bold text-gray-800">
               {diasCalendario.filter(d => d.esDiaLaboral).length}
             </div>
           </div>
           
-          <div className="bg-green-50 p-3 rounded-lg">
+          <div className="bg-indigo-50 p-3 rounded-lg flex-shrink-0 min-w-[180px]">
+            <div className="text-xs text-indigo-700 font-medium">Total Horas Aprobadas</div>
+            <div className="text-lg font-bold text-gray-800">
+              {(() => {
+                console.log("========= CALCULANDO TOTAL DE HORAS APROBADAS =========");
+                let totalHA = 0;
+                // Solo considerar días laborales del mes actual
+                const diasLaboralesMes = diasCalendario.filter(d => 
+                  d.esDiaLaboral && d.fecha.getMonth() === nombresMeses[mes.toLowerCase()]
+                );
+                
+                diasLaboralesMes.forEach(d => {
+                  console.log(`Día ${d.fecha.getDate()}: ${d.horasAprobadas.toFixed(1)} horas aprobadas`);
+                  totalHA += d.horasAprobadas;
+                });
+                console.log(`TOTAL HORAS APROBADAS (solo días laborales de ${mes}): ${totalHA.toFixed(1)}`);
+                
+                return totalHA.toFixed(1);
+              })()}
+            </div>
+          </div>
+          
+          <div className="bg-green-50 p-3 rounded-lg flex-shrink-0 min-w-[180px]">
             <div className="text-xs text-green-700 font-medium">Total Horas Contratadas</div>
             <div className="text-lg font-bold text-gray-800">
               {(() => {
@@ -673,12 +712,25 @@ export function MonthSummaryView({ mes, año, onBack }: MonthSummaryViewProps) {
                 });
                 console.log(`TOTAL HORAS CONTRATADAS (solo días laborales de ${mes}): ${totalHC.toFixed(1)}`);
                 
+                // Verificación adicional para diagnosticar posibles problemas
+                if (diasLaboralesMes.length > 0) {
+                  console.log("Detalle de las horas contratadas por día:");
+                  diasLaboralesMes.forEach(d => {
+                    console.log(`- Día ${d.fecha.getDate()}: ${d.horasContratadas.toFixed(1)} HC (diaId: ${d.diaId || 'sin ID'})`);
+                  });
+                  
+                  // Información de tipos de datos para diagnóstico
+                  const firstDay = diasLaboralesMes[0];
+                  console.log(`Tipo de dato de horasContratadas: ${typeof firstDay.horasContratadas}`);
+                  console.log(`Ejemplo completo de día: `, JSON.stringify(firstDay, null, 2));
+                }
+                
                 return totalHC.toFixed(1);
               })()}
             </div>
           </div>
           
-          <div className="bg-red-50 p-3 rounded-lg">
+          <div className="bg-red-50 p-3 rounded-lg flex-shrink-0 min-w-[180px]">
             <div className="text-xs text-red-700 font-medium">Total Horas Efectivas</div>
             <div className="text-lg font-bold text-gray-800">
               {(() => {
@@ -700,7 +752,7 @@ export function MonthSummaryView({ mes, año, onBack }: MonthSummaryViewProps) {
             </div>
           </div>
           
-          <div className="bg-purple-50 p-3 rounded-lg">
+          <div className="bg-purple-50 p-3 rounded-lg flex-shrink-0 min-w-[180px]">
             <div className="text-xs text-purple-700 font-medium">Diferencia Horas Contratadas - Efectivas</div>
             <div className="text-lg font-bold text-gray-800">
               {(() => {
@@ -720,7 +772,7 @@ export function MonthSummaryView({ mes, año, onBack }: MonthSummaryViewProps) {
             </div>
           </div>
           
-          <div className="bg-yellow-50 p-3 rounded-lg">
+          <div className="bg-yellow-50 p-3 rounded-lg flex-shrink-0 min-w-[180px]">
             <div className="text-xs text-yellow-700 font-medium">Promedio Horas Efectivas/Día</div>
             <div className="text-lg font-bold text-gray-800">
               {(() => {

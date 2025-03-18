@@ -15,7 +15,9 @@ export function generarColumnasTiempo(
   try {
     // Valores por defecto
     let apertura = 9; // Valor por defecto: 9:00
+    let aperturaMinutos = 0;
     let cierre = 21;  // Valor por defecto: 21:00
+    let cierreMinutos = 0;
     
     // Intentar parsear hora de apertura
     if (horaApertura && typeof horaApertura === 'string') {
@@ -24,6 +26,14 @@ export function generarColumnasTiempo(
         const horaParseada = parseInt(partes[0], 10);
         if (!isNaN(horaParseada) && horaParseada >= 0 && horaParseada <= 23) {
           apertura = horaParseada;
+        }
+        
+        // Parseamos también los minutos si están disponibles
+        if (partes.length > 1) {
+          const minutosParseados = parseInt(partes[1], 10);
+          if (!isNaN(minutosParseados) && minutosParseados >= 0 && minutosParseados < 60) {
+            aperturaMinutos = minutosParseados;
+          }
         }
       }
     }
@@ -36,25 +46,49 @@ export function generarColumnasTiempo(
         if (!isNaN(horaParseada) && horaParseada >= 0 && horaParseada <= 23) {
           cierre = horaParseada;
         }
+        
+        // Parseamos también los minutos si están disponibles
+        if (partes.length > 1) {
+          const minutosParseados = parseInt(partes[1], 10);
+          if (!isNaN(minutosParseados) && minutosParseados >= 0 && minutosParseados < 60) {
+            cierreMinutos = minutosParseados;
+          }
+        }
       }
     }
     
     // Asegurarse de que apertura sea menor que cierre
-    if (apertura >= cierre) {
+    if (apertura > cierre || (apertura === cierre && aperturaMinutos >= cierreMinutos)) {
       apertura = 9;
+      aperturaMinutos = 0;
       cierre = 21;
+      cierreMinutos = 0;
     }
     
     const columnas: string[] = [];
     const esFrancia = pais?.toUpperCase() === 'FRANCIA';
     const incremento = esFrancia ? 15 : 30; // 15 o 30 minutos
     
-    for (let hora = apertura; hora <= cierre; hora++) {
-      for (let minuto = 0; minuto < 60; minuto += incremento) {
-        const horaStr = hora.toString().padStart(2, '0');
-        const minutoStr = minuto.toString().padStart(2, '0');
-        columnas.push(`${horaStr}:${minutoStr}`);
-      }
+    // Convertir todo a minutos para facilitar el cálculo
+    const aperturaEnMinutos = apertura * 60 + aperturaMinutos;
+    const cierreEnMinutos = cierre * 60 + cierreMinutos;
+    
+    // Encontrar el último incremento completo antes del cierre
+    const ultimoIncrementoEnMinutos = Math.floor((cierreEnMinutos - incremento) / incremento) * incremento;
+    
+    // Generar todas las columnas de tiempo desde la apertura hasta el último incremento completo
+    for (let minutoActual = aperturaEnMinutos; minutoActual <= ultimoIncrementoEnMinutos; minutoActual += incremento) {
+      // Redondear al incremento más cercano para asegurar valores consistentes
+      const minutoRedondeado = Math.floor(minutoActual / incremento) * incremento;
+      
+      // Calcular hora y minutos
+      const hora = Math.floor(minutoRedondeado / 60);
+      const minuto = minutoRedondeado % 60;
+      
+      // Formatear y agregar a las columnas
+      const horaStr = hora.toString().padStart(2, '0');
+      const minutoStr = minuto.toString().padStart(2, '0');
+      columnas.push(`${horaStr}:${minutoStr}`);
     }
     
     return columnas;
