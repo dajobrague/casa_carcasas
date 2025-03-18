@@ -21,27 +21,21 @@ function HomeContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
       <div className="max-w-lg w-full bg-white shadow-md rounded-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Gestor de Horarios</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Casa de las Carcasas</h1>
         
         <div className="mb-6">
           <p className="text-gray-600 mb-4">
-            Para acceder al editor de horarios, necesitas proporcionar un ID de tienda.
+            Bienvenido al portal interno de Casa de las Carcasas.
           </p>
           <p className="text-gray-600">
-            Usa la URL con el siguiente formato:
+            Este es un sistema de uso exclusivo para personal autorizado.
           </p>
-          <div className="bg-gray-100 p-3 rounded-md mt-2 font-mono text-sm">
-            https://tu-app.vercel.app/editor/ID_DE_TIENDA
-          </div>
         </div>
         
-        <div className="border-t border-gray-200 pt-4">
-          <h2 className="text-lg font-semibold text-gray-700 mb-3">Acceso rápido (solo desarrollo)</h2>
-          <div className="space-y-2">
-            <p className="text-sm text-gray-500">
-              En un entorno de producción, aquí podrías mostrar enlaces a las tiendas autorizadas.
-            </p>
-          </div>
+        <div className="border-t border-gray-200 pt-4 mt-4">
+          <p className="text-sm text-gray-500 text-center">
+            Si necesitas acceso, por favor contacta al departamento de sistemas.
+          </p>
         </div>
       </div>
     </div>
