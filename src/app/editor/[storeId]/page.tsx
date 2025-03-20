@@ -5,8 +5,9 @@ import { YearView, MonthView, MonthSummaryView, DesktopDayModal } from '@/compon
 import { ScheduleProvider, useSchedule } from '@/context/ScheduleContext';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { SemanasLaboralesRecord } from '@/lib/airtable';
+import { SemanaLaboralRecord } from '@/lib/airtable';
 import { useParams } from 'next/navigation';
+import { generarPDFSimple } from '@/lib/simple-pdf-bridge';
 
 // Componente principal del editor
 function ScheduleEditor() {
@@ -138,11 +139,11 @@ function ScheduleEditor() {
     setIsDayModalOpen(false);
   };
 
-  // Generar PDF
+  // Generar PDF o redireccionar a vista nueva
   const handleGeneratePdf = async (
     semanaId: string, 
     semanaName: string, 
-    semana?: SemanasLaboralesRecord,
+    semana?: SemanaLaboralRecord,
     directDownload: boolean = false
   ) => {
     try {
@@ -154,16 +155,15 @@ function ScheduleEditor() {
       // Actualizar estado de carga
       setIsPdfLoading(true);
       
-      // Importación dinámica para reducir el tamaño del bundle inicial
-      const { generarYMostrarPDFSemana } = await import('@/lib/pdf');
+      // Utilizar nuestra función puente para generar el PDF
+      const success = await generarPDFSimple(storeRecordId, semanaId);
       
-      // Utilizar nuestra función completa para generar y mostrar el PDF
-      await generarYMostrarPDFSemana(
-        semana || semanaId, 
-        storeRecordId, 
-        setIsPdfLoading,
-        directDownload
-      );
+      // Actualizar estado de carga una vez terminado
+      setIsPdfLoading(false);
+      
+      if (!success) {
+        throw new Error('No se pudo generar el PDF');
+      }
     } catch (error) {
       console.error('Error al generar PDF:', error);
       alert(`Error al generar el PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -289,8 +289,7 @@ function ScheduleEditor() {
   );
 }
 
-// Página del editor con Provider
-export default function EditorPage() {
+export default function Page() {
   return (
     <ScheduleProvider>
       <ScheduleEditor />

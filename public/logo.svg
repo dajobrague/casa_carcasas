@@ -1,0 +1,22 @@
+<svg width="200" height="80" viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo rectangulo redondeado -->
+  <rect width="200" height="80" rx="10" fill="#0f4c81" />
+  
+  <!-- Icono de carcasa de telefono -->
+  <path d="M55 20H75C77.7614 20 80 22.2386 80 25V55C80 57.7614 77.7614 60 75 60H55C52.2386 60 50 57.7614 50 55V25C50 22.2386 52.2386 20 55 20Z" stroke="white" stroke-width="2" />
+  <rect x="53" y="25" width="24" height="30" rx="2" fill="#f0f0f0" />
+  
+  <!-- Texto "CASA" -->
+  <path d="M95 35H99.5V37.5H95V35ZM95 40H99.5V42.5H95V40ZM95 45H99.5V47.5H95V45ZM100 30H95V32.5H100C101.381 32.5 102.5 33.6193 102.5 35V47.5H105V35C105 31.6863 102.761 30 100 30Z" fill="white" />
+  
+  <!-- Texto "CARCASAS" -->
+  <path d="M110 35H114.5V37.5H110V35ZM110 40H114.5V42.5H110V40ZM110 45H114.5V47.5H110V45ZM115 30H110V32.5H115C116.381 32.5 117.5 33.6193 117.5 35V47.5H120V35C120 31.6863 117.761 30 115 30Z" fill="white" />
+  <path d="M122.5 30H125V47.5H122.5V30Z" fill="white" />
+  <path d="M128 30H137.5V32.5H130.5V37.5H135V40H130.5V45H137.5V47.5H128V30Z" fill="white" />
+  <path d="M140 30H149.5V32.5H142.5V37.5H147V40H142.5V45H149.5V47.5H140V30Z" fill="white" />
+  <path d="M152.5 30H155V45H162.5V47.5H152.5V30Z" fill="white" />
+  <path d="M165 30H174.5V32.5H167.5V37.5H172V40H167.5V45H174.5V47.5H165V30Z" fill="white" />
+  
+  <!-- Eslogan -->
+  <text x="100" y="65" text-anchor="middle" font-family="Arial" font-size="8" fill="white">Sistema de Gestión de Tiendas</text>
+</svg> 

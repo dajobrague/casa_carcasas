@@ -25,6 +25,23 @@ import {
   ScheduleTableDetailedView,
   TrafficTableDetailedView
 } from '@/components/calendar/view';
+import logger from '@/lib/logger';
+import { toast } from 'react-hot-toast';
+import { Button } from '@/components/ui/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Card } from '@/components/ui/card';
 
 interface DayViewDesktopProps {
   isOpen: boolean;
@@ -129,7 +146,7 @@ export function DayViewDesktop({
       }
       
     } catch (err) {
-      console.error('Error al cargar datos principales:', err);
+      logger.error('Error al cargar datos principales:', err);
       setError('Error al cargar los datos. Por favor, inténtelo de nuevo.');
     } finally {
       setIsLoading(false);
@@ -144,7 +161,7 @@ export function DayViewDesktop({
     setTraficoError(null);
     
     try {
-      console.log('Iniciando obtención de datos de tráfico para el día:', diaId);
+      logger.log('Iniciando obtención de datos de tráfico para el día:', diaId);
       const datosTraficoDiaAPI = await obtenerDatosTrafico(
         diaId as string, 
         storeRecordId as string
@@ -152,7 +169,7 @@ export function DayViewDesktop({
       const datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnasTiempo);
       setDatosTraficoDia(datosTraficoDiaFinal);
     } catch (error) {
-      console.error('Error al cargar datos de tráfico:', error);
+      logger.error('Error al cargar datos de tráfico:', error);
       setDatosTraficoDia(generarDatosTraficoEjemplo(columnasTiempo));
       setTraficoError('No se pudieron cargar los datos de tráfico reales. Mostrando datos simulados.');
     } finally {

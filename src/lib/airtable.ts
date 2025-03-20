@@ -1,24 +1,98 @@
-import Airtable from 'airtable';
+import logger from './logger';
 
-// Configuración de Airtable
-const apiKey = process.env.NEXT_PUBLIC_AIRTABLE_API_KEY || '';
-const baseId = process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID || '';
-const semanasLaboralesTableId = process.env.NEXT_PUBLIC_AIRTABLE_SEMANAS_LABORALES_TABLE_ID || '';
-const tiendaSupervisorTableId = process.env.NEXT_PUBLIC_AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID || '';
-const actividadDiariaTableId = process.env.NEXT_PUBLIC_AIRTABLE_ACTIVIDAD_DIARIA_TABLE_ID || '';
-const diasLaboralesTableId = process.env.NEXT_PUBLIC_AIRTABLE_DIAS_LABORALES_TABLE_ID || '';
+// Definición de tipos
+export interface TiendaSupervisorRecord {
+  id: string;
+  fields: {
+    Name: string;
+    PAIS?: string;
+    Apertura?: string;
+    Cierre?: string;
+    'Horas Aprobadas'?: number;
+    [key: string]: any;
+  };
+  createdTime?: string;
+}
 
-// Inicializar Airtable
-Airtable.configure({ apiKey });
-const base = Airtable.base(baseId);
+export interface ActividadDiariaRecord {
+  id: string;
+  fields: {
+    Nombre?: string;
+    Name?: string;
+    Tienda?: string[];
+    'Día Laboral'?: string[];
+    'Horas Contrato'?: number;
+    'Horas +'?: number;
+    'Horas -'?: number;
+    'Horas'?: number;
+    DNI?: string;
+    Observaciones?: string;
+    'record_Id (from Tienda y Supervisor)'?: string[];
+    'recordId (from Fecha)'?: string[];
+    'Actividad Semanal'?: string[];
+    Fecha?: Date;
+    '08:00'?: string;
+    '08:30'?: string;
+    '09:00'?: string;
+    '09:30'?: string;
+    '10:00'?: string;
+    '10:30'?: string;
+    '11:00'?: string;
+    '11:30'?: string;
+    '12:00'?: string;
+    '12:30'?: string;
+    '13:00'?: string;
+    '13:30'?: string;
+    '14:00'?: string;
+    '14:30'?: string;
+    '15:00'?: string;
+    '15:30'?: string;
+    '16:00'?: string;
+    '16:30'?: string;
+    '17:00'?: string;
+    '17:30'?: string;
+    '18:00'?: string;
+    '18:30'?: string;
+    '19:00'?: string;
+    '19:30'?: string;
+    '20:00'?: string;
+    '20:30'?: string;
+    '21:00'?: string;
+    '21:30'?: string;
+    '22:00'?: string;
+    '22:30'?: string;
+    [key: string]: any;
+  };
+  createdTime?: string;
+}
 
-// Tablas
-const semanasLaboralesTable = base(semanasLaboralesTableId);
-const tiendaSupervisorTable = base(tiendaSupervisorTableId);
-const actividadDiariaTable = base(actividadDiariaTableId);
-const diasLaboralesTable = base(diasLaboralesTableId);
+export interface DiaLaboralRecord {
+  id: string;
+  fields: {
+    Name?: string;
+    'Semana Laboral'?: string[];
+    [key: string]: any;
+  };
+  createdTime?: string;
+}
 
-// Opciones de estado para los horarios
+export interface SemanaLaboralRecord {
+  id: string;
+  fields: {
+    Name?: string;
+    'Fecha Inicio'?: string;
+    'Fecha Fin'?: string;
+    Year?: string;
+    Mes?: string;
+    'Fecha de Inicio'?: string;
+    'Fecha de fin'?: string;
+    'Dias Laborales'?: string[];
+    [key: string]: any;
+  };
+  createdTime?: string;
+}
+
+// Lista de opciones para los dropdowns
 export const opcionesDropdown = [
   'TRABAJO',
   'VACACIONES',
@@ -38,276 +112,269 @@ export const opcionesEstado = [
   { value: 'LACTANCIA', label: 'Lactancia', color: 'pink' }
 ];
 
-// Función para verificar la conexión a Airtable
-export async function verificarConexionAirtable() {
+/**
+ * Obtiene los datos de una tienda específica
+ */
+export async function obtenerDatosTienda(storeRecordId: string): Promise<TiendaSupervisorRecord> {
+  logger.log('URL de petición para tienda:', `/api/airtable?action=obtenerDatosTienda&storeId=${storeRecordId}`);
+  
   try {
-    const response = await fetch(
-      `https://api.airtable.com/v0/${baseId}/${actividadDiariaTableId}?maxRecords=1`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      }
-    );
-
-    console.log('Airtable connection test:', {
-      status: response.status,
-      ok: response.ok
-    });
-
+    const response = await fetch(`/api/airtable?action=obtenerDatosTienda&storeId=${storeRecordId}`);
+    
+    logger.log('Estado de la respuesta de tienda:', response.status);
+    
     if (!response.ok) {
-      const text = await response.text();
-      console.error('Airtable connection failed:', text);
+      throw new Error(`Error al obtener los datos de la tienda: ${response.status}`);
     }
-
-    return response.ok;
+    
+    const data = await response.json();
+    logger.log('Datos de tienda recibidos:', data);
+    
+    return data;
   } catch (error) {
-    console.error('Airtable connection error:', error);
-    return false;
-  }
-}
-
-// Exportar tablas y configuración
-export {
-  base,
-  semanasLaboralesTable,
-  tiendaSupervisorTable,
-  actividadDiariaTable,
-  diasLaboralesTable,
-  apiKey,
-  baseId,
-  semanasLaboralesTableId,
-  tiendaSupervisorTableId,
-  actividadDiariaTableId,
-  diasLaboralesTableId
-};
-
-// Tipos de datos
-export interface AirtableRecord {
-  id: string;
-  fields: Record<string, any>;
-}
-
-export interface SemanasLaboralesRecord extends AirtableRecord {
-  fields: {
-    Name: string;
-    Year: string;
-    Mes: string;
-    'Fecha de Inicio': string;
-    'Fecha de fin': string;
-    'Dias Laborales'?: string[];
-  };
-}
-
-export interface TiendaSupervisorRecord extends AirtableRecord {
-  fields: {
-    Name: string;
-    PAIS?: string;
-    Apertura?: string;
-    Cierre?: string;
-    'Horas Aprobadas'?: number;
-  };
-}
-
-export interface ActividadDiariaRecord extends AirtableRecord {
-  fields: {
-    Nombre?: string;
-    'Horas Contrato'?: number;
-    'Horas +'?: number;
-    'Horas -'?: number;
-    'Horas'?: number;
-    DNI?: string;
-    Observaciones?: string;
-    'record_Id (from Tienda y Supervisor)'?: string[];
-    'recordId (from Fecha)'?: string[];
-    'Actividad Semanal'?: string[];
-    Fecha?: Date;
-    [key: string]: any; // Para los campos de tiempo (10:00, 10:30, etc.)
-  };
-}
-
-export interface DiasLaboralesRecord extends AirtableRecord {
-  fields: {
-    Name: string;
-    'Semana Laboral'?: string[];
-  };
-}
-
-// Funciones para obtener datos
-export async function obtenerDatosSemanasLaborales(): Promise<SemanasLaboralesRecord[]> {
-  try {
-    const urlBase = `https://api.airtable.com/v0/${baseId}/${semanasLaboralesTableId}`;
-    const requestUrl = `${urlBase}`;
-    
-    console.log('URL de petición a Airtable:', requestUrl);
-
-    const respuesta = await fetch(requestUrl, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`
-      }
-    });
-
-    console.log('Estado de la respuesta:', respuesta.status);
-    
-    if (!respuesta.ok) {
-      throw new Error(`Error en la respuesta: ${respuesta.status} ${respuesta.statusText}`);
-    }
-
-    const datos = await respuesta.json();
-    console.log('Datos recibidos de Airtable:', datos);
-    
-    if (!datos.records || datos.records.length === 0) {
-      throw new Error('No se encontraron registros en Semanas Laborales');
-    }
-
-    console.log('Número de registros encontrados:', datos.records.length);
-    return datos.records as SemanasLaboralesRecord[];
-  } catch (error) {
-    console.error("Error detallado al obtener datos de Semanas Laborales:", error);
+    logger.error('Error al obtener datos de tienda:', error);
     throw error;
   }
 }
 
-export async function obtenerDatosTienda(recordId: string): Promise<TiendaSupervisorRecord | null> {
+/**
+ * Obtiene las actividades diarias para una tienda y día específicos
+ */
+export async function obtenerActividadesDiarias(
+  storeRecordId: string,
+  diaLaboralId: string
+): Promise<ActividadDiariaRecord[]> {
   try {
-    const url = `https://api.airtable.com/v0/${baseId}/${tiendaSupervisorTableId}/${recordId}`;
-    console.log('URL de petición para tienda:', url);
-    
-    const response = await fetch(url, {
-      headers: { 
-        Authorization: `Bearer ${apiKey}` 
-      }
-    });
-    
-    console.log('Estado de la respuesta de tienda:', response.status);
+    // Usar la URL base para que funcione tanto en cliente como en servidor
+    const baseUrl = typeof window === 'undefined' ? (process.env.NEXTAUTH_URL || 'http://localhost:3000') : '';
+    const response = await fetch(`${baseUrl}/api/airtable?action=obtenerActividadesDiarias&storeId=${storeRecordId}&diaId=${diaLaboralId}`);
     
     if (!response.ok) {
-      throw new Error(`Error al obtener tienda: ${response.status} ${response.statusText}`);
+      throw new Error(`Error al obtener las actividades diarias: ${response.status}`);
     }
     
     const data = await response.json();
-    console.log('Datos de tienda recibidos:', data);
-    return data as TiendaSupervisorRecord;
+    return data.records || [];
   } catch (error) {
-    console.error('Error detallado al obtener datos de tienda:', error);
-    return null;
+    logger.error('Error al obtener actividades diarias:', error);
+    throw error;
   }
 }
 
-export async function obtenerActividadesDiarias(tiendaId: string, fechaId: string): Promise<ActividadDiariaRecord[]> {
+/**
+ * Obtiene los días laborales asociados a una semana específica
+ */
+export async function obtenerDiasLaboralesSemana(semanaLaboralId: string): Promise<DiaLaboralRecord[]> {
   try {
-    const filterFormula = encodeURIComponent(
-      `AND(
-        {record_Id (from Tienda y Supervisor)}='${tiendaId}',
-        {recordId (from Fecha)}='${fechaId}'
-      )`
-    );
-
-    const url = `https://api.airtable.com/v0/${baseId}/${actividadDiariaTableId}?filterByFormula=${filterFormula}`;
+    const response = await fetch(`/api/airtable?action=obtenerDiasLaboralesSemana&semanaId=${semanaLaboralId}`);
     
-    const response = await fetch(url, {
+    if (!response.ok) {
+      throw new Error(`Error al obtener los días laborales: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.records || [];
+  } catch (error) {
+    logger.error('Error al obtener días laborales:', error);
+    throw error;
+  }
+}
+
+/**
+ * Actualiza los campos de una actividad diaria
+ */
+export async function actualizarActividad(actividadId: string, campos: Record<string, any>): Promise<ActividadDiariaRecord> {
+  try {
+    const response = await fetch('/api/airtable', {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'actualizarActividad',
+        actividadId,
+        campos
+      }),
     });
-
+    
     if (!response.ok) {
-      throw new Error(`Error fetching daily activities: ${response.status}`);
+      throw new Error(`Error al actualizar la actividad: ${response.status}`);
     }
-
+    
     const data = await response.json();
-    return data.records as ActividadDiariaRecord[];
+    return data;
   } catch (error) {
-    console.error('Error fetching daily activities:', error);
-    return [];
+    logger.error('Error al actualizar actividad:', error);
+    throw error;
   }
 }
 
+/**
+ * Actualiza un horario específico (mantenido por compatibilidad)
+ */
 export async function actualizarHorario(
   actividadId: string, 
   tiempo: string, 
   valor: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(`https://api.airtable.com/v0/${baseId}/${actividadDiariaTableId}/${actividadId}`, {
-      method: 'PATCH',
+    const response = await fetch('/api/airtable', {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        fields: {
-          [tiempo]: valor || null
-        }
-      })
+        action: 'actualizarActividad',
+        actividadId,
+        campos: { [tiempo]: valor || null }
+      }),
     });
-
+    
     if (!response.ok) {
-      const responseData = await response.text();
-      throw new Error(`Airtable error: ${response.status} - ${responseData}`);
+      throw new Error(`Error al actualizar el horario: ${response.status}`);
     }
-
+    
     return true;
   } catch (error) {
-    console.error('Update failed:', error);
+    logger.error('Error al actualizar horario:', error);
     return false;
   }
 }
 
-export async function obtenerSemanasLaborales(mes: string, año: string): Promise<SemanasLaboralesRecord[]> {
-  const urlBase = `https://api.airtable.com/v0/${baseId}/${semanasLaboralesTableId}`;
-  
-  // Filtrar solo por año para obtener todas las semanas
-  const filterFormula = encodeURIComponent(`{Year}="${año}"`);
-  const url = `${urlBase}?filterByFormula=${filterFormula}`;
-
+/**
+ * Obtiene las semanas laborales para un mes y año específicos
+ */
+export async function obtenerSemanasLaboralesPorMes(mes: number, año: number): Promise<SemanaLaboralRecord[]> {
   try {
-    const respuesta = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
-    });
-
-    if (!respuesta.ok) {
-      throw new Error(`Error: ${respuesta.statusText}`);
+    // Convertir mes de número (0-11) a nombre
+    const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const nombreMes = nombresMeses[mes];
+    
+    if (!nombreMes) {
+      logger.error(`Error: Mes inválido (${mes})`);
+      return [];
     }
-
-    const datos = await respuesta.json();
     
-    // Obtener el número del mes actual (0-11)
-    const mesNum = obtenerNumeroMes(mes.toLowerCase());
-    
-    // Filtrar las semanas que pertenecen al mes
-    const semanasDelMes = datos.records.filter((record: SemanasLaboralesRecord) => {
-      const fechaInicio = new Date(record.fields['Fecha de Inicio']);
-      const fechaFin = new Date(record.fields['Fecha de fin']);
-      const mesInicio = fechaInicio.getMonth();
-      const mesFin = fechaFin.getMonth();
-      
-      // Una semana pertenece al mes si:
-      // - El mes está entre el mes de inicio y el mes de fin
-      // - O si el mes de inicio es igual al mes actual
-      // - O si el mes de fin es igual al mes actual
-      return (mesNum >= mesInicio && mesNum <= mesFin) || 
-          mesInicio === mesNum || 
-          mesFin === mesNum;
-    });
-
-    // Ordenar por fecha de inicio
-    semanasDelMes.sort((a: SemanasLaboralesRecord, b: SemanasLaboralesRecord) => {
-      const fechaA = new Date(a.fields['Fecha de Inicio']);
-      const fechaB = new Date(b.fields['Fecha de Inicio']);
-      return fechaA.getTime() - fechaB.getTime();
-    });
-
-    console.log(`Semanas encontradas para ${mes} ${año}:`, semanasDelMes);
-    return semanasDelMes as SemanasLaboralesRecord[];
-
+    // Usar la función existente que ahora usa el API route
+    return await obtenerSemanasLaborales(nombreMes, año.toString());
   } catch (error) {
-    console.error("Error al obtener semanas laborales:", error);
+    logger.error('Error al obtener semanas laborales por mes y año:', error);
     return [];
   }
 }
+
+/**
+ * Obtiene las semanas laborales por nombre de mes y año (compatible con el código existente)
+ */
+export async function obtenerSemanasLaborales(mes: string, año: string): Promise<SemanaLaboralRecord[]> {
+  try {
+    logger.log(`Obteniendo semanas laborales para ${mes} ${año}`);
+    
+    // Llamar al API route para obtener las semanas laborales
+    const response = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=${encodeURIComponent(mes)}&año=${encodeURIComponent(año)}`);
+    
+    if (!response.ok) {
+      throw new Error(`Error al obtener semanas laborales: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    logger.log(`Semanas laborales obtenidas: ${data.records?.length || 0}`);
+    
+    // Si no encontramos semanas para el mes específico, intentamos obtener todas las semanas del año
+    if (!data.records || data.records.length === 0) {
+      logger.log(`No se encontraron semanas para ${mes} ${año}. Intentando obtener todas las semanas del año.`);
+      
+      // Llamar al API con mes='all' para obtener todas las semanas del año
+      const fallbackResponse = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=all&año=${encodeURIComponent(año)}`);
+      
+      if (!fallbackResponse.ok) {
+        throw new Error(`Error al obtener todas las semanas: ${fallbackResponse.status}`);
+      }
+      
+      const fallbackData = await fallbackResponse.json();
+      logger.log(`Semanas totales obtenidas como fallback: ${fallbackData.records?.length || 0}`);
+      
+      // Filtrar manualmente por mes si es posible (esto es un fallback)
+      if (fallbackData.records && fallbackData.records.length > 0) {
+        const mesLowerCase = mes.toLowerCase();
+        const semanasFiltradas = fallbackData.records.filter((record: SemanaLaboralRecord) => {
+          // Intentar hacer un filtrado básico por el campo Mes (si existe) o por el nombre
+          if (record.fields.Mes && record.fields.Mes.toLowerCase().includes(mesLowerCase)) {
+            return true;
+          }
+          
+          // Si tiene fechas, verificar si alguna fecha está en el mes solicitado
+          if (record.fields['Fecha de Inicio'] && record.fields['Fecha de fin']) {
+            const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            const mesIndex = nombresMeses.findIndex(m => m === mesLowerCase);
+            
+            if (mesIndex !== -1) {
+              const fechaInicio = new Date(record.fields['Fecha de Inicio']);
+              const fechaFin = new Date(record.fields['Fecha de fin']);
+              
+              const mesInicio = fechaInicio.getMonth();
+              const mesFin = fechaFin.getMonth();
+              
+              // Verificar si el mes solicitado está dentro del rango de fechas
+              return (mesIndex >= mesInicio && mesIndex <= mesFin) || 
+                     mesInicio === mesIndex || 
+                     mesFin === mesIndex;
+            }
+          }
+          
+          return false;
+        });
+        
+        logger.log(`Semanas filtradas manualmente por mes ${mes}: ${semanasFiltradas.length}`);
+        
+        if (semanasFiltradas.length > 0) {
+          return semanasFiltradas;
+        }
+      }
+      
+      // Si no pudimos filtrar o no hay resultados, devolver todas las semanas del año
+      return fallbackData.records || [];
+    }
+    
+    return data.records || [];
+  } catch (error) {
+    logger.error('Error al obtener semanas laborales:', error);
+    return [];
+  }
+}
+
+/**
+ * Obtiene una semana laboral específica por su ID
+ */
+export async function obtenerSemanaPorId(semanaId: string): Promise<SemanaLaboralRecord | null> {
+  if (!semanaId) {
+    logger.error('Error: No se proporcionó un ID de semana laboral');
+    return null;
+  }
+  
+  try {
+    logger.log(`Obteniendo semana con ID: ${semanaId}`);
+    
+    // Llamar al API route para obtener la semana
+    const response = await fetch(`/api/airtable?action=obtenerSemanaPorId&semanaId=${encodeURIComponent(semanaId)}`);
+    
+    if (!response.ok) {
+      throw new Error(`Error al obtener semana: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    logger.error('Error al obtener semana laboral por ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Funciones auxiliares
+ */
 
 // Función auxiliar para obtener el número de mes (0-11)
 export function obtenerNumeroMes(nombreMes: string): number {
@@ -316,10 +383,11 @@ export function obtenerNumeroMes(nombreMes: string): number {
     'mayo': 4, 'junio': 5, 'julio': 6, 'agosto': 7,
     'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
   };
-  return meses[nombreMes.split(' ')[0]];
+  return meses[nombreMes.split(' ')[0]] || 0;
 }
 
 export function capitalizarPrimeraLetra(texto: string): string {
+  if (!texto) return '';
   const palabras = texto.split(' ');
   const primeraPalabra = palabras[0];
   const año = palabras[1];
@@ -347,36 +415,58 @@ export function normalizarFecha(fecha: Date | string): Date {
 }
 
 /**
- * Obtiene una semana laboral específica por su ID
+ * Verifica la conexión a Airtable
+ * Esta función es utilizada para comprobar si las credenciales son válidas
  */
-export async function obtenerSemanaPorId(semanaId: string): Promise<SemanasLaboralesRecord | null> {
-  if (!semanaId) {
-    console.error('Error: No se proporcionó un ID de semana laboral');
-    return null;
-  }
-
-  const urlBase = `https://api.airtable.com/v0/${baseId}/${semanasLaboralesTableId}`;
-  const url = `${urlBase}/${semanaId}`;
-
+export async function verificarConexionAirtable(): Promise<boolean> {
   try {
-    const respuesta = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
-    });
-
-    if (!respuesta.ok) {
-      if (respuesta.status === 404) {
-        console.error(`La semana con ID ${semanaId} no fue encontrada`);
-        return null;
-      }
-      throw new Error(`Error al obtener semana: ${respuesta.statusText}`);
-    }
-
-    const datos = await respuesta.json();
-    return datos as SemanasLaboralesRecord;
+    logger.log('Verificando conexión a Airtable...');
+    
+    // Hacemos una petición simple a la API para verificar si las credenciales son válidas
+    const response = await fetch('/api/airtable?action=verificarConexion');
+    
+    const result = await response.json();
+    return result.connected === true;
   } catch (error) {
-    console.error('Error al obtener semana laboral por ID:', error);
-    throw error;
+    logger.error('Error al verificar conexión con Airtable:', error);
+    return false;
+  }
+}
+
+/**
+ * Obtiene todas las semanas laborales
+ * Utilizada para poblar el selector de años y datos generales
+ */
+export async function obtenerDatosSemanasLaborales(): Promise<SemanaLaboralRecord[]> {
+  try {
+    logger.log('Obteniendo datos de todas las semanas laborales...');
+    
+    // Inicialmente intentamos obtener todas las semanas laborales sin filtrar por año ni mes
+    const response = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=all&año=all`);
+    
+    if (!response.ok) {
+      // Si falla, buscamos específicamente para el año actual
+      const currentYear = new Date().getFullYear().toString();
+      logger.log(`Intentando obtener semanas laborales para el año actual: ${currentYear}`);
+      
+      const fallbackResponse = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=all&año=${currentYear}`);
+      
+      if (!fallbackResponse.ok) {
+        throw new Error(`Error al obtener datos de semanas laborales: ${fallbackResponse.status}`);
+      }
+      
+      const data = await fallbackResponse.json();
+      logger.log(`Semanas laborales obtenidas (solo año actual): ${data.records?.length || 0}`);
+      
+      return data.records || [];
+    }
+    
+    const data = await response.json();
+    logger.log(`Semanas laborales obtenidas (todos los años): ${data.records?.length || 0}`);
+    
+    return data.records || [];
+  } catch (error) {
+    logger.error('Error al obtener datos de semanas laborales:', error);
+    return [];
   }
 } 

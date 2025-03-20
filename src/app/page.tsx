@@ -10,11 +10,14 @@ function HomeContent() {
   
   // Efecto para redirigir a la nueva ruta del editor si se proporciona un storeId
   useEffect(() => {
-    const storeId = searchParams.get('storeId');
-    
-    if (storeId) {
-      // Redirigir a la nueva ruta del editor
-      router.push(`/editor/${storeId}`);
+    // Asegurarse de que searchParams no sea nulo antes de usarlo
+    if (searchParams) {
+      const storeId = searchParams.get('storeId');
+      
+      if (storeId) {
+        // Redirigir a la nueva ruta del editor
+        router.push(`/editor/${storeId}`);
+      }
     }
   }, [searchParams, router]);
   

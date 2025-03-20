@@ -1,0 +1,129 @@
+{
+  "timestamp": "2025-03-20T01:55:06.435Z",
+  "parametros": {
+    "horaApertura": 10,
+    "horaCierre": 21
+  },
+  "recomendaciones": {
+    "09:00": {
+      "entradas": 14,
+      "recomendacion": 1.29,
+      "detalles": {
+        "formula": "(14 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(14 * 1.15) / 12.50 = 1.29"
+      }
+    },
+    "10:00": {
+      "entradas": 21,
+      "recomendacion": 1.93,
+      "detalles": {
+        "formula": "(21 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(21 * 1.15) / 12.50 = 1.93"
+      }
+    },
+    "11:00": {
+      "entradas": 35,
+      "recomendacion": 3.22,
+      "detalles": {
+        "formula": "(35 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(35 * 1.15) / 12.50 = 3.22"
+      }
+    },
+    "12:00": {
+      "entradas": 49,
+      "recomendacion": 4.51,
+      "detalles": {
+        "formula": "(49 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(49 * 1.15) / 12.50 = 4.51"
+      }
+    },
+    "13:00": {
+      "entradas": 50,
+      "recomendacion": 4.6,
+      "detalles": {
+        "formula": "(50 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(50 * 1.15) / 12.50 = 4.6"
+      }
+    },
+    "14:00": {
+      "entradas": 45,
+      "recomendacion": 4.14,
+      "detalles": {
+        "formula": "(45 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(45 * 1.15) / 12.50 = 4.14"
+      }
+    },
+    "15:00": {
+      "entradas": 32,
+      "recomendacion": 2.94,
+      "detalles": {
+        "formula": "(32 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(32 * 1.15) / 12.50 = 2.94"
+      }
+    },
+    "16:00": {
+      "entradas": 38,
+      "recomendacion": 3.5,
+      "detalles": {
+        "formula": "(38 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(38 * 1.15) / 12.50 = 3.5"
+      }
+    },
+    "17:00": {
+      "entradas": 44,
+      "recomendacion": 4.05,
+      "detalles": {
+        "formula": "(44 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(44 * 1.15) / 12.50 = 4.05"
+      }
+    },
+    "18:00": {
+      "entradas": 56,
+      "recomendacion": 5.15,
+      "detalles": {
+        "formula": "(56 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(56 * 1.15) / 12.50 = 5.15"
+      }
+    },
+    "19:00": {
+      "entradas": 33,
+      "recomendacion": 3.04,
+      "detalles": {
+        "formula": "(33 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(33 * 1.15) / 12.50 = 3.04"
+      }
+    },
+    "20:00": {
+      "entradas": 22,
+      "recomendacion": 2.02,
+      "detalles": {
+        "formula": "(22 * (1 + 15.00%)) / (25 / 2)",
+        "factor": "1.15",
+        "divisor": "12.50",
+        "calculoCompleto": "(22 * 1.15) / 12.50 = 2.02"
+      }
+    }
+  }
+}

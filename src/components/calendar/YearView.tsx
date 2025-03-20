@@ -45,16 +45,16 @@ export function YearView({ onSelectMonth }: YearViewProps) {
 
     // Ordenar meses
     const mesesOrdenados = meses.sort((a, b) => {
-      const mesNumA = obtenerNumeroMes(a);
-      const mesNumB = obtenerNumeroMes(b);
+      const mesNumA = obtenerNumeroMes(a || '');
+      const mesNumB = obtenerNumeroMes(b || '');
       return mesNumA - mesNumB;
     });
 
     const mesActual = new Date().toLocaleString('es-ES', { month: 'long' }).toLowerCase();
 
     return mesesOrdenados.map(mes => ({
-      name: capitalizarPrimeraLetra(mes), // Mantenemos el formato original que incluye el año
-      isCurrent: mes.toLowerCase().startsWith(mesActual)
+      name: capitalizarPrimeraLetra(mes || ''), // Mantenemos el formato original que incluye el año
+      isCurrent: mes ? mes.toLowerCase().startsWith(mesActual) : false
     }));
   }, [currentYear, semanasLaborales]);
 

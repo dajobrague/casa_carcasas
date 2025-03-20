@@ -1,15 +1,15 @@
 import { DatosTraficoDia } from './utils';
+import logger from './logger';
 
-// Token de API para Casa Carcasas
-const API_TOKEN = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiYmFjNzVjZGI0ZTY5M2RmNzM0ZWY0YTQ4MjVjODY1MmVlNThiYzIzNzg0Mjg4ODlhMmU4NGY0MDdjZmNmZTBmNWZhMmJhNTkzMGNmYjQ2MmUiLCJpYXQiOjE3MzAyODcyOTEuMDIxMjgyLCJuYmYiOjE3MzAyODcyOTEuMDIxMjg0LCJleHAiOjE3NjE4MjMyOTEuMDE0MzI3LCJzdWIiOiIzIiwic2NvcGVzIjpbXX0.HjA1InAAemQ7pOYdIVYl3mPbdSzTPEPvrQGQO4Z4sY1z5Z6g2DvS4q01GM9rqeusvh38GdJnuhM9tHOvkKm711j1fiNNTEcUVRVLSfK6vkRoZiDlFXTaBBWzshAL-cXYfzN4HcwSROo-xvQxO_s2Rb0QejmMbUq3jK5L1u-edu3feyMbtIgjkROLzK9C5CpO0g9uHMFfmTGF1wJ1t27yO01bqJtIRT6FgpELZCL3zVIuJtH2ZIWrf3iwmY1H3DXXq1pFPLMJxVOiZHQy5h9ODVLQO1MFFYHJWpyPM7qOLj6y08TU0AQY-ESchIGjcLrr3Gm9pmZMP2i0OfgzALt0j6ZtUn2IjU3zFqASvlZ8Ur9qMa1bJ1Ot_44ApqQ0WK-5R26qzdMt-68pZAWYuGqJB6GEM3Lx7Dj_ZKEukY9vWVi-2BLYqhzqh1KQb4fdI79lulV1lXqk6zKEUj5BBuKXK0pUJ3NWzkehUrnq8Js3LihomSvCC5Dr7gs01sOuTZUd5BIi27c-9DRJMfSExzL9BTP5KyuZJqK0_yVR1szA-vnp9pOQ-j3XA1DDQ-81TRdMNeK4cQzLENppino5mxhZHf0toFojR6YKvN-OQqKVsAwsqwi4VXQHCaQCYX9IKq8OcNrWTrsTEvwLc5fYCx7tMELn5ewZD8b29G4BJZFTGKQ';
-const BASE_URL = 'https://apiintranet.lacasadelascarcasas.es';
-
-// Función para obtener datos de tráfico para un día específico
+/**
+ * Función para obtener datos de tráfico para un día específico
+ * Usa el API route seguro para realizar todas las peticiones
+ */
 export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: string): Promise<DatosTraficoDia | null> {
   try {
-    console.log('Iniciando obtención de datos de tráfico para el día:', diaLaboralId);
+    logger.log('Iniciando obtención de datos de tráfico para el día:', diaLaboralId);
     
-    // 1. Obtener información del día laboral desde Airtable
+    // 1. Obtener información del día laboral
     const diaLaboral = await obtenerDiaLaboral(diaLaboralId);
     if (!diaLaboral) {
       throw new Error('No se pudo obtener información del día laboral');
@@ -39,15 +39,14 @@ export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: s
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
-    // 5. Obtener datos para cada fecha
+    // 5. Obtener datos para cada fecha a través de nuestro API route
     const allData = await Promise.all(dates.map(async (date) => {
       const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       
       const response = await fetch(
-        `${BASE_URL}/api/v1/rrhh/get_stores_access?store_code=${storeCode}&date=${formattedDate}`,
+        `/api/trafico?storeCode=${storeCode}&date=${formattedDate}`,
         {
           headers: {
-            'Authorization': `Bearer ${API_TOKEN}`,
             'Accept': 'application/json'
           }
         }
@@ -69,27 +68,17 @@ export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: s
     return procesarDatosTrafico(allData, fechaLunes.toISOString().split('T')[0], fechaDomingo.toISOString().split('T')[0]);
     
   } catch (error) {
-    console.error('Error detallado en obtenerDatosTrafico:', error);
+    logger.error('Error detallado en obtenerDatosTrafico:', error);
     return null;
   }
 }
 
-// Función para obtener información del día laboral desde Airtable
+/**
+ * Función para obtener información del día laboral
+ */
 async function obtenerDiaLaboral(diaLaboralId: string) {
   try {
-    // Constantes de Airtable
-    const baseId = "appxCzcdyajOiece8";
-    const apiKey = "patFKh76g2DNkVk36.8f69188009d491d86e0ba54081887c274e21eb540a5f0cc5c4c8a7ed72332dde";
-    const diasLaboralesTableId = "tblZHaVWLq5KKEmgW";
-    
-    const response = await fetch(
-      `https://api.airtable.com/v0/${baseId}/${diasLaboralesTableId}/${diaLaboralId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      }
-    );
+    const response = await fetch(`/api/airtable?action=obtenerDiaLaboralPorId&diaId=${diaLaboralId}`);
     
     if (!response.ok) {
       throw new Error(`Error al obtener día laboral: ${response.status}`);
@@ -97,41 +86,33 @@ async function obtenerDiaLaboral(diaLaboralId: string) {
     
     return await response.json();
   } catch (error) {
-    console.error('Error al obtener día laboral:', error);
+    logger.error('Error al obtener día laboral:', error);
     return null;
   }
 }
 
-// Función para obtener datos de la tienda desde Airtable
+/**
+ * Función para obtener datos de la tienda
+ */
 async function obtenerDatosTienda(recordId: string) {
   try {
-    // Constantes de Airtable
-    const baseId = "appxCzcdyajOiece8";
-    const apiKey = "patFKh76g2DNkVk36.8f69188009d491d86e0ba54081887c274e21eb540a5f0cc5c4c8a7ed72332dde";
-    const tiendaSupervisorTableId = "tblpHRqsBrADEkeUL";
-    
-    const response = await fetch(
-      `https://api.airtable.com/v0/${baseId}/${tiendaSupervisorTableId}/${recordId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      }
-    );
+    const response = await fetch(`/api/airtable?action=obtenerDatosTienda&storeId=${recordId}`);
     
     if (!response.ok) {
       throw new Error(`Error al obtener datos de tienda: ${response.status}`);
     }
     
     const data = await response.json();
-    return data.fields;
+    return data.fields || {};
   } catch (error) {
-    console.error('Error al obtener datos de tienda:', error);
+    logger.error('Error al obtener datos de tienda:', error);
     return {};
   }
 }
 
-// Función para procesar los datos de tráfico
+/**
+ * Función para procesar los datos de tráfico
+ */
 function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: string): DatosTraficoDia {
   try {
     if (!Array.isArray(datosAPI) || datosAPI.length === 0) {
@@ -218,7 +199,7 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
       fechaFin
     };
   } catch (error) {
-    console.error('Error procesando datos de tráfico:', error);
+    logger.error('Error procesando datos de tráfico:', error);
     return {
       horas: {},
       totalMañana: 0,

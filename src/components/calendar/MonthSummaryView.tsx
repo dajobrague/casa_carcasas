@@ -5,19 +5,13 @@ import { Button } from '@/components/ui/Button';
 import { 
   obtenerSemanasLaborales, 
   formatearFecha, 
-  SemanasLaboralesRecord, 
+  SemanaLaboralRecord, 
   obtenerActividadesDiarias, 
   obtenerDatosTienda,
   ActividadDiariaRecord,
-  DiasLaboralesRecord 
+  DiaLaboralRecord 
 } from '@/lib/airtable';
-import { 
-  calcularMetricasDia, 
-  obtenerDiaSemana, 
-  obtenerColorEstado,
-  obtenerColorIntensidadTrafico
-} from '@/lib/pdf';
-import { calcularHorasEfectivasDiarias } from '@/lib/utils';
+import { calcularHorasEfectivasDiarias, obtenerColorIntensidadTrafico } from '@/lib/utils';
 import { FileText, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -31,8 +25,8 @@ interface DatosTraficoDia {
   estimadoPersonal?: number[];
 }
 
-// Interface para días laborales (simplificada)
-interface DiaLaboralRecord {
+// Cambiando el nombre de la interfaz local
+interface DiaLaboralData {
   id: string;
   fields: {
     Name: string;

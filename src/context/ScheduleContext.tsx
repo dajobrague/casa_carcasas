@@ -3,9 +3,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
   verificarConexionAirtable, 
+  obtenerSemanasLaborales,
   obtenerDatosSemanasLaborales,
   obtenerDatosTienda,
-  SemanasLaboralesRecord,
+  SemanaLaboralRecord,
   TiendaSupervisorRecord
 } from '@/lib/airtable';
 import { mostrarNotificacion } from '@/lib/utils';
@@ -22,7 +23,7 @@ interface ScheduleContextType {
   error: string | null;
   
   // Datos
-  semanasLaborales: SemanasLaboralesRecord[];
+  semanasLaborales: SemanaLaboralRecord[];
   tiendaData: TiendaSupervisorRecord | null;
   
   // Funciones
@@ -42,7 +43,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   
   // Datos
-  const [semanasLaborales, setSemanasLaborales] = useState<SemanasLaboralesRecord[]>([]);
+  const [semanasLaborales, setSemanasLaborales] = useState<SemanaLaboralRecord[]>([]);
   const [tiendaData, setTiendaData] = useState<TiendaSupervisorRecord | null>(null);
   
   // Cargar datos iniciales
@@ -92,16 +93,17 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   // Cargar semanas laborales
   const cargarSemanasLaborales = async () => {
     try {
-      const records = await obtenerDatosSemanasLaborales();
+      // Obtener todas las semanas laborales para todos los meses y años
+      const records = await obtenerSemanasLaborales('all', 'all');
       setSemanasLaborales(records);
       
       // Obtener años únicos
-      const years = [...new Set(records.map(record => record.fields.Year))].sort();
+      const years = [...new Set(records.map(record => record.fields.Year))].filter(Boolean).sort() as string[];
       setAvailableYears(years);
       
       // Si el año actual no está en la lista, usar el primer año disponible
       if (years.length > 0 && !years.includes(currentYear)) {
-        setCurrentYear(years[0]);
+        setCurrentYear(years[0] || '');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al cargar semanas laborales';
