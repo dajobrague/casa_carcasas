@@ -10,7 +10,7 @@ import { es } from 'date-fns/locale';
 function getBaseUrl() {
   // En el servidor, usamos la URL absoluta
   if (typeof window === 'undefined') {
-    return process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   }
   // En el cliente, usamos la URL relativa
   return '';

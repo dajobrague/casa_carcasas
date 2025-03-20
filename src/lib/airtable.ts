@@ -146,7 +146,7 @@ export async function obtenerActividadesDiarias(
 ): Promise<ActividadDiariaRecord[]> {
   try {
     // Usar la URL base para que funcione tanto en cliente como en servidor
-    const baseUrl = typeof window === 'undefined' ? (process.env.NEXTAUTH_URL || 'http://localhost:3000') : '';
+    const baseUrl = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000') : '';
     const response = await fetch(`${baseUrl}/api/airtable?action=obtenerActividadesDiarias&storeId=${storeRecordId}&diaId=${diaLaboralId}`);
     
     if (!response.ok) {
