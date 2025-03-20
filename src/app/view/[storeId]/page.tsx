@@ -4,15 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { YearView, MonthView, MonthSummaryView, MonthViewMobile } from '@/components/calendar';
 import { DayViewMobile, DayViewDesktop } from '@/components/calendar/view';
 import { ScheduleProvider, useSchedule } from '@/context/ScheduleContext';
-import { SemanasLaboralesRecord } from '@/lib/airtable';
-import { useParams } from 'next/navigation';
+import { SemanaLaboralRecord } from '@/lib/airtable';
+import { useParams, useRouter } from 'next/navigation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { FileText } from 'lucide-react';
+import { captureIframeAsPdf } from '@/lib/pdf-utils';
 
 // Componente principal de la vista
 function ScheduleViewer() {
   const { storeRecordId, setStoreRecordId, isLoading, error } = useSchedule();
   const [view, setView] = useState<'year' | 'month' | 'monthSummary'>('year');
   const [selectedMonth, setSelectedMonth] = useState<{ mes: string; año: string } | null>(null);
+  const router = useRouter();
   
   // Estado para el modal del día
   const [selectedDay, setSelectedDay] = useState<{
@@ -22,6 +27,10 @@ function ScheduleViewer() {
   } | null>(null);
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   
+  // Estado para el modal de vista semanal
+  const [isWeekViewModalOpen, setIsWeekViewModalOpen] = useState(false);
+  const [selectedWeekUrl, setSelectedWeekUrl] = useState<string>('');
+  
   // Media query para detectar tamaño móvil (menos de 640px)
   const isMobile = useMediaQuery('(max-width: 639px)');
   
@@ -30,10 +39,10 @@ function ScheduleViewer() {
   
   // Establecer el storeId cuando se monte el componente
   useEffect(() => {
-    if (params.storeId) {
+    if (params && params.storeId) {
       setStoreRecordId(params.storeId);
     }
-  }, [params.storeId, setStoreRecordId]);
+  }, [params, setStoreRecordId]);
 
   // Gestionar la navegación entre vistas
   const handleSelectMonth = (mes: string, año: string) => {
@@ -52,9 +61,21 @@ function ScheduleViewer() {
     setView('monthSummary');
   };
 
-  // Placeholder function for generating PDF - not implemented in view-only mode
-  const handleGeneratePdf = (semanaId: string, semanaName: string, semana?: SemanasLaboralesRecord) => {
-    console.log('PDF generation not available in view-only mode');
+  // Actualizar la función para abrir el modal con iframe de la vista semanal
+  const handleGeneratePdf = (semanaId: string, semanaName: string, semana?: SemanaLaboralRecord) => {
+    if (storeRecordId) {
+      // Construir la URL para la vista semanal
+      const weekViewUrl = `/semana/${storeRecordId}/${semanaId}`;
+      setSelectedWeekUrl(weekViewUrl);
+      setIsWeekViewModalOpen(true);
+    } else {
+      console.error('No hay ID de tienda disponible para mostrar la vista semanal');
+    }
+  };
+  
+  // Función para cerrar el modal de vista semanal
+  const handleCloseWeekViewModal = () => {
+    setIsWeekViewModalOpen(false);
   };
 
   // Actualizar la función handleSelectDay para abrir el modal
@@ -154,6 +175,45 @@ function ScheduleViewer() {
           />
         )
       )}
+
+      {/* Modal para mostrar la vista semanal */}
+      <Modal
+        isOpen={isWeekViewModalOpen}
+        onClose={handleCloseWeekViewModal}
+        title="Vista Semanal"
+        size="full"
+        className="p-0 max-h-[95vh]"
+      >
+        {selectedWeekUrl && (
+          <div className="w-full h-full overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">Horario Semanal</h3>
+              <div className="flex gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+                    if (iframe) {
+                      // Extraer el weekId de la URL para el nombre del archivo
+                      const weekId = selectedWeekUrl.split('/').pop();
+                      captureIframeAsPdf(iframe, `horario-semanal-${weekId}.pdf`);
+                    }
+                  }}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Descargar PDF
+                </Button>
+              </div>
+            </div>
+            <iframe 
+              src={selectedWeekUrl}
+              className="w-full h-full border-none"
+              style={{ height: 'calc(95vh - 120px)', minHeight: '700px' }}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

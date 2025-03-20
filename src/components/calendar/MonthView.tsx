@@ -2,19 +2,22 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
-import { obtenerSemanasLaborales, formatearFecha, SemanasLaboralesRecord, obtenerActividadesDiarias, obtenerDatosTienda } from '@/lib/airtable';
-import { FileText, ArrowLeft, Calendar } from 'lucide-react';
+import { obtenerSemanasLaborales, formatearFecha, SemanaLaboralRecord, obtenerActividadesDiarias, obtenerDatosTienda } from '@/lib/airtable';
+import { FileText, ArrowLeft, Calendar, CalendarIcon, ChevronLeft } from 'lucide-react';
 import { calcularHorasEfectivasDiarias } from '@/lib/utils';
 import { useSchedule } from '@/context/ScheduleContext';
 import { MonthViewMobile } from './MonthViewMobile';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useRouter } from 'next/navigation';
+import { Modal } from '@/components/ui/Modal';
+import { captureIframeAsPdf } from '@/lib/pdf-utils';
 
 interface MonthViewProps {
   mes: string;
   año: string;
   onBack: () => void;
   onSelectDay: (diaId: string, fecha: Date, horasEfectivas: number) => void;
-  onGeneratePdf: (semanaId: string, semanaName: string, semana?: SemanasLaboralesRecord, directDownload?: boolean) => void;
+  onGeneratePdf: (semanaId: string, semanaName: string, semana?: SemanaLaboralRecord, directDownload?: boolean) => void;
   onViewMonthSummary: (mes: string, año: string) => void;
   horasEfectivasActualizadas?: {
     dias: { [diaId: string]: number };
@@ -46,16 +49,21 @@ export function MonthView({
 }: MonthViewProps) {
   // Media query para detectar tamaño móvil (menos de 640px)
   const isMobile = useMediaQuery('(max-width: 639px)');
+  const router = useRouter();
 
   // IMPORTANTE: Siempre declaramos TODOS los hooks aquí, independientemente de si es móvil o desktop
   // Esto evita el error "Rendered fewer hooks than expected"
-  const [semanas, setSemanas] = useState<SemanasLaboralesRecord[]>([]);
+  const [semanas, setSemanas] = useState<SemanaLaboralRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [horasDias, setHorasDias] = useState<DiaHorasData[]>([]);
   const [horasSemanas, setHorasSemanas] = useState<SemanaHorasData[]>([]);
   const [loadingWeeks, setLoadingWeeks] = useState<Set<string>>(new Set());
+  
+  // Estado para el modal de vista semanal
+  const [isWeekViewModalOpen, setIsWeekViewModalOpen] = useState(false);
+  const [selectedWeekUrl, setSelectedWeekUrl] = useState<string>('');
   
   // Obtener el storeRecordId del contexto en el nivel superior del componente
   const { storeRecordId } = useSchedule();
@@ -459,6 +467,24 @@ export function MonthView({
     onSelectDay(diaId, fecha, horasEfectivasSemana);
   };
 
+  // Función para abrir el modal con la vista semanal
+  const handleOpenWeekViewModal = (weekId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (storeRecordId) {
+      // Construir la URL para la vista semanal
+      const weekViewUrl = `/semana/${storeRecordId}/${weekId}`;
+      setSelectedWeekUrl(weekViewUrl);
+      setIsWeekViewModalOpen(true);
+    } else {
+      console.error('No hay ID de tienda disponible para mostrar la vista semanal');
+    }
+  };
+  
+  // Función para cerrar el modal
+  const handleCloseWeekViewModal = () => {
+    setIsWeekViewModalOpen(false);
+  };
+
   // Si es móvil, usar el componente MonthViewMobile pero después de declarar todos los hooks
   if (isMobile) {
     return (
@@ -526,8 +552,8 @@ export function MonthView({
         <div className="w-full space-y-3">
           {semanas.map(week => {
             // Ajustar las fechas para empezar en lunes y terminar en domingo
-            let fechaInicio = new Date(week.fields['Fecha de Inicio']);
-            let fechaFin = new Date(week.fields['Fecha de fin']);
+            let fechaInicio = week.fields['Fecha de Inicio'] ? new Date(week.fields['Fecha de Inicio']) : new Date();
+            let fechaFin = week.fields['Fecha de fin'] ? new Date(week.fields['Fecha de fin']) : new Date();
             
             // Si la fecha de inicio es domingo, moverla al lunes siguiente
             if (fechaInicio.getDay() === 0) {
@@ -557,7 +583,7 @@ export function MonthView({
                   <div className="w-full p-3 sm:p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="flex-grow">
-                        <h3 className="text-base sm:text-lg font-medium">{week.fields.Name}</h3>
+                        <h3 className="text-base sm:text-lg font-medium">{week.fields.Name || `Semana ${week.id}`}</h3>
                         <p className="text-xs sm:text-sm text-gray-500">
                           {formatearFecha(fechaInicio)} - {formatearFecha(fechaFin)}
                         </p>
@@ -588,10 +614,7 @@ export function MonthView({
                           variant="primary"
                           size="sm"
                           className="text-xs sm:text-sm py-1 px-2 sm:py-2 sm:px-3"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onGeneratePdf(week.id, week.fields.Name, week, true);
-                          }}
+                          onClick={(e) => handleOpenWeekViewModal(week.id, e)}
                         >
                           <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                           <span className="hidden sm:inline">Generar PDF</span>
@@ -681,6 +704,45 @@ export function MonthView({
           })}
         </div>
       )}
+
+      {/* Modal para mostrar la vista semanal */}
+      <Modal
+        isOpen={isWeekViewModalOpen}
+        onClose={handleCloseWeekViewModal}
+        title="Vista Semanal"
+        size="full"
+        className="p-0 max-h-[95vh]"
+      >
+        {selectedWeekUrl && (
+          <div className="w-full h-full overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">Horario Semanal</h3>
+              <div className="flex gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+                    if (iframe) {
+                      // Extraer el weekId de la URL para el nombre del archivo
+                      const weekId = selectedWeekUrl.split('/').pop();
+                      captureIframeAsPdf(iframe, `horario-semanal-${weekId}.pdf`);
+                    }
+                  }}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Descargar PDF
+                </Button>
+              </div>
+            </div>
+            <iframe 
+              src={selectedWeekUrl}
+              className="w-full h-full border-none"
+              style={{ height: 'calc(95vh - 120px)', minHeight: '700px' }}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 } 
