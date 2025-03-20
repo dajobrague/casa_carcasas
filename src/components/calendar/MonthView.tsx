@@ -709,36 +709,33 @@ export function MonthView({
       <Modal
         isOpen={isWeekViewModalOpen}
         onClose={handleCloseWeekViewModal}
-        title="Vista Semanal"
+        title="Horario Semanal"
         size="full"
         className="p-0 max-h-[95vh]"
+        rightContent={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+              if (iframe) {
+                // Extraer el weekId de la URL para el nombre del archivo
+                const weekId = selectedWeekUrl.split('/').pop();
+                captureIframeAsPdf(iframe, `horario-semanal-${weekId}.pdf`);
+              }
+            }}
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Descargar PDF
+          </Button>
+        }
       >
         {selectedWeekUrl && (
           <div className="w-full h-full overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Horario Semanal</h3>
-              <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    const iframe = document.querySelector('iframe') as HTMLIFrameElement;
-                    if (iframe) {
-                      // Extraer el weekId de la URL para el nombre del archivo
-                      const weekId = selectedWeekUrl.split('/').pop();
-                      captureIframeAsPdf(iframe, `horario-semanal-${weekId}.pdf`);
-                    }
-                  }}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Descargar PDF
-                </Button>
-              </div>
-            </div>
             <iframe 
               src={selectedWeekUrl}
               className="w-full h-full border-none"
-              style={{ height: 'calc(95vh - 120px)', minHeight: '700px' }}
+              style={{ height: 'calc(95vh - 64px)', minHeight: '700px' }}
             />
           </div>
         )}
