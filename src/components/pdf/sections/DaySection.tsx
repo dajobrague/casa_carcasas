@@ -30,8 +30,8 @@ export const DaySection: React.FC<DaySectionProps> = ({ dia, isEven }) => {
                           0;
   
   return (
-    <View style={[styles.daySection, backgroundColor, styles.landscapeSection]}>
-      <View style={styles.daySectionHeader}>
+    <View style={[styles.daySection, backgroundColor, styles.landscapeSection, { marginBottom: 15, padding: 5 }]} break>
+      <View style={[styles.daySectionHeader, { marginBottom: 8 }]}>
         <Text style={styles.daySectionTitle}>
           {getDayName(dia.diaSemana).toUpperCase()} {diaMes}
         </Text>
@@ -40,7 +40,7 @@ export const DaySection: React.FC<DaySectionProps> = ({ dia, isEven }) => {
         </Text>
       </View>
       
-      <View style={styles.daySectionCompactContent}>
+      <View style={[styles.daySectionCompactContent, { border: '1pt solid #ddd', borderRadius: 3 }]}>
         <View style={styles.employeeTableContainer}>
           <EmployeeTable 
             empleados={dia.empleados} 

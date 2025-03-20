@@ -1,13 +1,25 @@
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
-import { styles } from '../styles/tableStyles';
 import { EmpleadoActividad, RecomendacionHora } from '../utils/types';
-import { getHalfHourRange } from '../utils/dateUtils';
+import { styles } from '../styles/tableStyles';
+
+// Función auxiliar para generar rangos de horas
+const getHourRangeFromStartAndEnd = (startHour: string, endHour: string): string[] => {
+  const start = parseInt(startHour.split(':')[0]);
+  const end = parseInt(endHour.split(':')[0]);
+  
+  const hours = [];
+  for (let i = start; i <= end; i++) {
+    hours.push(`${i.toString().padStart(2, '0')}:00`);
+  }
+  
+  return hours;
+};
 
 interface EmployeeTableProps {
   empleados: EmpleadoActividad[];
-  horaInicio?: string;
-  horaFin?: string;
+  horaInicio: string;
+  horaFin: string;
   includeObservations?: boolean;
   recomendaciones?: RecomendacionHora[];
   atencionDeseada?: number;
@@ -16,218 +28,176 @@ interface EmployeeTableProps {
 
 export const EmployeeTable: React.FC<EmployeeTableProps> = ({ 
   empleados,
-  horaInicio = "09:00",
-  horaFin = "21:00",
+  horaInicio,
+  horaFin,
   includeObservations = false,
   recomendaciones = [],
   atencionDeseada = 0,
   esFrancia = false
 }) => {
-  // Generar array de horas a mostrar (por cada media hora)
-  const horasArray = getHalfHourRange(horaInicio, horaFin, esFrancia);
-  
-  // Funciones auxiliares
+  // El horario de trabajo (ej. ["09:00", "10:00", "11:00", ...])
+  const horas = getHourRangeFromStartAndEnd(horaInicio, horaFin);
+
+  // Objeto para almacenar las recomendaciones por hora
+  const recomendacionesPorHora: { [key: string]: RecomendacionHora } = {};
+  recomendaciones.forEach(rec => {
+    recomendacionesPorHora[rec.hora] = rec;
+  });
+
+  // Función para determinar el color de una actividad
   const getActivityColor = (actividad: string) => {
-    switch (actividad.toUpperCase()) {
-      case 'TRABAJO': return styles.activityWork;
-      case 'LIBRE': return styles.activityOff;
-      case 'VACACIONES': return styles.activityVacation;
-      case 'BAJA MÉDICA': return styles.activitySick;
-      case 'FORMACIÓN': return styles.activityTraining;
-      default: return styles.activityEmpty;
+    if (!actividad) return styles.activityEmpty;
+    
+    const actividadLC = actividad.toLowerCase();
+    
+    if (actividadLC.includes('trabajo') || actividadLC === 'work' || actividadLC === 'travail') {
+      return styles.activityWork;
+    } else if (actividadLC.includes('descanso') || actividadLC === 'off' || actividadLC === 'repos') {
+      return styles.activityOff;
+    } else if (actividadLC.includes('vacaciones') || actividadLC === 'vacation' || actividadLC === 'vacances') {
+      return styles.activityVacation;
+    } else if (actividadLC.includes('enfermedad') || actividadLC === 'sick' || actividadLC === 'maladie') {
+      return styles.activitySick;
+    } else if (actividadLC.includes('formación') || actividadLC.includes('formacion') || actividadLC === 'training' || actividadLC === 'formation') {
+      return styles.activityTraining;
+    } else {
+      return styles.activityEmpty;
     }
   };
-  
+
+  // Función para obtener un símbolo para una actividad
   const getActivitySymbol = (actividad: string) => {
-    switch (actividad.toUpperCase()) {
-      case 'TRABAJO': return '■'; // Unicode cuadrado relleno
-      case 'LIBRE': return '✖'; // Unicode X más visible
-      case 'VACACIONES': return '▲'; // Unicode triángulo relleno
-      case 'BAJA MÉDICA': return '✚'; // Unicode cruz más visible
-      case 'FORMACIÓN': return '●'; // Unicode círculo relleno
-      default: return ' ';
+    if (!actividad) return '';
+    
+    const actividadLC = actividad.toLowerCase();
+    
+    if (actividadLC.includes('trabajo') || actividadLC === 'work' || actividadLC === 'travail') {
+      return 'W';
+    } else if (actividadLC.includes('descanso') || actividadLC === 'off' || actividadLC === 'repos') {
+      return 'D';
+    } else if (actividadLC.includes('vacaciones') || actividadLC === 'vacation' || actividadLC === 'vacances') {
+      return 'V';
+    } else if (actividadLC.includes('formación') || actividadLC.includes('formacion') || actividadLC === 'training' || actividadLC === 'formation') {
+      return 'F';
+    } else if (actividadLC.includes('enfermedad') || actividadLC === 'sick' || actividadLC === 'maladie') {
+      return 'E';
+    } else if (actividadLC.includes('baja') || actividadLC === 'leave' || actividadLC === 'congé') {
+      return 'B';
+    } else {
+      return 'O';
     }
   };
-  
+
   // Función para obtener la actividad de un empleado en una hora específica
   const getEmployeeActivity = (empleado: EmpleadoActividad, hora: string) => {
     const actividadHora = empleado.horarioAsignado.find(h => h.hora === hora);
     return actividadHora ? actividadHora.actividad : '';
   };
 
-  // Filtrar solo las horas completas para las filas de ESTIMADO y ATENCIÓN
-  const horasCompletas = horasArray.filter(hora => hora.endsWith(':00'));
-  
-  // Para encontrar la recomendación para una hora específica
-  const getRecomendacion = (hora: string) => {
-    const rec = recomendaciones.find(r => r.hora === hora);
-    return rec ? rec.recomendacionRedondeada : 0;
-  };
-  
-  // Leyenda de iconos
-  const renderLegend = () => (
-    <View style={styles.legendContainer}>
-      <Text style={styles.legendTitle}>Leyenda:</Text>
-      <View style={styles.legendItems}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendIcon, styles.activityWork]}>
-            <Text style={styles.legendSymbol}>■</Text>
-          </View>
-          <Text style={styles.legendText}>TRABAJO</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendIcon, styles.activityOff]}>
-            <Text style={styles.legendSymbol}>✖</Text>
-          </View>
-          <Text style={styles.legendText}>LIBRE</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendIcon, styles.activityVacation]}>
-            <Text style={styles.legendSymbol}>▲</Text>
-          </View>
-          <Text style={styles.legendText}>VACACIONES</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendIcon, styles.activitySick]}>
-            <Text style={styles.legendSymbol}>✚</Text>
-          </View>
-          <Text style={styles.legendText}>BAJA MÉDICA</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendIcon, styles.activityTraining]}>
-            <Text style={styles.legendSymbol}>●</Text>
-          </View>
-          <Text style={styles.legendText}>FORMACIÓN</Text>
-        </View>
-      </View>
-    </View>
-  );
-
   return (
-    <View>
-      {renderLegend()}
-      <View style={styles.compactTable}>
-        {/* Encabezado de la tabla */}
+    <View style={{ width: '100%' }} break>
+      {/* Encabezado de la tabla */}
+      <View style={[styles.table, { borderWidth: 1, borderColor: '#ddd' }]}>
         <View style={styles.tableHeader}>
-          <View style={styles.employeeCell}>
+          <View style={styles.employeeNameCell}>
             <Text style={styles.tableHeaderText}>Empleado</Text>
           </View>
-          
-          {horasArray.map(hora => (
-            <View key={hora} style={styles.halfHourCell}>
-              <Text style={styles.smallHeaderText}>
-                {hora.substring(0, 5)}
-              </Text>
+          {horas.map((hora: string) => (
+            <View key={hora} style={styles.hourCell}>
+              <Text style={styles.hourText}>{hora}</Text>
+              {recomendacionesPorHora[hora] && (
+                <Text style={styles.hourText}>
+                  {recomendacionesPorHora[hora].recomendacionRedondeada || atencionDeseada}
+                </Text>
+              )}
             </View>
           ))}
+          <View style={styles.totalHoursCell}>
+            <Text style={styles.totalHoursText}>Total</Text>
+          </View>
         </View>
-        
+
         {/* Filas de empleados */}
-        {empleados.map(empleado => (
-          <View key={empleado.empleado.id} style={styles.tableRow}>
-            <View style={styles.employeeCell}>
-              <Text style={styles.employeeNameText}>
-                {typeof empleado.empleado.nombre === 'string' 
-                  ? empleado.empleado.nombre 
-                  : empleado.empleado.nombre[0]}
-              </Text>
+        {empleados.map((empleado, index) => {
+          // Calcular total de horas de trabajo
+          let totalHoras = 0;
+          
+          empleado.horarioAsignado.forEach((act: { hora: string; actividad: string }) => {
+            if (act.actividad.toLowerCase().includes('trabajo') ||
+                act.actividad.toLowerCase() === 'work' ||
+                act.actividad.toLowerCase() === 'travail') {
+              totalHoras += 1; // Cada actividad de trabajo cuenta como 1 hora
+            }
+          });
+          
+          return (
+            <View key={empleado.empleado.id} style={[
+              styles.tableRow,
+              index % 2 === 0 ? { backgroundColor: '#f9f9f9' } : {},
+              { minHeight: 22 }
+            ]}>
+              <View style={styles.employeeNameCell}>
+                <Text style={styles.employeeNameText}>
+                  {typeof empleado.empleado.nombre === 'string' 
+                    ? empleado.empleado.nombre 
+                    : empleado.empleado.nombre[0]}
+                </Text>
+              </View>
+              
+              {horas.map((hora: string) => {
+                const actividad = getEmployeeActivity(empleado, hora);
+                
+                return (
+                  <View key={hora} style={[
+                    styles.hourCell,
+                    getActivityColor(actividad)
+                  ]}>
+                    <Text style={styles.activityText}>
+                      {actividad ? getActivitySymbol(actividad) : ''}
+                    </Text>
+                  </View>
+                );
+              })}
+              
+              <View style={styles.totalHoursCell}>
+                <Text style={styles.totalHoursText}>{totalHoras}</Text>
+              </View>
             </View>
-            
-            {horasArray.map(hora => {
-              const actividad = getEmployeeActivity(empleado, hora);
-              return (
-                <View key={hora} style={[styles.halfHourCell, getActivityColor(actividad)]}>
-                  <Text style={styles.activityText}>
-                    {actividad ? getActivitySymbol(actividad) : ''}
-                  </Text>
-                </View>
-              );
-            })}
+          );
+        })}
+      </View>
+
+      {/* Leyenda de actividades */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 5, gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityWork]}>
+            <Text style={{ fontSize: 8, textAlign: 'center' }}>W</Text>
           </View>
-        ))}
-        
-        {/* Fila ESTIMADO */}
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryLabelCell}>
-            <Text style={styles.summaryLabelText}>ESTIMADO</Text>
-          </View>
-          
-          {horasArray.map((hora, index) => {
-            // Solo mostrar valor en horas completas (9:00, 10:00, etc.)
-            const isFullHour = hora.endsWith(':00');
-            const isHalfHour = hora.endsWith(':30');
-            const nextHora = isHalfHour ? null : horasArray[index + 1];
-            const showValue = isFullHour;
-            
-            // Si es hora completa, mostrar el valor y expandir para cubrir la media hora siguiente
-            if (showValue && nextHora) {
-              return (
-                <View key={hora} style={styles.hourSummaryCell}>
-                  <Text style={styles.summaryValueText}>
-                    {getRecomendacion(hora)}
-                  </Text>
-                </View>
-              );
-            } 
-            // Si es media hora, no mostrar nada (ya está cubierto por la hora anterior)
-            else if (isHalfHour) {
-              return null;
-            } 
-            // Última hora que no tiene media hora siguiente
-            else if (isFullHour) {
-              return (
-                <View key={hora} style={styles.halfHourCell}>
-                  <Text style={styles.summaryValueText}>
-                    {getRecomendacion(hora)}
-                  </Text>
-                </View>
-              );
-            }
-            
-            return null;
-          }).filter(Boolean)}
+          <Text style={{ fontSize: 8 }}>Trabajo</Text>
         </View>
-        
-        {/* Fila ATENCIÓN */}
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryLabelCell}>
-            <Text style={styles.summaryLabelText}>ATENCIÓN</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityOff]}>
+            <Text style={{ fontSize: 8, textAlign: 'center' }}>D</Text>
           </View>
-          
-          {horasArray.map((hora, index) => {
-            // Solo mostrar valor en horas completas (9:00, 10:00, etc.)
-            const isFullHour = hora.endsWith(':00');
-            const isHalfHour = hora.endsWith(':30');
-            const nextHora = isHalfHour ? null : horasArray[index + 1];
-            const showValue = isFullHour;
-            
-            // Si es hora completa, mostrar el valor y expandir para cubrir la media hora siguiente
-            if (showValue && nextHora) {
-              return (
-                <View key={hora} style={styles.hourSummaryCell}>
-                  <Text style={styles.summaryValueText}>
-                    {atencionDeseada}
-                  </Text>
-                </View>
-              );
-            } 
-            // Si es media hora, no mostrar nada (ya está cubierto por la hora anterior)
-            else if (isHalfHour) {
-              return null;
-            } 
-            // Última hora que no tiene media hora siguiente
-            else if (isFullHour) {
-              return (
-                <View key={hora} style={styles.halfHourCell}>
-                  <Text style={styles.summaryValueText}>
-                    {atencionDeseada}
-                  </Text>
-                </View>
-              );
-            }
-            
-            return null;
-          }).filter(Boolean)}
+          <Text style={{ fontSize: 8 }}>Descanso</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityVacation]}>
+            <Text style={{ fontSize: 8, textAlign: 'center' }}>V</Text>
+          </View>
+          <Text style={{ fontSize: 8 }}>Vacaciones</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityTraining]}>
+            <Text style={{ fontSize: 8, textAlign: 'center' }}>F</Text>
+          </View>
+          <Text style={{ fontSize: 8 }}>Formación</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activitySick]}>
+            <Text style={{ fontSize: 8, textAlign: 'center' }}>E</Text>
+          </View>
+          <Text style={{ fontSize: 8 }}>Enfermedad</Text>
         </View>
       </View>
     </View>

@@ -71,7 +71,7 @@ export const PDFGenerator: React.FC<PDFGeneratorProps> = ({
   return (
     <PDFViewer style={styles.viewer}>
       <Document title={`Horarios Semana: ${data.semana.nombre} - ${data.tienda.nombre}`}>
-        <Page size="A4" orientation="landscape" style={styles.page}>
+        <Page size="A4" orientation="landscape" style={styles.page} wrap>
           <PDFHeader 
             tienda={data.tienda} 
             semana={data.semana} 

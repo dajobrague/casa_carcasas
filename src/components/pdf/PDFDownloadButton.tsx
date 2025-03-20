@@ -101,7 +101,7 @@ export const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
 
     return (
       <Document title={`Reporte semanal - ${data.tienda.nombre} - ${data.semana.nombre}`}>
-        <Page size="A4" style={styles.page}>
+        <Page size="A4" style={styles.page} wrap>
           <PDFHeader 
             tienda={data.tienda} 
             semana={data.semana} 

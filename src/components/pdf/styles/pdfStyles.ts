@@ -29,7 +29,11 @@ export const styles = StyleSheet.create({
   },
   landscapeSection: {
     width: '100%',
-    marginBottom: 5,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+    borderRadius: 5,
+    overflow: 'hidden',
   },
   // Header styles
   header: {
@@ -57,10 +61,12 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: 5,
+    fontFamily: 'Helvetica-Bold',
   },
   subtitle: {
     fontSize: 12,
     color: colors.darkGray,
+    fontFamily: 'Helvetica',
   },
   headerInfo: {
     flexDirection: 'row',
@@ -73,10 +79,12 @@ export const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     marginBottom: 2,
+    fontFamily: 'Helvetica-Bold',
   },
   infoValue: {
     fontSize: 10,
     marginBottom: 5,
+    fontFamily: 'Helvetica',
   },
   headerDivider: {
     borderBottomWidth: 1,
@@ -86,32 +94,37 @@ export const styles = StyleSheet.create({
   },
   // Day section styles
   daySection: {
-    marginBottom: 10,
-    borderRadius: 3,
+    marginBottom: 15,
+    borderRadius: 5,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.gray,
   },
   daySectionHeader: {
-    padding: 5,
+    padding: 8,
     backgroundColor: colors.primary,
   },
   daySectionTitle: {
     fontSize: 12,
     fontWeight: 'bold',
     color: colors.white,
+    fontFamily: 'Helvetica-Bold',
   },
   daySectionSubtitle: {
     fontSize: 9,
     color: colors.lightGray,
+    fontFamily: 'Helvetica',
   },
   daySectionSmallInfo: {
     fontSize: 8,
     color: colors.lightGray,
+    fontFamily: 'Helvetica',
   },
   daySectionContent: {
     padding: 10,
   },
   daySectionCompactContent: {
-    padding: 2,
+    padding: 5,
   },
   evenSection: {
     backgroundColor: colors.white,
@@ -121,12 +134,16 @@ export const styles = StyleSheet.create({
   },
   tableContainer: {
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 3,
   },
   tableTitle: {
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 5,
     color: colors.darkGray,
+    fontFamily: 'Helvetica-Bold',
   },
   tablesRow: {
     flexDirection: 'row',
@@ -141,6 +158,8 @@ export const styles = StyleSheet.create({
     padding: 5,
     backgroundColor: colors.white,
     borderRadius: 3,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
   },
   summaryItem: {
     flex: 1,
@@ -151,9 +170,11 @@ export const styles = StyleSheet.create({
   summaryLabel: {
     fontWeight: 'bold',
     marginRight: 5,
+    fontFamily: 'Helvetica-Bold',
   },
   summaryValue: {
     fontSize: 12,
+    fontFamily: 'Helvetica',
   },
   positiveValue: {
     color: colors.success,
@@ -174,6 +195,7 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
     color: colors.primary,
     textAlign: 'center',
+    fontFamily: 'Helvetica-Bold',
   },
   summaryBoxes: {
     flexDirection: 'row',
@@ -188,16 +210,20 @@ export const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.gray,
   },
   summaryBoxTitle: {
     fontSize: 10,
     fontWeight: 'bold',
     marginBottom: 5,
+    fontFamily: 'Helvetica-Bold',
   },
   summaryBoxValue: {
     fontSize: 16,
     fontWeight: 'bold',
     color: colors.primary,
+    fontFamily: 'Helvetica-Bold',
   },
   summaryTableContainer: {
     marginTop: 0,
@@ -207,15 +233,19 @@ export const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: colors.lightGray,
     borderRadius: 5,
+    borderWidth: 1,
+    borderColor: colors.gray,
   },
   summaryNotesTitle: {
     fontSize: 10,
     fontWeight: 'bold',
     marginBottom: 5,
+    fontFamily: 'Helvetica-Bold',
   },
   summaryNotesText: {
     fontSize: 8,
     marginBottom: 3,
+    fontFamily: 'Helvetica',
   },
   // Footer styles
   footer: {
@@ -231,14 +261,19 @@ export const styles = StyleSheet.create({
   footerText: {
     fontSize: 8,
     color: colors.gray,
+    fontFamily: 'Helvetica',
   },
   // Estilos para layout compacto
   employeeTableContainer: {
     marginBottom: 5,
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 3,
+    overflow: 'hidden',
   },
   cellLabel: {
     width: '20%',
-    padding: 2,
+    padding: 3,
     backgroundColor: colors.lightGray,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray,
@@ -246,6 +281,7 @@ export const styles = StyleSheet.create({
   cellLabelText: {
     fontSize: 8,
     fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
   },
   cellValue: {
     width: '5%',

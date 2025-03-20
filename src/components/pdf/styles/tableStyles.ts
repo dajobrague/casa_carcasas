@@ -15,6 +15,7 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.lightGray,
     backgroundColor: colors.primary,
+    minHeight: 20,
   },
   tableHeaderText: {
     fontSize: 8,
@@ -34,6 +35,7 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.gray,
     backgroundColor: colors.lightGray,
+    minHeight: 20,
   },
   tableFooterText: {
     fontSize: 8,
@@ -65,39 +67,55 @@ export const styles = StyleSheet.create({
   // Estilos para texto en tabla de empleados
   employeeNameText: {
     fontSize: 7,
+    fontFamily: 'Helvetica',
   },
   hourText: {
     fontSize: 7,
     textAlign: 'center',
+    fontFamily: 'Helvetica',
   },
   totalHoursText: {
     fontSize: 7,
     textAlign: 'center',
     fontWeight: 'bold',
+    fontFamily: 'Helvetica',
   },
   activityText: {
     fontSize: 8,
     textAlign: 'center',
+    fontFamily: 'Helvetica',
   },
   
   // Colores para actividades
   activityWork: {
-    backgroundColor: colors.lightBlue,
+    backgroundColor: '#e3f2fd',
+    borderWidth: 1,
+    borderColor: '#90caf9',
   },
   activityOff: {
-    backgroundColor: colors.lightGray,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   activityVacation: {
-    backgroundColor: colors.lightGreen,
+    backgroundColor: '#e8f5e9',
+    borderWidth: 1,
+    borderColor: '#a5d6a7',
   },
   activitySick: {
     backgroundColor: '#ffebee',
+    borderWidth: 1,
+    borderColor: '#ef9a9a',
   },
   activityTraining: {
     backgroundColor: '#fff8e1',
+    borderWidth: 1,
+    borderColor: '#ffecb3',
   },
   activityEmpty: {
     backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#eeeeee',
   },
   
   // Celdas para tabla de recomendaciones
