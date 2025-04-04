@@ -7,7 +7,8 @@ import {
   obtenerDatosSemanasLaborales,
   obtenerDatosTienda,
   SemanaLaboralRecord,
-  TiendaSupervisorRecord
+  TiendaSupervisorRecord,
+  obtenerMesesEditor
 } from '@/lib/airtable';
 import { mostrarNotificacion } from '@/lib/utils';
 
@@ -22,9 +23,12 @@ interface ScheduleContextType {
   isLoading: boolean;
   error: string | null;
   
-  // Datos
+  // Datos de la tienda
+  storeName: string | null;
+  storeNumber: string | null;
   semanasLaborales: SemanaLaboralRecord[];
   tiendaData: TiendaSupervisorRecord | null;
+  mesesDisponibles: string[];
   
   // Funciones
   cargarDatosIniciales: () => Promise<void>;
@@ -42,9 +46,12 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Datos
+  // Datos de la tienda
+  const [storeName, setStoreName] = useState<string | null>(null);
+  const [storeNumber, setStoreNumber] = useState<string | null>(null);
   const [semanasLaborales, setSemanasLaborales] = useState<SemanaLaboralRecord[]>([]);
   const [tiendaData, setTiendaData] = useState<TiendaSupervisorRecord | null>(null);
+  const [mesesDisponibles, setMesesDisponibles] = useState<string[]>([]);
   
   // Cargar datos iniciales
   const cargarDatosIniciales = async () => {
@@ -80,6 +87,9 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       const data = await obtenerDatosTienda(recordId);
       if (data) {
         setTiendaData(data);
+        // Extraer y establecer el nombre y número de la tienda
+        setStoreName(data.fields['TIENDA'] || data.fields.Name || null);
+        setStoreNumber(data.fields['N°'] || data.fields['Codigo Tienda'] || null);
       } else {
         throw new Error('No se pudo obtener información de la tienda');
       }
@@ -97,8 +107,18 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       const records = await obtenerSemanasLaborales('all', 'all');
       setSemanasLaborales(records);
       
-      // Obtener años únicos
-      const years = [...new Set(records.map(record => record.fields.Year))].filter(Boolean).sort() as string[];
+      // Obtener los meses disponibles del nuevo endpoint para el editor
+      // Esta función devuelve los meses con el formato correcto
+      const meses = await obtenerMesesEditor();
+      console.log('Meses disponibles para editor:', meses);
+      setMesesDisponibles(meses);
+      
+      // Extraer años únicos de los meses disponibles
+      const years = [...new Set(meses.map(mesCompleto => {
+        const partes = mesCompleto.split(' ');
+        return partes[partes.length - 1]; // El año es la última parte
+      }))].filter(Boolean).sort() as string[];
+      
       setAvailableYears(years);
       
       // Si el año actual no está en la lista, usar el primer año disponible
@@ -126,8 +146,11 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     setAvailableYears,
     isLoading,
     error,
+    storeName,
+    storeNumber,
     semanasLaborales,
     tiendaData,
+    mesesDisponibles,
     cargarDatosIniciales,
     cargarDatosTienda,
     cargarSemanasLaborales

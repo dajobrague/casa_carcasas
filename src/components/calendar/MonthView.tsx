@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { obtenerSemanasLaborales, formatearFecha, SemanaLaboralRecord, obtenerActividadesDiarias, obtenerDatosTienda } from '@/lib/airtable';
+import { obtenerDatosTrafico } from '@/lib/api';
 import { FileText, ArrowLeft, Calendar, CalendarIcon, ChevronLeft } from 'lucide-react';
 import { calcularHorasEfectivasDiarias } from '@/lib/utils';
 import { useSchedule } from '@/context/ScheduleContext';
@@ -73,6 +74,9 @@ export function MonthView({
   
   // Mantener referencias a los elementos DOM de las semanas
   const semanasElementRefs = useRef<{[semanaId: string]: HTMLSpanElement | null}>({});
+  
+  // Nuevo estado para seguimiento de días con datos precargados
+  const [diasPrecargados, setDiasPrecargados] = useState<Set<string>>(new Set());
   
   // Función para animar un cambio en las horas efectivas de una semana
   const animateHorasEfectivasChange = (semanaId: string) => {
@@ -441,30 +445,82 @@ export function MonthView({
     return null;
   };
 
-  // Gestionar la selección de un día
-  const handleSelectDay = (diaId: string, fecha: Date) => {
-    // Buscar a qué semana pertenece este día
-    const semanaId = getSemanaIdPorDia(diaId);
-    let horasEfectivasSemana = 0;
+  // Nueva función para precargar datos de tráfico
+  const precargarDatosTrafico = async (diaId: string, tiendaId: string) => {
+    try {
+      // Verificar si ya precargamos este día
+      if (diasPrecargados.has(diaId)) {
+        return;
+      }
+      
+      // Iniciar precarga en segundo plano
+      obtenerDatosTrafico(diaId, tiendaId).then(data => {
+        if (data) {
+          // Marcar como precargado
+          setDiasPrecargados(prev => {
+            const newSet = new Set(prev);
+            newSet.add(diaId);
+            return newSet;
+          });
+          console.log('Datos de tráfico precargados para día:', diaId);
+        }
+      }).catch(err => {
+        console.warn('Error al precargar datos de tráfico:', err);
+      });
+    } catch (error) {
+      // Ignorar errores en precarga, es solo optimización
+      console.warn('Error iniciando precarga de tráfico:', error);
+    }
+  };
+  
+  // Precargar datos cuando la semana se expande
+  useEffect(() => {
+    // Solo intentar precargar si tenemos semanas expandidas y ID de tienda
+    if (expandedWeeks.size === 0 || !storeRecordId) return;
     
-    // Obtener las horas efectivas semanales
-    if (semanaId) {
-      const datosSemana = getHorasSemana(semanaId);
-      horasEfectivasSemana = datosSemana.horasEfectivas;
-      
-      // Guardar la relación entre día y semana para futuras actualizaciones
-      window.localStorage.setItem(`dia_semana_${diaId}`, semanaId);
-      
-      // También guardar la semana actual para referencia rápida
-      window.localStorage.setItem('ultima_semana_seleccionada', semanaId);
-      
-      console.log(`Día ${diaId} pertenece a semana ${semanaId}, horas efectivas: ${horasEfectivasSemana}`);
-    } else {
-      console.warn(`No se pudo encontrar la semana para el día ${diaId}`);
+    // Para cada semana expandida, intentar precargar los días
+    semanas.forEach(semana => {
+      if (expandedWeeks.has(semana.id)) {
+        // Obtener los días laborales de esta semana
+        const diasSemana = semana.fields['Días Laborales Generados'] || [];
+        
+        // Precargar datos de tráfico para cada día (de forma escalonada)
+        diasSemana.forEach((diaId: string, index: number) => {
+          // Usar setTimeout para escalonar las solicitudes y no saturar
+          setTimeout(() => {
+            precargarDatosTrafico(diaId, storeRecordId);
+          }, index * 500); // 500ms entre cada precarga
+        });
+      }
+    });
+  }, [expandedWeeks, semanas, storeRecordId]);
+
+  // Modificar la función handleSelectDay para precargar de inmediato
+  const handleSelectDay = (diaId: string, fecha: Date) => {
+    const horasEfectivas = getHorasEfectivasDia(diaId);
+    
+    // Si tenemos storeRecordId, precargar datos de tráfico inmediatamente
+    if (storeRecordId) {
+      precargarDatosTrafico(diaId, storeRecordId);
     }
     
-    // Llamar a la función onSelectDay con el ID del día, la fecha y las horas efectivas semanales
-    onSelectDay(diaId, fecha, horasEfectivasSemana);
+    // Obtener la semana a la que pertenece este día
+    const semanaId = getSemanaIdPorDia(diaId);
+    
+    if (semanaId) {
+      // Si no hemos expandido esta semana todavía, expandirla
+      if (!expandedWeeks.has(semanaId)) {
+        toggleWeekExpansion(semanaId);
+      }
+      
+      // Actualizar registro de la última semana actualizada si existe
+      if (horasEfectivasActualizadas && horasEfectivasActualizadas.semanas) {
+        // @ts-ignore - Esta propiedad especial no está en la definición de tipos original
+        horasEfectivasActualizadas.semanas.lastUpdated = semanaId;
+      }
+    }
+    
+    onSelectDay(diaId, fecha, horasEfectivas);
   };
 
   // Función para abrir el modal con la vista semanal

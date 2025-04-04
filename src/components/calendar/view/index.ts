@@ -11,4 +11,6 @@ export { HoursIndicatorsViewDesktop } from './desktop/HoursIndicators';
 
 // Componentes detallados
 export { ScheduleTableDetailedView } from './desktop/ScheduleTableDetailed';
-export { TrafficTableDetailedView } from './desktop/TrafficTableDetailed'; 
+export { TrafficTableDetailedView } from './desktop/TrafficTableDetailed';
+
+export * from './ViewHeader'; 

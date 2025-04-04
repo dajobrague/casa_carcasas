@@ -150,8 +150,14 @@ export function DayModal({
       
       // Usar las horas efectivas semanales iniciales si se proporcionaron
       // De lo contrario, usar un cálculo de respaldo
-      if (!horasEfectivasSemanalesIniciales) {
-        setHorasEfectivasSemanales(horasEfectivas * 5); // Respaldo: 5 días similares
+      if (horasEfectivasSemanalesIniciales && horasEfectivasSemanalesIniciales > 0) {
+        console.log('Usando horas efectivas semanales proporcionadas:', horasEfectivasSemanalesIniciales);
+        setHorasEfectivasSemanales(horasEfectivasSemanalesIniciales);
+      } else {
+        // Solo como respaldo si no hay valor inicial
+        const fallbackHoras = horasEfectivas * 5;
+        console.log('Calculando horas efectivas semanales como respaldo:', fallbackHoras);
+        setHorasEfectivasSemanales(fallbackHoras);
       }
 
     } catch (error) {
@@ -378,10 +384,9 @@ export function DayModal({
   // Manejar el cierre del modal y actualizar las horas efectivas
   const handleClose = () => {
     if (onCloseWithUpdatedHours && diaId) {
-      // Calculamos las horas efectivas semanales actualizadas
-      // Tomamos las horas efectivas semanales iniciales y restamos las iniciales del día, luego sumamos las actuales
-      const horasEfectivasSemanalesActualizadas = 
-        horasEfectivasSemanalesIniciales - horasEfectivasDiariasIniciales + horasEfectivasDiarias;
+      // Usar las horas efectivas semanales actuales que ya hemos mantenido actualizadas
+      // en lugar de recalcularlas
+      const horasEfectivasSemanalesActualizadas = horasEfectivasSemanales;
       
       console.log('Cerrando modal con datos actualizados:', {
         diaId,
@@ -389,8 +394,7 @@ export function DayModal({
         horasEfectivasDiarias,
         diferenciaDia: horasEfectivasDiarias - horasEfectivasDiariasIniciales,
         horasEfectivasSemanalesIniciales,
-        horasEfectivasSemanalesActualizadas,
-        semanaId: window.localStorage.getItem(`dia_semana_${diaId}`)
+        horasEfectivasSemanalesActualizadas
       });
       
       // Llamamos al callback con los valores actualizados

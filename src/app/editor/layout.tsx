@@ -1,4 +1,5 @@
 import React from 'react';
+import StoreNavigation from '@/components/StoreNavigation';
 
 export const metadata = {
   title: 'Editor de Horarios',
@@ -11,8 +12,11 @@ export default function EditorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {children}
-    </div>
+    <>
+      <StoreNavigation />
+      <div className="bg-gray-50 min-h-screen">
+        {children}
+      </div>
+    </>
   );
 } 

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { DatosTraficoDia } from '@/lib/utils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 
 interface TrafficTableViewProps {
   datosTraficoDia: DatosTraficoDia | null;
@@ -70,43 +71,6 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
     </div>
   );
 
-  // Componente de esqueleto para la carga
-  const SkeletonLoader = () => (
-    <div className="space-y-3">
-      {/* Esqueleto para fechas */}
-      <div className="flex items-center gap-2 animate-pulse p-3 bg-white rounded-lg shadow-sm">
-        <div className="h-4 w-16 bg-gray-200 rounded"></div>
-        <div className="h-4 w-24 bg-gray-200 rounded"></div>
-        <div className="h-4 w-16 bg-gray-200 rounded"></div>
-        <div className="h-4 w-24 bg-gray-200 rounded"></div>
-      </div>
-      
-      {/* Esqueleto para selector de día */}
-      <div className="bg-white rounded-lg shadow-sm p-3 animate-pulse">
-        <div className="h-5 w-40 bg-gray-200 rounded mb-3"></div>
-        <div className="h-10 w-full bg-gray-200 rounded"></div>
-      </div>
-      
-      {/* Esqueleto para horas */}
-      <div className="bg-white rounded-lg shadow-sm p-3 animate-pulse">
-        <div className="grid grid-cols-4 gap-2">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-200 rounded"></div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Esqueleto para la leyenda */}
-      <div className="animate-pulse p-3 bg-white rounded-lg shadow-sm">
-        <div className="flex flex-wrap gap-1 justify-center">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-6 w-10 bg-gray-200 rounded-full"></div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
   // Si hay error, mostrar mensaje
   if (error) {
     return (
@@ -119,7 +83,47 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
 
   // Si está cargando, mostrar esqueleto
   if (isLoading) {
-    return <SkeletonLoader />;
+    return (
+      <div className="space-y-3">
+        {/* Esqueleto para fechas */}
+        <div className="flex items-center gap-2 p-3 bg-white rounded-lg shadow-sm">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        
+        {/* Esqueleto para selector de día */}
+        <div className="bg-white rounded-lg shadow-sm p-3">
+          <Skeleton className="h-5 w-40 mb-3" />
+          <div className="flex gap-1 overflow-x-auto pb-2">
+            {[...Array(7)].map((_, i) => (
+              <Skeleton key={i} className="h-8 w-20 rounded-full" />
+            ))}
+          </div>
+        </div>
+        
+        {/* Esqueleto para horas - Usar SkeletonCard */}
+        <SkeletonCard />
+        
+        {/* Esqueleto para totales */}
+        <div className="bg-white rounded-lg shadow-sm p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+        
+        {/* Esqueleto para la leyenda */}
+        <div className="p-3 bg-white rounded-lg shadow-sm">
+          <div className="flex flex-wrap gap-1 justify-center">
+            {[...Array(10)].map((_, i) => (
+              <Skeleton key={i} className="h-6 w-10 rounded-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Si no hay datos, mostrar mensaje

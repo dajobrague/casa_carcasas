@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { YearView, MonthView, MonthSummaryView, MonthViewMobile } from '@/components/calendar';
-import { DayViewMobile, DayViewDesktop } from '@/components/calendar/view';
+import { DayViewMobile, DayViewDesktop, ViewHeader } from '@/components/calendar/view';
 import { ScheduleProvider, useSchedule } from '@/context/ScheduleContext';
 import { SemanaLaboralRecord } from '@/lib/airtable';
 import { useParams, useRouter } from 'next/navigation';
@@ -14,7 +14,7 @@ import { captureIframeAsPdf } from '@/lib/pdf-utils';
 
 // Componente principal de la vista
 function ScheduleViewer() {
-  const { storeRecordId, setStoreRecordId, isLoading, error } = useSchedule();
+  const { storeRecordId, setStoreRecordId, isLoading, error, storeName, storeNumber } = useSchedule();
   const [view, setView] = useState<'year' | 'month' | 'monthSummary'>('year');
   const [selectedMonth, setSelectedMonth] = useState<{ mes: string; año: string } | null>(null);
   const router = useRouter();
@@ -118,102 +118,114 @@ function ScheduleViewer() {
 
   // Renderizar la vista seleccionada
   return (
-    <div className="container mx-auto px-4 py-8">
-      {view === 'year' && (
-        <YearView onSelectMonth={handleSelectMonth} />
-      )}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <ViewHeader storeName={storeName} storeNumber={storeNumber} />
+      <main className="flex-grow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {view === 'year' && (
+            <YearView onSelectMonth={handleSelectMonth} />
+          )}
 
-      {view === 'month' && selectedMonth && (
-        isMobile ? (
-          <MonthViewMobile
-            mes={selectedMonth.mes}
-            año={selectedMonth.año}
-            onBack={handleBack}
-            onSelectDay={handleSelectDay}
-            onGeneratePdf={handleGeneratePdf}
-            onViewMonthSummary={handleViewMonthSummary}
-          />
-        ) : (
-          <MonthView
-            mes={selectedMonth.mes}
-            año={selectedMonth.año}
-            onBack={handleBack}
-            onSelectDay={handleSelectDay}
-            onGeneratePdf={handleGeneratePdf}
-            onViewMonthSummary={handleViewMonthSummary}
-          />
-        )
-      )}
+          {view === 'month' && selectedMonth && (
+            isMobile ? (
+              <MonthViewMobile
+                mes={selectedMonth.mes}
+                año={selectedMonth.año}
+                onBack={handleBack}
+                onSelectDay={handleSelectDay}
+                onGeneratePdf={handleGeneratePdf}
+                onViewMonthSummary={handleViewMonthSummary}
+              />
+            ) : (
+              <MonthView
+                mes={selectedMonth.mes}
+                año={selectedMonth.año}
+                onBack={handleBack}
+                onSelectDay={handleSelectDay}
+                onGeneratePdf={handleGeneratePdf}
+                onViewMonthSummary={handleViewMonthSummary}
+              />
+            )
+          )}
 
-      {view === 'monthSummary' && selectedMonth && (
-        <MonthSummaryView
-          mes={selectedMonth.mes}
-          año={selectedMonth.año}
-          onBack={handleBack}
-        />
-      )}
-
-      {/* Añadir el componente del modal del día - versión móvil o desktop según el tamaño de pantalla */}
-      {isDayModalOpen && selectedDay && (
-        isMobile ? (
-          <DayViewMobile
-            isOpen={isDayModalOpen}
-            onClose={handleCloseDayModal}
-            diaId={selectedDay.diaId}
-            fecha={selectedDay.fecha}
-            storeRecordId={storeRecordId}
-            horasEfectivasSemanalesIniciales={selectedDay.horasEfectivas}
-          />
-        ) : (
-          <DayViewDesktop
-            isOpen={isDayModalOpen}
-            onClose={handleCloseDayModal}
-            diaId={selectedDay.diaId}
-            fecha={selectedDay.fecha}
-            storeRecordId={storeRecordId}
-            horasEfectivasSemanalesIniciales={selectedDay.horasEfectivas}
-          />
-        )
-      )}
-
-      {/* Modal para mostrar la vista semanal */}
-      <Modal
-        isOpen={isWeekViewModalOpen}
-        onClose={handleCloseWeekViewModal}
-        title="Vista Semanal"
-        size="full"
-        className="p-0 max-h-[95vh]"
-      >
-        {selectedWeekUrl && (
-          <div className="w-full h-full overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Horario Semanal</h3>
-              <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    const iframe = document.querySelector('iframe') as HTMLIFrameElement;
-                    if (iframe) {
-                      // Extraer el weekId de la URL para el nombre del archivo
-                      const weekId = selectedWeekUrl.split('/').pop();
-                      captureIframeAsPdf(iframe, `horario-semanal-${weekId}.pdf`);
-                    }
-                  }}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Descargar PDF
-                </Button>
-              </div>
-            </div>
-            <iframe 
-              src={selectedWeekUrl}
-              className="w-full h-full border-none"
-              style={{ height: 'calc(95vh - 120px)', minHeight: '700px' }}
+          {view === 'monthSummary' && selectedMonth && (
+            <MonthSummaryView
+              mes={selectedMonth.mes}
+              año={selectedMonth.año}
+              onBack={handleBack}
             />
+          )}
+
+          {/* Añadir el componente del modal del día - versión móvil o desktop según el tamaño de pantalla */}
+          {isDayModalOpen && selectedDay && (
+            isMobile ? (
+              <DayViewMobile
+                isOpen={isDayModalOpen}
+                onClose={handleCloseDayModal}
+                diaId={selectedDay.diaId}
+                fecha={selectedDay.fecha}
+                storeRecordId={storeRecordId}
+                horasEfectivasSemanalesIniciales={selectedDay.horasEfectivas}
+              />
+            ) : (
+              <DayViewDesktop
+                isOpen={isDayModalOpen}
+                onClose={handleCloseDayModal}
+                diaId={selectedDay.diaId}
+                fecha={selectedDay.fecha}
+                storeRecordId={storeRecordId}
+                horasEfectivasSemanalesIniciales={selectedDay.horasEfectivas}
+              />
+            )
+          )}
+
+          {/* Modal para mostrar la vista semanal */}
+          <Modal
+            isOpen={isWeekViewModalOpen}
+            onClose={handleCloseWeekViewModal}
+            title="Vista Semanal"
+            size="full"
+            className="p-0 max-h-[95vh]"
+          >
+            {selectedWeekUrl && (
+              <div className="w-full h-full overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-gray-900">Horario Semanal</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+                        if (iframe) {
+                          // Extraer el weekId de la URL para el nombre del archivo
+                          const weekId = selectedWeekUrl.split('/').pop();
+                          captureIframeAsPdf(iframe, `horario-semanal-${weekId}.pdf`);
+                        }
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Descargar PDF
+                    </Button>
+                  </div>
+                </div>
+                <iframe 
+                  src={selectedWeekUrl}
+                  className="w-full h-full border-none"
+                  style={{ height: 'calc(95vh - 120px)', minHeight: '700px' }}
+                />
+              </div>
+            )}
+          </Modal>
+        </div>
+      </main>
+      <footer className="bg-white shadow-inner py-4 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-sm text-gray-500">
+            &copy; {new Date().getFullYear()} Casa de las Carcasas. Todos los derechos reservados.
           </div>
-        )}
-      </Modal>
+        </div>
+      </footer>
     </div>
   );
 }

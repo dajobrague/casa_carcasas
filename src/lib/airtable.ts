@@ -198,6 +198,9 @@ export async function actualizarActividad(actividadId: string, campos: Record<st
     });
     
     if (!response.ok) {
+      logger.error(`Error API al actualizar actividad: ${response.status}`);
+      const errorText = await response.text();
+      logger.error(`Detalle del error: ${errorText}`);
       throw new Error(`Error al actualizar la actividad: ${response.status}`);
     }
     
@@ -231,6 +234,9 @@ export async function actualizarHorario(
     });
     
     if (!response.ok) {
+      logger.error(`Error API al actualizar horario: ${response.status}`);
+      const errorText = await response.text();
+      logger.error(`Detalle del error: ${errorText}`);
       throw new Error(`Error al actualizar el horario: ${response.status}`);
     }
     
@@ -271,10 +277,20 @@ export async function obtenerSemanasLaborales(mes: string, año: string): Promis
   try {
     logger.log(`Obteniendo semanas laborales para ${mes} ${año}`);
     
+    // Capitalizar primera letra del mes para consistencia
+    let mesCapitalizado = mes;
+    if (mes !== 'all') {
+      mesCapitalizado = mes.charAt(0).toUpperCase() + mes.slice(1).toLowerCase();
+    }
+    
     // Llamar al API route para obtener las semanas laborales
-    const response = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=${encodeURIComponent(mes)}&año=${encodeURIComponent(año)}`);
+    const url = `/api/airtable?action=obtenerSemanasLaborales&mes=${encodeURIComponent(mes)}&año=${encodeURIComponent(año)}`;
+    logger.log(`URL de consulta: ${url}`);
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
+      logger.error(`Error al obtener semanas laborales: ${response.status}`);
       throw new Error(`Error al obtener semanas laborales: ${response.status}`);
     }
     
@@ -283,7 +299,7 @@ export async function obtenerSemanasLaborales(mes: string, año: string): Promis
     
     // Si no encontramos semanas para el mes específico, intentamos obtener todas las semanas del año
     if (!data.records || data.records.length === 0) {
-      logger.log(`No se encontraron semanas para ${mes} ${año}. Intentando obtener todas las semanas del año.`);
+      logger.log(`No se encontraron semanas para ${mesCapitalizado} ${año}. Intentando obtener todas las semanas del año.`);
       
       // Llamar al API con mes='all' para obtener todas las semanas del año
       const fallbackResponse = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=all&año=${encodeURIComponent(año)}`);
@@ -327,7 +343,7 @@ export async function obtenerSemanasLaborales(mes: string, año: string): Promis
           return false;
         });
         
-        logger.log(`Semanas filtradas manualmente por mes ${mes}: ${semanasFiltradas.length}`);
+        logger.log(`Semanas filtradas manualmente por mes ${mesCapitalizado}: ${semanasFiltradas.length}`);
         
         if (semanasFiltradas.length > 0) {
           return semanasFiltradas;
@@ -422,13 +438,53 @@ export async function verificarConexionAirtable(): Promise<boolean> {
   try {
     logger.log('Verificando conexión a Airtable...');
     
-    // Hacemos una petición simple a la API para verificar si las credenciales son válidas
-    const response = await fetch('/api/airtable?action=verificarConexion');
+    // Usar la URL base para que funcione tanto en cliente como en servidor
+    const baseUrl = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000') : '';
+    const url = `${baseUrl}/api/airtable?action=verificarConexion`;
+    
+    logger.log('URL de verificación:', url);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos de timeout
+
+    const response = await fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    logger.log('Estado de la respuesta:', response.status);
+    
+    if (!response.ok) {
+      logger.error(`Error en la respuesta: ${response.status} ${response.statusText}`);
+      return false;
+    }
     
     const result = await response.json();
-    return result.connected === true;
+    logger.log('Resultado de verificación:', result);
+    
+    if (!result.connected) {
+      logger.error('Error de conexión:', result.error);
+      if (result.details) {
+        logger.error('Detalles del error:', result.details);
+      }
+      return false;
+    }
+    
+    return true;
   } catch (error) {
-    logger.error('Error al verificar conexión con Airtable:', error);
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        logger.error('La verificación de conexión excedió el tiempo de espera');
+      } else {
+        logger.error('Error al verificar conexión con Airtable:', error.message);
+        if (error.stack) {
+          logger.error('Stack trace:', error.stack);
+        }
+      }
+    }
     return false;
   }
 }
@@ -467,6 +523,27 @@ export async function obtenerDatosSemanasLaborales(): Promise<SemanaLaboralRecor
     return data.records || [];
   } catch (error) {
     logger.error('Error al obtener datos de semanas laborales:', error);
+    return [];
+  }
+}
+
+/**
+ * Obtiene los nombres de los meses disponibles para editar
+ */
+export async function obtenerMesesEditor(): Promise<string[]> {
+  try {
+    const response = await fetch(`/api/airtable?action=obtenerMesesEditor`);
+    
+    if (!response.ok) {
+      throw new Error(`Error al obtener meses para editor: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    logger.log(`Meses para editor obtenidos: ${data.meses?.length || 0}`);
+    
+    return data.meses || [];
+  } catch (error) {
+    logger.error('Error al obtener meses para editor:', error);
     return [];
   }
 } 

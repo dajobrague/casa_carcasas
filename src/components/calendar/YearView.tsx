@@ -16,22 +16,25 @@ export function YearView({ onSelectMonth }: YearViewProps) {
     setCurrentYear, 
     availableYears, 
     semanasLaborales,
+    mesesDisponibles,
     isLoading
   } = useSchedule();
 
   // Obtener meses únicos del año actual
   const mesesDelAño = React.useMemo(() => {
-    if (!semanasLaborales.length) return [];
+    // Filtrar los meses por el año actual
+    const mesesDelAñoActual = mesesDisponibles.filter(mesCompleto => {
+      const partes = mesCompleto.split(' ');
+      const año = partes[partes.length - 1];
+      return año === currentYear;
+    });
 
-    // Filtrar registros por año actual
-    const registrosDelAño = semanasLaborales.filter(
-      record => record.fields.Year === currentYear
-    );
+    // Si no hay meses disponibles, devolver array vacío
+    if (mesesDelAñoActual.length === 0) {
+      return [];
+    }
 
-    // Obtener meses únicos
-    const meses = [...new Set(registrosDelAño.map(record => record.fields.Mes))];
-    
-    // Función para convertir nombre de mes a número
+    // Función para convertir nombre de mes a número para ordenamiento
     function obtenerNumeroMes(nombreMes: string): number {
       const meses: Record<string, number> = {
         'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3,
@@ -39,12 +42,13 @@ export function YearView({ onSelectMonth }: YearViewProps) {
         'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
       };
       // Extraer solo el nombre del mes sin el año
-      const soloMes = nombreMes.split(' ')[0].toLowerCase();
-      return meses[soloMes];
+      const partesMes = nombreMes.toLowerCase().split(' ');
+      const soloMes = partesMes[0];
+      return meses[soloMes] ?? -1;
     }
 
     // Ordenar meses
-    const mesesOrdenados = meses.sort((a, b) => {
+    const mesesOrdenados = [...mesesDelAñoActual].sort((a, b) => {
       const mesNumA = obtenerNumeroMes(a || '');
       const mesNumB = obtenerNumeroMes(b || '');
       return mesNumA - mesNumB;
@@ -52,11 +56,22 @@ export function YearView({ onSelectMonth }: YearViewProps) {
 
     const mesActual = new Date().toLocaleString('es-ES', { month: 'long' }).toLowerCase();
 
-    return mesesOrdenados.map(mes => ({
-      name: capitalizarPrimeraLetra(mes || ''), // Mantenemos el formato original que incluye el año
-      isCurrent: mes ? mes.toLowerCase().startsWith(mesActual) : false
-    }));
-  }, [currentYear, semanasLaborales]);
+    return mesesOrdenados.map(mes => {
+      // Formatear el nombre del mes correctamente
+      const partes = mes.split(' ');
+      const nombreMes = partes[0];
+      const año = partes[partes.length - 1];
+      
+      // Capitalizar solo la primera letra del mes
+      const nombreCapitalizado = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+      const nombreFormateado = `${nombreCapitalizado} ${año}`;
+      
+      return {
+        name: nombreFormateado,
+        isCurrent: nombreMes.toLowerCase() === mesActual
+      };
+    });
+  }, [currentYear, mesesDisponibles]);
 
   // Cambiar al año anterior
   const handlePrevYear = () => {
@@ -124,7 +139,11 @@ export function YearView({ onSelectMonth }: YearViewProps) {
               key={month.name}
               className="relative p-4 md:p-6 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-blue-500 transition-colors text-left cursor-pointer"
               onClick={() => {
-                const [mes, año] = month.name.split(' ');
+                // Formato ahora es correcto: "nombreMes año"
+                const partes = month.name.split(' ');
+                const mes = partes[0];
+                const año = partes[1];
+                console.log(`Seleccionando mes: ${mes}, año: ${año}`);
                 onSelectMonth(mes, año);
               }}
             >

@@ -77,6 +77,7 @@ export function MonthSummaryView({ mes, año, onBack }: MonthSummaryViewProps) {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
   const resumenRef = useRef<HTMLDivElement>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
   
   // Nombres de los días de la semana (empezando por lunes)
   const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];

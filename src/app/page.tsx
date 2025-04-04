@@ -2,56 +2,62 @@
 
 import React, { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+
+// Componente de carga
+function LoadingHome() {
+  return (
+    <div className="min-h-screen flex justify-center items-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
 
 // Componente que utiliza useSearchParams
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isLoggedIn, loginWithRecordId, loading } = useAuth();
   
-  // Efecto para redirigir a la nueva ruta del editor si se proporciona un storeId
   useEffect(() => {
-    // Asegurarse de que searchParams no sea nulo antes de usarlo
-    if (searchParams) {
-      const storeId = searchParams.get('storeId');
+    const handleInitialNavigation = async () => {
+      // Si está cargando, esperar
+      if (loading) return;
       
-      if (storeId) {
-        // Redirigir a la nueva ruta del editor
-        router.push(`/editor/${storeId}`);
+      // Si ya está autenticado, ir a /tienda
+      if (isLoggedIn) {
+        router.push('/tienda');
+        return;
       }
-    }
-  }, [searchParams, router]);
+      
+      // Si hay un recordId en la URL, intentar login automático
+      if (searchParams) {
+        const recordId = searchParams.get('recordId');
+        
+        if (recordId) {
+          try {
+            // Intentar login con el recordId
+            const success = await loginWithRecordId(recordId);
+            if (success) {
+              // Si funciona, ir a /tienda
+              router.push('/tienda');
+              return;
+            }
+          } catch (err) {
+            console.error('Error en login automático:', err);
+          }
+        }
+      }
+      
+      // Si no hay autenticación, ir a login
+      router.push('/login');
+    };
+    
+    handleInitialNavigation();
+  }, [searchParams, router, isLoggedIn, loginWithRecordId, loading]);
   
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-      <div className="max-w-lg w-full bg-white shadow-md rounded-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Casa de las Carcasas</h1>
-        
-        <div className="mb-6">
-          <p className="text-gray-600 mb-4">
-            Bienvenido al portal interno de Casa de las Carcasas.
-          </p>
-          <p className="text-gray-600">
-            Este es un sistema de uso exclusivo para personal autorizado.
-          </p>
-        </div>
-        
-        <div className="border-t border-gray-200 pt-4 mt-4">
-          <p className="text-sm text-gray-500 text-center">
-            Si necesitas acceso, por favor contacta al departamento de sistemas.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Componente de carga mientras suspense está activo
-function LoadingHome() {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  );
+  // Mostrar un indicador de carga mientras se decide dónde redirigir
+  return <LoadingHome />;
 }
 
 export default function Home() {

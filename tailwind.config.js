@@ -9,11 +9,16 @@ module.exports = {
     extend: {
       animation: {
         'flash': 'flash 0.6s ease-in-out',
+        'fadeIn': 'fadeIn 0.3s ease-in-out',
       },
       keyframes: {
         flash: {
           '0%, 100%': { backgroundColor: 'transparent' },
           '50%': { backgroundColor: 'rgba(34, 197, 94, 0.2)' }, // Verde claro
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
       },
     },

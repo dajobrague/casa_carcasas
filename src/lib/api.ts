@@ -1,5 +1,6 @@
 import { DatosTraficoDia } from './utils';
 import logger from './logger';
+import { memoryCache } from './cache';
 
 /**
  * Función para obtener datos de tráfico para un día específico
@@ -7,6 +8,16 @@ import logger from './logger';
  */
 export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: string): Promise<DatosTraficoDia | null> {
   try {
+    // Crear clave de caché combinando día e ID de tienda
+    const cacheKey = `trafico_${diaLaboralId}_${storeRecordId}`;
+    
+    // Verificar si ya tenemos los datos en caché
+    const cachedData = memoryCache.get<DatosTraficoDia>(cacheKey);
+    if (cachedData) {
+      logger.log('Usando datos de tráfico en caché para:', diaLaboralId);
+      return cachedData;
+    }
+    
     logger.log('Iniciando obtención de datos de tráfico para el día:', diaLaboralId);
     
     // 1. Obtener información del día laboral
@@ -39,33 +50,52 @@ export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: s
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
-    // 5. Obtener datos para cada fecha a través de nuestro API route
+    // 5. Optimización: crear un mapa para seguimiento de peticiones paralelas
+    // y reutilizar promesas para fechas idénticas
+    const fetchPromises = new Map();
+    
+    // 5.1 Obtener datos para cada fecha a través de nuestro API route (con control de concurrencia)
     const allData = await Promise.all(dates.map(async (date) => {
       const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       
-      const response = await fetch(
-        `/api/trafico?storeCode=${storeCode}&date=${formattedDate}`,
-        {
-          headers: {
-            'Accept': 'application/json'
+      // Reutilizar la misma promesa si ya estamos obteniendo datos para esta fecha
+      if (!fetchPromises.has(formattedDate)) {
+        // Parámetros correctos según la definición de la API
+        const fetchPromise = fetch(
+          `/api/trafico?tiendaId=${storeCode}&fechaInicio=${formattedDate}&fechaFin=${formattedDate}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'max-age=300' // 5 minutos de caché HTTP
+            }
           }
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
+        ).then(async response => {
+          if (!response.ok) {
+            throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
+          }
+          return response.json();
+        });
+        
+        fetchPromises.set(formattedDate, fetchPromise);
       }
       
-      const data = await response.json();
+      // Obtener la promesa del mapa (sea nueva o reutilizada)
+      const data = await fetchPromises.get(formattedDate);
+      
       return {
         date: formattedDate,
         dayOfWeek: date.getDay(),
-        data: data.data
+        data: data.entradasPorHora
       };
     }));
     
     // 6. Procesar los datos obtenidos
-    return procesarDatosTrafico(allData, fechaLunes.toISOString().split('T')[0], fechaDomingo.toISOString().split('T')[0]);
+    const result = procesarDatosTrafico(allData, fechaLunes.toISOString().split('T')[0], fechaDomingo.toISOString().split('T')[0]);
+    
+    // 7. Guardar en caché antes de devolver (30 minutos)
+    memoryCache.set(cacheKey, result, 30 * 60);
+    
+    return result;
     
   } catch (error) {
     logger.error('Error detallado en obtenerDatosTrafico:', error);
@@ -112,6 +142,7 @@ async function obtenerDatosTienda(recordId: string) {
 
 /**
  * Función para procesar los datos de tráfico
+ * Versión optimizada usando Map para mejorar rendimiento
  */
 function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: string): DatosTraficoDia {
   try {
@@ -125,70 +156,98 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
       return `${hour.toString().padStart(2, '0')}:00`;
     });
     
-    // Inicializar estructura de datos
-    const datosPorDia = {
-      lunes: {} as Record<string, number>,
-      martes: {} as Record<string, number>,
-      miercoles: {} as Record<string, number>,
-      jueves: {} as Record<string, number>,
-      viernes: {} as Record<string, number>,
-      sabado: {} as Record<string, number>,
-      domingo: {} as Record<string, number>
-    };
+    // Inicializar estructura de datos usando Maps para mejor rendimiento
+    const diaSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    const datosDiasMap = new Map<string, Map<string, number>>();
+    
+    // Inicializar maps para cada día con horas en 0
+    diaSemana.forEach(dia => {
+      const horasMap = new Map<string, number>();
+      timeSlots.forEach(hora => horasMap.set(hora, 0));
+      datosDiasMap.set(dia, horasMap);
+    });
     
     // Mapeo de índice de día a nombre
     const mapaDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     
-    // Inicializar horas en cada día
-    Object.keys(datosPorDia).forEach(dia => {
-      timeSlots.forEach(hora => {
-        datosPorDia[dia as keyof typeof datosPorDia][hora] = 0;
-      });
-    });
-    
-    // Llenar datos
+    // Contadores para totales
     let totalMañana = 0;
     let totalTarde = 0;
     
-    datosAPI.forEach(dayData => {
+    // Map para acumular el total por hora (para calcular promedios)
+    const totalHorasMap = new Map<string, number>();
+    timeSlots.forEach(hora => totalHorasMap.set(hora, 0));
+    
+    // Procesar datos más eficientemente
+    for (const dayData of datosAPI) {
       // Obtener el nombre del día
       const nombreDia = mapaDias[dayData.dayOfWeek];
+      const horasDelDia = datosDiasMap.get(nombreDia);
       
-      // Procesar entradas
-      if (Array.isArray(dayData.data)) {
-        dayData.data.forEach((entry: any) => {
-          // Convertir la hora al formato requerido
-          const hora = `${entry.hora.padStart(2, '0')}:00`;
-          const entradas = parseInt(entry.entradas);
-          
-          if (!isNaN(entradas) && timeSlots.includes(hora) && nombreDia in datosPorDia) {
-            datosPorDia[nombreDia as keyof typeof datosPorDia][hora] = entradas;
+      // Verificar que tenemos el mapa del día
+      if (!horasDelDia) continue;
+      
+      // Los datos ahora están en formato {hora: entradas}
+      if (dayData.data && typeof dayData.data === 'object') {
+        for (const [hora, entradas] of Object.entries(dayData.data)) {
+          // Verificar que la hora está en el formato correcto y dentro de nuestro rango
+          if (timeSlots.includes(hora)) {
+            const entradasNum = typeof entradas === 'number' ? entradas : parseInt(String(entradas));
             
-            // Actualizar totales según mañana/tarde
-            const hourNum = parseInt(hora.split(':')[0]);
-            if (hourNum < 14) {
-              totalMañana += entradas;
-            } else {
-              totalTarde += entradas;
+            if (!isNaN(entradasNum)) {
+              // Guardar dato en el map del día
+              horasDelDia.set(hora, entradasNum);
+              
+              // Actualizar total de esa hora para calcular promedio después
+              totalHorasMap.set(hora, (totalHorasMap.get(hora) || 0) + entradasNum);
+              
+              // Actualizar totales según mañana/tarde
+              const hourNum = parseInt(hora.split(':')[0]);
+              if (hourNum < 14) {
+                totalMañana += entradasNum;
+              } else {
+                totalTarde += entradasNum;
+              }
             }
           }
-        });
+        }
       }
-    });
+    }
     
     // Calcular totales por día
     const totalMañanaPorDia = Math.round(totalMañana / 7);
     const totalTardePorDia = Math.round(totalTarde / 7);
     
+    // Convertir Maps a objetos para la interfaz esperada
+    // Definir con la estructura específica requerida por DatosTraficoDia
+    const datosPorDia: {
+      lunes: Record<string, number>;
+      martes: Record<string, number>;
+      miercoles: Record<string, number>;
+      jueves: Record<string, number>;
+      viernes: Record<string, number>;
+      sabado: Record<string, number>;
+      domingo: Record<string, number>;
+    } = {
+      lunes: {},
+      martes: {},
+      miercoles: {},
+      jueves: {},
+      viernes: {},
+      sabado: {},
+      domingo: {}
+    };
+    
+    // Llenar el objeto con los datos de los Maps
+    for (const [dia, horasMap] of datosDiasMap.entries()) {
+      datosPorDia[dia as keyof typeof datosPorDia] = Object.fromEntries(horasMap);
+    }
+    
     // Crear estructura de horas para compatibilidad con la interfaz existente
     const horas: Record<string, number> = {};
-    timeSlots.forEach(hora => {
-      let total = 0;
-      Object.keys(datosPorDia).forEach(dia => {
-        total += datosPorDia[dia as keyof typeof datosPorDia][hora] || 0;
-      });
+    for (const [hora, total] of totalHorasMap.entries()) {
       horas[hora] = Math.round(total / 7); // Promedio por día
-    });
+    }
     
     return {
       horas,

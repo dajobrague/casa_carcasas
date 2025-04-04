@@ -1,122 +1,204 @@
-# Gestor de Horarios - Casa Carcasas
+# Casa Carcasas - Aplicación de Gestión de Horarios
 
-Este proyecto es una migración del sistema de gestión de horarios de Casa Carcasas a una aplicación moderna con React, Next.js y Tailwind CSS.
+## Descripción General
+Esta aplicación web permite gestionar horarios y actividades diarias para tiendas, utilizando Airtable como base de datos. La aplicación está construida con Next.js 14 y utiliza TypeScript para el desarrollo.
 
-## Características
-
-- **Vista de Año**: Muestra todos los meses disponibles para un año seleccionado.
-- **Vista de Mes**: Muestra las semanas laborales de un mes seleccionado.
-- **Vista de Día**: Permite gestionar los horarios de los empleados para un día específico.
-- **Generación de PDFs**: Permite generar PDFs de los horarios semanales.
-- **Integración con Airtable**: Utiliza Airtable como base de datos para almacenar y recuperar información.
-
-## Tecnologías Utilizadas
-
-- **Frontend**:
-  - React 18
-  - Next.js 14
-  - Tailwind CSS
-  - TypeScript
-  - Lucide React (iconos)
-
-- **Backend**:
-  - API Routes de Next.js
-  - Airtable API
-
-- **Generación de PDFs**:
-  - jsPDF
-  - html2canvas
+## Tecnologías Principales
+- Next.js 14
+- TypeScript
+- Tailwind CSS
+- Airtable API
+- React Context API
+- React Query
 
 ## Estructura del Proyecto
-
 ```
-casa_carcasas/
-├── public/
-│   └── favicon.ico
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   └── airtable/
-│   │   │       └── route.ts
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   └── globals.css
-│   ├── components/
-│   │   ├── ui/
-│   │   │   ├── Button.tsx
-│   │   │   ├── Modal.tsx
-│   │   │   └── Select.tsx
-│   │   ├── calendar/
-│   │   │   ├── YearView.tsx
-│   │   │   ├── MonthView.tsx
-│   │   │   └── DayModal.tsx
-│   │   └── schedule/
-│   │       └── ...
-│   ├── lib/
-│   │   ├── airtable.ts
-│   │   ├── pdf.ts
-│   │   └── utils.ts
-│   ├── hooks/
-│   │   └── ...
-│   └── context/
-│       └── ScheduleContext.tsx
-├── .env.local
-├── package.json
-└── README.md
+src/
+├── app/                    # Rutas y páginas de Next.js
+│   ├── api/               # API Routes
+│   ├── editor/            # Página de edición
+│   └── view/              # Página de visualización
+├── components/            # Componentes React reutilizables
+├── lib/                   # Utilidades y configuraciones
+└── types/                 # Definiciones de tipos TypeScript
 ```
 
-## Configuración
+## Configuración del Entorno
 
-1. Clona el repositorio:
-   ```bash
-   git clone https://github.com/tu-usuario/casa_carcasas.git
-   cd casa_carcasas
+### Variables de Entorno
+Crear un archivo `.env.local` en la raíz del proyecto con las siguientes variables:
+
+```env
+# Airtable Configuration
+AIRTABLE_API_KEY=patFKh76g2DNkVk36.8f69188009d491d86e0ba54081887c274e21eb540a5f0cc5c4c8a7ed72332dde
+AIRTABLE_BASE_ID=appxCzcdyajOiece8
+AIRTABLE_SEMANAS_LABORALES_TABLE_ID=tblY4azExiLi7dbcw
+AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID=tblpHRqsBrADEkeUL
+AIRTABLE_ACTIVIDAD_DIARIA_TABLE_ID=tblbkzixVwxZ8oVqb
+AIRTABLE_DIAS_LABORALES_TABLE_ID=tblY4azExiLi7dbcw
+
+# Traffic API Configuration
+TRAFICO_API_TOKEN=patFKh76g2DNkVk36.8f69188009d491d86e0ba54081887c274e21eb540a5f0cc5c4c8a7ed72332dde
+TRAFICO_API_BASE_URL=https://api.airtable.com/v0/appxCzcdyajOiece8/tblY4azExiLi7dbcw
+
+# Application URL
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+## Conexión con Airtable
+
+### Implementación
+La conexión con Airtable se realiza a través de la API REST utilizando `curl` para manejar las peticiones HTTP. Esta implementación fue elegida para resolver problemas de latencia y conexión en ciertas ubicaciones geográficas.
+
+### Estructura de la Conexión
+1. **Configuración Base**
+   - API Key: Token de autenticación
+   - Base ID: Identificador de la base de datos
+   - Table IDs: Identificadores de las tablas específicas
+
+2. **Método de Conexión**
+   ```typescript
+   async function curlRequest(url: string, method: string = 'GET', data?: any) {
+     const headers = [
+       `-H "Authorization: Bearer ${apiKey}"`,
+       '-H "Content-Type: application/json"'
+     ];
+     
+     let command = `curl -s ${headers.join(' ')}`;
+     
+     if (method === 'PATCH' && data) {
+       command += ` -X PATCH -d '${JSON.stringify(data)}'`;
+     }
+     
+     command += ` "${url}"`;
+     
+     const { stdout, stderr } = await execAsync(command);
+     
+     if (stderr) {
+       throw new Error(stderr);
+     }
+     
+     return JSON.parse(stdout);
+   }
    ```
 
-2. Instala las dependencias:
+## API Routes
+
+### 1. `/api/airtable`
+Maneja todas las operaciones relacionadas con Airtable.
+
+#### Endpoints GET
+1. **verificarConexion**
+   - Verifica la conexión con Airtable
+   - URL: `/api/airtable?action=verificarConexion`
+
+2. **obtenerDatosTienda**
+   - Obtiene datos de una tienda específica
+   - URL: `/api/airtable?action=obtenerDatosTienda&storeId={storeId}`
+
+3. **obtenerActividadesDiarias**
+   - Obtiene actividades para una tienda y día específicos
+   - URL: `/api/airtable?action=obtenerActividadesDiarias&storeId={storeId}&diaId={diaId}`
+
+4. **obtenerDiasLaboralesSemana**
+   - Obtiene días laborales para una semana específica
+   - URL: `/api/airtable?action=obtenerDiasLaboralesSemana&semanaId={semanaId}`
+
+5. **obtenerDiaLaboralPorId**
+   - Obtiene un día laboral específico
+   - URL: `/api/airtable?action=obtenerDiaLaboralPorId&diaId={diaId}`
+
+6. **obtenerSemanaPorId**
+   - Obtiene una semana específica
+   - URL: `/api/airtable?action=obtenerSemanaPorId&semanaId={semanaId}`
+
+7. **obtenerSemanasLaborales**
+   - Obtiene semanas laborales para un mes y año específicos
+   - URL: `/api/airtable?action=obtenerSemanasLaborales&mes={mes}&año={año}`
+
+#### Endpoints POST
+1. **actualizarActividad**
+   - Actualiza una actividad específica
+   - URL: `/api/airtable`
+   - Body: 
+     ```json
+     {
+       "action": "actualizarActividad",
+       "actividadId": "string",
+       "campos": {}
+     }
+     ```
+
+## Estructura de Datos en Airtable
+
+### Tablas Principales
+1. **Semanas Laborales**
+   - ID: `tblY4azExiLi7dbcw`
+   - Campos principales:
+     - Name
+     - Fecha de Inicio
+     - Fecha de fin
+     - Year
+
+2. **Tienda y Supervisor**
+   - ID: `tblpHRqsBrADEkeUL`
+   - Campos principales:
+     - Name
+     - Supervisor
+     - Tienda
+
+3. **Actividad Diaria**
+   - ID: `tblbkzixVwxZ8oVqb`
+   - Campos principales:
+     - record_Id (from Tienda y Supervisor)
+     - recordId (from Fecha)
+     - Actividades
+
+4. **Días Laborales**
+   - ID: `tblY4azExiLi7dbcw`
+   - Campos principales:
+     - Name
+     - Semanas Laborales
+     - Fecha
+
+## Manejo de Errores
+La aplicación implementa un sistema robusto de manejo de errores:
+1. Logging detallado de errores
+2. Respuestas HTTP apropiadas
+3. Mensajes de error descriptivos
+4. Manejo de timeouts y reintentos
+
+## Instalación y Ejecución
+
+1. Clonar el repositorio
+2. Instalar dependencias:
    ```bash
    npm install
    ```
-
-3. Crea un archivo `.env.local` con las siguientes variables:
-   ```
-   NEXT_PUBLIC_AIRTABLE_API_KEY=tu_api_key
-   NEXT_PUBLIC_AIRTABLE_BASE_ID=tu_base_id
-   NEXT_PUBLIC_AIRTABLE_SEMANAS_LABORALES_TABLE_ID=tu_tabla_id
-   NEXT_PUBLIC_AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID=tu_tabla_id
-   NEXT_PUBLIC_AIRTABLE_ACTIVIDAD_DIARIA_TABLE_ID=tu_tabla_id
-   NEXT_PUBLIC_AIRTABLE_DIAS_LABORALES_TABLE_ID=tu_tabla_id
-   ```
-
-4. Inicia el servidor de desarrollo:
+3. Configurar variables de entorno
+4. Iniciar el servidor de desarrollo:
    ```bash
    npm run dev
    ```
+5. Construir para producción:
+   ```bash
+   npm run build
+   ```
 
-5. Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+## Consideraciones de Seguridad
+1. Las variables de entorno no están expuestas al cliente
+2. Las API keys se manejan de forma segura
+3. Las peticiones a Airtable incluyen autenticación
+4. Los datos sensibles no se almacenan en el cliente
 
-## Uso
+## Mantenimiento y Actualizaciones
+1. Verificar regularmente las dependencias
+2. Monitorear el uso de la API de Airtable
+3. Mantener actualizadas las variables de entorno
+4. Revisar los logs de error periódicamente
 
-1. **Vista de Año**: Al iniciar la aplicación, se muestra la vista de año con todos los meses disponibles.
-2. **Vista de Mes**: Al hacer clic en un mes, se muestra la vista de mes con todas las semanas laborales.
-3. **Vista de Día**: Al hacer clic en un día, se abre un modal con los horarios de los empleados para ese día.
-4. **Edición de Horarios**: En la vista de día, puedes editar los horarios de los empleados seleccionando un estado (TRABAJO, VACACIONES, etc.) para cada hora.
-5. **Generación de PDFs**: En la vista de mes, puedes generar un PDF de los horarios de una semana haciendo clic en el botón "Generar PDF".
-
-## Contribución
-
-1. Haz un fork del repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/amazing-feature`)
-3. Haz commit de tus cambios (`git commit -m 'Add some amazing feature'`)
-4. Haz push a la rama (`git push origin feature/amazing-feature`)
-5. Abre un Pull Request
-
-## Licencia
-
-Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## Contacto
-
-David Bracho - [david@casacarcasas.com](mailto:david@casacarcasas.com)
-
-Enlace del proyecto: [https://github.com/tu-usuario/casa_carcasas](https://github.com/tu-usuario/casa_carcasas) 
+## Solución de Problemas
+1. Verificar la conexión con Airtable
+2. Comprobar las variables de entorno
+3. Revisar los logs de error
+4. Verificar la disponibilidad de la API de Airtable 

@@ -8,6 +8,7 @@ import html2canvas from 'html2canvas';
 import { SemanaLaboralRecord } from '@/lib/airtable';
 import { useParams } from 'next/navigation';
 import { generarPDFSimple } from '@/lib/simple-pdf-bridge';
+import RouteGuard from '@/components/auth/RouteGuard';
 
 // Componente principal del editor
 function ScheduleEditor() {
@@ -291,8 +292,10 @@ function ScheduleEditor() {
 
 export default function Page() {
   return (
-    <ScheduleProvider>
-      <ScheduleEditor />
-    </ScheduleProvider>
+    <RouteGuard>
+      <ScheduleProvider>
+        <ScheduleEditor />
+      </ScheduleProvider>
+    </RouteGuard>
   );
 } 

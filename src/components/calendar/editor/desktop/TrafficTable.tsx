@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { DatosTraficoDia } from '@/lib/utils';
+import { SkeletonTable } from '@/components/ui/Skeleton';
 
 interface TrafficTableProps {
   datosTraficoDia: DatosTraficoDia | null;
@@ -30,7 +31,7 @@ export function TrafficTable({ datosTraficoDia, isLoading, error }: TrafficTable
     <div className="bg-white rounded-xl shadow-sm">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-gray-100">
         <h3 className="text-xl font-semibold text-gray-800 mb-2 sm:mb-0">Tráfico por Hora</h3>
-        {datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin && (
+        {(!isLoading && datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin) && (
           <div className="flex flex-wrap items-center gap-2 text-gray-600">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium uppercase">Inicio:</span>
@@ -46,62 +47,8 @@ export function TrafficTable({ datosTraficoDia, isLoading, error }: TrafficTable
       
       {isLoading ? (
         <div className="p-4 space-y-4">
-          {/* Skeleton loader para la tabla de tráfico */}
-          <div className="overflow-x-auto">
-            <table className="w-full border border-gray-200 rounded-lg overflow-hidden table-fixed">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="px-3 py-2 text-left w-24 border-b border-gray-200">
-                    <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
-                  </th>
-                  {[...Array(12)].map((_, i) => (
-                    <th 
-                      key={i} 
-                      className="w-14 px-0 py-2 text-center border-b border-gray-200 border-l border-gray-200"
-                      style={{ width: '3.5rem' }}
-                    >
-                      <div className="h-5 w-10 mx-auto bg-gray-200 rounded animate-pulse"></div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {/* Filas para cada día de la semana */}
-                {[...Array(7)].map((_, rowIndex) => (
-                  <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-3 py-2 text-sm font-medium text-gray-700 border-b border-gray-200">
-                      <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    </td>
-                    {[...Array(12)].map((_, cellIndex) => (
-                      <td 
-                        key={`cell-${rowIndex}-${cellIndex}`} 
-                        className="w-14 border-b border-gray-200 border-l border-gray-200 p-1"
-                        style={{ width: '3.5rem' }}
-                      >
-                        <div className="h-6 w-full bg-gray-200 rounded animate-pulse"></div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gray-100">
-                  <td className="px-3 py-2 border-t border-gray-200 whitespace-nowrap">
-                    <div className="h-5 w-28 bg-gray-200 rounded animate-pulse"></div>
-                  </td>
-                  <td colSpan={6} className="px-2 py-2 text-right border-t border-gray-200">
-                    <div className="h-6 w-16 ml-auto bg-gray-200 rounded animate-pulse"></div>
-                  </td>
-                  <td className="px-3 py-2 border-t border-gray-200 whitespace-nowrap">
-                    <div className="h-5 w-28 bg-gray-200 rounded animate-pulse"></div>
-                  </td>
-                  <td colSpan={5} className="px-2 py-2 text-right border-t border-gray-200">
-                    <div className="h-6 w-16 ml-auto bg-gray-200 rounded animate-pulse"></div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          {/* Usar el componente SkeletonTable para mostrar un esqueleto de tabla durante la carga */}
+          <SkeletonTable rows={7} columns={12} />
           
           {/* Skeleton para la leyenda de colores */}
           <div className="flex flex-wrap gap-2 justify-center p-3 bg-gray-50 rounded-lg">
