@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTiendaNavigation } from '@/app/tienda/layout';
+import { useTiendaNavigation } from '@/hooks/useTiendaNavigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, FileText, Clock, Users, Building, Map, Phone, Mail } from 'lucide-react';
 

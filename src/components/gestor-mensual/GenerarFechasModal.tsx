@@ -356,7 +356,7 @@ export default function GenerarFechasModal({
               <div className="flex justify-center mb-3">
                 <CalendarIcon className="h-10 w-10 text-gray-400" />
               </div>
-              <p className="font-medium">No hay semanas disponibles para "{mesSeleccionado}"</p>
+              <p className="font-medium">No hay semanas disponibles para '{mesSeleccionado}'</p>
               <p className="mt-2 text-sm">
                 Verifique que el mes seleccionado esté correctamente configurado en Airtable.
                 <br />

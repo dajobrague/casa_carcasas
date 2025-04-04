@@ -5,26 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, FileText, Menu, UserCircle, LogOut, Clock } from 'lucide-react';
-import { useState, createContext, useContext, ReactNode } from 'react';
-
-// Definir el contexto de navegación interna
-type ViewType = 'dashboard' | 'editor' | 'gestor-mensual' | 'horarios';
-
-interface TiendaNavigationContextType {
-  currentView: ViewType;
-  setCurrentView: (view: ViewType) => void;
-}
-
-const TiendaNavigationContext = createContext<TiendaNavigationContextType | undefined>(undefined);
-
-// Hook para usar el contexto
-export function useTiendaNavigation() {
-  const context = useContext(TiendaNavigationContext);
-  if (context === undefined) {
-    throw new Error('useTiendaNavigation debe usarse dentro de un TiendaNavigationProvider');
-  }
-  return context;
-}
+import { useState } from 'react';
+import { TiendaNavigationContext, ViewType } from '@/hooks/useTiendaNavigation';
 
 export default function TiendaLayout({
   children,

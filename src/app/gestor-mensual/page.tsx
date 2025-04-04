@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import RouteGuard from '@/components/auth/RouteGuard';
 import { obtenerDatosTienda } from '@/components/gestor-mensual/api';
@@ -8,7 +8,10 @@ import { TiendaData } from '@/components/gestor-mensual/types';
 import MesSelector from '@/components/gestor-mensual/MesSelector';
 import EmpleadosSection from '@/components/gestor-mensual/EmpleadosSection';
 
-export default function GestorMensual() {
+// Indicar a Next.js que esta es una página dinámica
+export const dynamic = 'force-dynamic';
+
+function GestorMensualContent() {
   const { storeRecordId } = useAuth();
   const [mesSeleccionado, setMesSeleccionado] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -77,5 +80,22 @@ export default function GestorMensual() {
         )}
       </div>
     </RouteGuard>
+  );
+}
+
+// Fallback para Suspense
+function GestorMensualFallback() {
+  return (
+    <div className="min-h-screen flex justify-center items-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
+
+export default function GestorMensual() {
+  return (
+    <Suspense fallback={<GestorMensualFallback />}>
+      <GestorMensualContent />
+    </Suspense>
   );
 } 

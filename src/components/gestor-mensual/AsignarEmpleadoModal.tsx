@@ -345,7 +345,7 @@ export default function AsignarEmpleadoModal({
             {searchTerm.includes(' ') && (
               <div className="mt-2 text-xs p-2 bg-blue-50 text-blue-700 rounded-md border border-blue-100">
                 <span className="font-semibold">Modo búsqueda exacta:</span> Al escribir varias palabras, 
-                solo se muestran resultados que contienen exactamente "{searchTerm}" en ese orden.
+                solo se muestran resultados que contienen exactamente '{searchTerm}' en ese orden.
               </div>
             )}
           </div>
@@ -438,4 +438,4 @@ export default function AsignarEmpleadoModal({
       </div>
     </div>
   );
-} 
+}

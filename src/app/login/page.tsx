@@ -6,6 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
 
+// Indicar a Next.js que esta es una página dinámica
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
   const [storeNumber, setStoreNumber] = useState<string>('');
   const [password, setPassword] = useState<string>('');

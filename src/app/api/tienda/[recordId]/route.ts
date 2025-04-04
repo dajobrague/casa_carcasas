@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Airtable from 'airtable';
 
+// Marcar como dinámica explícitamente
+export const dynamic = 'force-dynamic';
+
 // Configurar Airtable
 const BASE_ID = process.env.AIRTABLE_BASE_ID as string;
 const API_KEY = process.env.AIRTABLE_API_KEY as string;
@@ -8,6 +11,12 @@ const TIENDA_TABLE_ID = process.env.AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID as strin
 
 // Inicializar Airtable
 const airtable = new Airtable({ apiKey: API_KEY }).base(BASE_ID);
+
+/**
+ * Lista de campos que son de tipo "single select" en Airtable
+ * Estos campos deben ser tratados como un string directo al actualizar
+ */
+const SINGLE_SELECT_FIELDS = ['PAIS'];
 
 /**
  * Endpoint para obtener datos de la tienda por su ID
@@ -93,6 +102,27 @@ export async function PATCH(
         { error: 'El cuerpo de la solicitud debe contener el objeto fields' },
         { status: 400 }
       );
+    }
+    
+    // Verificar y normalizar campos de tipo single select
+    // Airtable espera un valor directo para estos campos, no un objeto
+    for (const field of SINGLE_SELECT_FIELDS) {
+      if (data.fields[field] !== undefined) {
+        // Si se envía como un objeto con "name", extraer solo el valor
+        if (typeof data.fields[field] === 'object' && data.fields[field]?.name) {
+          data.fields[field] = data.fields[field].name;
+        }
+        
+        // Validar que ahora es un string
+        if (typeof data.fields[field] !== 'string') {
+          return NextResponse.json(
+            { 
+              error: `El campo ${field} debe ser un string válido para el campo single select` 
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
     
     console.log('API - Actualizando tienda con datos:', data.fields);

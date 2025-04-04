@@ -1,0 +1,1687 @@
+{
+  "code": 200,
+  "count": 210,
+  "message": "",
+  "data": [
+    {
+      "codigo_departamento": 1,
+      "nombre_departamento": "1.- FUENCARRAL",
+      "pais_departamento": "España",
+      "horas_aprobadas": 328,
+      "email_departamento": "fuencarraltd@gmail.com",
+      "area_manager": "54364887V"
+    },
+    {
+      "codigo_departamento": 2,
+      "nombre_departamento": "2.- ARENAL",
+      "pais_departamento": "España",
+      "horas_aprobadas": 225,
+      "email_departamento": "arenaltienda@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 3,
+      "nombre_departamento": "3.- GRAN VIA (MADRID)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 327,
+      "email_departamento": "granviatienda@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 4,
+      "nombre_departamento": "4.- PRECIADOS",
+      "pais_departamento": "España",
+      "horas_aprobadas": 413,
+      "email_departamento": "preciadoscarcasas2016@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 6,
+      "nombre_departamento": "6.- H2 OCIO TIENDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 175,
+      "email_departamento": "carcamovilh2ocio@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 8,
+      "nombre_departamento": "8.- GRAN PLAZA TIENDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 362,
+      "email_departamento": "tiendagranplaza2@gmail.com",
+      "area_manager": "54364887V"
+    },
+    {
+      "codigo_departamento": 11,
+      "nombre_departamento": "11.- PLAZA NORTE TIENDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 335,
+      "email_departamento": "carcasasplazanorte@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 12,
+      "nombre_departamento": "12.- LA VAGUADA ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 357,
+      "email_departamento": "carcasasvaguada@gmail.com",
+      "area_manager": "54364887V"
+    },
+    {
+      "codigo_departamento": 15,
+      "nombre_departamento": "15.- NUEVA CONDOMINA MURCIA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 385,
+      "email_departamento": "murciacasacarcasas@gmail.com",
+      "area_manager": "77723788A"
+    },
+    {
+      "codigo_departamento": 17,
+      "nombre_departamento": "17.- PLAZA MAR 2 ALICANTE ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 173,
+      "email_departamento": "plazamarcasacarcasas@gmail.com",
+      "area_manager": "48568773H"
+    },
+    {
+      "codigo_departamento": 19,
+      "nombre_departamento": "19.- MALLORCA PORTO PI",
+      "pais_departamento": "España",
+      "horas_aprobadas": 145,
+      "email_departamento": "pedidosportopicarcamovil@gmail.com",
+      "area_manager": "70904782Z"
+    },
+    {
+      "codigo_departamento": 22,
+      "nombre_departamento": "22.- CC ALJUB (ELCHE)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 209,
+      "email_departamento": "aljubtienda@gmail.com",
+      "area_manager": "48568773H"
+    },
+    {
+      "codigo_departamento": 23,
+      "nombre_departamento": "23.- CC LA VITAL (GANDIA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 168,
+      "email_departamento": "carcamovillavital@gmail.com",
+      "area_manager": "29126798N"
+    },
+    {
+      "codigo_departamento": 24,
+      "nombre_departamento": "24.- SALAMANCA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 189,
+      "email_departamento": "carcasassalamanca@gmail.com",
+      "area_manager": "09202811M"
+    },
+    {
+      "codigo_departamento": 25,
+      "nombre_departamento": "25.- MALLORCA FAN",
+      "pais_departamento": "España",
+      "horas_aprobadas": 520,
+      "email_departamento": "carcasasfanmallorca@gmail.com",
+      "area_manager": "70904782Z"
+    },
+    {
+      "codigo_departamento": 26,
+      "nombre_departamento": "26.- VALENCIA AYUNTAMIENTO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 300,
+      "email_departamento": "valenciacarcasa@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 221,
+      "nombre_departamento": "221.- LOS FRESNOS GIJON",
+      "pais_departamento": "España",
+      "horas_aprobadas": 158,
+      "email_departamento": "gijonlosfresos@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 28,
+      "nombre_departamento": "28.- CC ARTEA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 162,
+      "email_departamento": "roasmovilartea@gmail.com",
+      "area_manager": "14609221N"
+    },
+    {
+      "codigo_departamento": 29,
+      "nombre_departamento": "29.- CC ITAROA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 117,
+      "email_departamento": "roasmovilitaroa@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 31,
+      "nombre_departamento": "31.- CC GRANCASA (ZARAGOZA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 135,
+      "email_departamento": "grancarcasazaragoza@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 32,
+      "nombre_departamento": "32.- LOGROÑO (BERCEO TIENDA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 160,
+      "email_departamento": "pedidosberceotienda@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 33,
+      "nombre_departamento": "33.- PRINCIPE PIO (TIENDA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 165,
+      "email_departamento": "principepiocasacarcasas@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 34,
+      "nombre_departamento": "34.- PARDIÑAS (SANTIAGO CENTRO)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 173,
+      "email_departamento": "generalpardinas2016@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 35,
+      "nombre_departamento": "35.- EL SALER (VALENCIA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 199,
+      "email_departamento": "elsalercarcasas@gmail.com",
+      "area_manager": "29126798N"
+    },
+    {
+      "codigo_departamento": 36,
+      "nombre_departamento": "36.- TOLEDO (C- COMERCIO 39)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 160,
+      "email_departamento": "carcasastoledo@gmail.com",
+      "area_manager": "Y5515258X"
+    },
+    {
+      "codigo_departamento": 37,
+      "nombre_departamento": "37.- LA FIRA  (REUS)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 90,
+      "email_departamento": "carcasasreus@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 38,
+      "nombre_departamento": "38.- GRAN  VIA 2 - (BARCELONA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 200,
+      "email_departamento": "carcasasbarcelona@gmail.com",
+      "area_manager": "45495901S"
+    },
+    {
+      "codigo_departamento": 39,
+      "nombre_departamento": "39.- SANTANDER CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 176,
+      "email_departamento": "roasmovilsantander@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 41,
+      "nombre_departamento": "41.- CC OESTE K5 (MAJADAHONDAS)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 144,
+      "email_departamento": "roasmovilcentrooeste@gmail.com",
+      "area_manager": "54364887V"
+    },
+    {
+      "codigo_departamento": 42,
+      "nombre_departamento": "42.- GOYA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 199,
+      "email_departamento": "tiendagoya@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 43,
+      "nombre_departamento": "43.- GIJON CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 175,
+      "email_departamento": "gijoncentrocarcasas@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 44,
+      "nombre_departamento": "44.- VITORIA CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 157,
+      "email_departamento": "pedidosvitoriacentro@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 45,
+      "nombre_departamento": "45.- CC AS CANCELAS (SANTIAGO)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 175,
+      "email_departamento": "ascancelas2016@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 46,
+      "nombre_departamento": "46.- CC BAHIA SUR  ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 152,
+      "email_departamento": "bahiasursanfernando1@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 47,
+      "nombre_departamento": "47.- CC PLAZA DE LORANCA ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 132,
+      "email_departamento": "lorancastand@gmail.com",
+      "area_manager": "Y5515258X"
+    },
+    {
+      "codigo_departamento": 48,
+      "nombre_departamento": "48.- CC LARIOS ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 178,
+      "email_departamento": "malagacarcasas@gmail.com",
+      "area_manager": "77383603B"
+    },
+    {
+      "codigo_departamento": 49,
+      "nombre_departamento": "49.- CORDOBA (CRUZ CONDE)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 125,
+      "email_departamento": "carcasascordoba@gmail.com",
+      "area_manager": "44370989X"
+    },
+    {
+      "codigo_departamento": 51,
+      "nombre_departamento": "51.- LOGROÑO CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 130,
+      "email_departamento": "pedidoslogronocentro@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 52,
+      "nombre_departamento": "52.- CC LOS ARCOS ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 180,
+      "email_departamento": "carcasassevilla@gmail.com",
+      "area_manager": "28625528G"
+    },
+    {
+      "codigo_departamento": 53,
+      "nombre_departamento": "53.- CC VALLSUR  ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 130,
+      "email_departamento": "carcasasvallsur@gmail.com",
+      "area_manager": "09347036C"
+    },
+    {
+      "codigo_departamento": 54,
+      "nombre_departamento": "54.- CC RUTA DE LA PLATA ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 171,
+      "email_departamento": "carcasasrutaplata@gmail.com",
+      "area_manager": "09202811M"
+    },
+    {
+      "codigo_departamento": 55,
+      "nombre_departamento": "55.- CC SAMBIL OUTLET",
+      "pais_departamento": "España",
+      "horas_aprobadas": 105,
+      "email_departamento": "pedidossambil@gmail.com",
+      "area_manager": "Y5515258X"
+    },
+    {
+      "codigo_departamento": 98,
+      "nombre_departamento": "TARAS",
+      "pais_departamento": "España",
+      "horas_aprobadas": 0,
+      "email_departamento": "",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 57,
+      "nombre_departamento": "57.- SALAMANCA CC EL TORMES",
+      "pais_departamento": "España",
+      "horas_aprobadas": 170,
+      "email_departamento": "carcasastormes@gmail.com",
+      "area_manager": "09202811M"
+    },
+    {
+      "codigo_departamento": 58,
+      "nombre_departamento": "58.- MALAGA CENTRO ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 400,
+      "email_departamento": "58.malagacentro.tienda@gmail.com",
+      "area_manager": "77383603B"
+    },
+    {
+      "codigo_departamento": 59,
+      "nombre_departamento": "59.- CALLE CHAPITELA (PAMPLONA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 103,
+      "email_departamento": "roasmovilchapitela@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 61,
+      "nombre_departamento": "61.- CC MAX CENTER ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 176,
+      "email_departamento": "roasmovilmaxcenter@gmail.com",
+      "area_manager": "14609221N"
+    },
+    {
+      "codigo_departamento": 62,
+      "nombre_departamento": "62.- COLON",
+      "pais_departamento": "España",
+      "horas_aprobadas": 419,
+      "email_departamento": "coloncarcasas@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 63,
+      "nombre_departamento": "63.- TENERIFE  LA VILLA 2",
+      "pais_departamento": "España",
+      "horas_aprobadas": 186,
+      "email_departamento": "carcasastenerife@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 64,
+      "nombre_departamento": "64.- C- FERRAN 51 (BARCELONA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 190,
+      "email_departamento": "ferrancarcasas@gmail.com",
+      "area_manager": "Y6302375K"
+    },
+    {
+      "codigo_departamento": 65,
+      "nombre_departamento": "65.- VIGO CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 194,
+      "email_departamento": "carcasasvigo2017@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 68,
+      "nombre_departamento": "68.- XANADU TIENDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 179,
+      "email_departamento": "xanadustand@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 69,
+      "nombre_departamento": "69.- CC ODEON (FERROL)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 200,
+      "email_departamento": "carcasasferrol2017@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 72,
+      "nombre_departamento": "72.- ESPACIO LEON",
+      "pais_departamento": "España",
+      "horas_aprobadas": 146,
+      "email_departamento": "carcasasespacioleon@gmail.com",
+      "area_manager": "09347036C"
+    },
+    {
+      "codigo_departamento": 73,
+      "nombre_departamento": "73.- CC VALLE REAL ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 135,
+      "email_departamento": "roasmovilvallereal@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 76,
+      "nombre_departamento": "76.- GRANADA C-RECOGIDAS 20 LOCAL 3A",
+      "pais_departamento": "España",
+      "horas_aprobadas": 197,
+      "email_departamento": "carcasasgranada@gmail.com",
+      "area_manager": "77383603B"
+    },
+    {
+      "codigo_departamento": 77,
+      "nombre_departamento": "77.- AIRESUR SEVILLA ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 160,
+      "email_departamento": "sevillaairesur@gmail.com",
+      "area_manager": "28625528G"
+    },
+    {
+      "codigo_departamento": 78,
+      "nombre_departamento": "78.- GRAN VIA (VIGO)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 200,
+      "email_departamento": "carcasasgranviavigo@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 79,
+      "nombre_departamento": "79.- AV. CARLOS III (PAMPLONA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 127,
+      "email_departamento": "roasmovilcarlos3@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 81,
+      "nombre_departamento": "81.- CC ALBACENTER",
+      "pais_departamento": "España",
+      "horas_aprobadas": 156,
+      "email_departamento": "albacenter2013@gmail.com",
+      "area_manager": "29126798N"
+    },
+    {
+      "codigo_departamento": 82,
+      "nombre_departamento": "82.- AÑAZA TENERIFE",
+      "pais_departamento": "España",
+      "horas_aprobadas": 206,
+      "email_departamento": "carcasasanazatenerife@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 83,
+      "nombre_departamento": "83.- PUERTO VENECIA TIENDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 230,
+      "email_departamento": "puertoveneciatienda@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 84,
+      "nombre_departamento": "84.- CIUDAD REAL CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 123,
+      "email_departamento": "carcasasciudadreal@gmail.com",
+      "area_manager": "29126798N"
+    },
+    {
+      "codigo_departamento": 85,
+      "nombre_departamento": "85.- C-URIA  (OVIEDO)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 230,
+      "email_departamento": "tiendaoviedo2015@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 86,
+      "nombre_departamento": "86.- CC JAEN PLAZA (JAEN)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 210,
+      "email_departamento": "86.ccjaenplaza.tienda@gmail.com",
+      "area_manager": "77381165B"
+    },
+    {
+      "codigo_departamento": 224,
+      "nombre_departamento": "224.- CC SIAM MALL",
+      "pais_departamento": "España",
+      "horas_aprobadas": 214,
+      "email_departamento": "carcasassiammall@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 87,
+      "nombre_departamento": "87.- LLEIDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 175,
+      "email_departamento": "lleidatienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 88,
+      "nombre_departamento": "88.-  ZARAGOZA CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 309,
+      "email_departamento": "carcasazaragozacentro@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 225,
+      "nombre_departamento": "225.- PUERTO VENECIA ZARAGOZA STAND",
+      "pais_departamento": "España",
+      "horas_aprobadas": 105,
+      "email_departamento": "puertoveneciastand@gmail.com",
+      "area_manager": "17731624G"
+    },
+    {
+      "codigo_departamento": 89,
+      "nombre_departamento": "89.- MAISONNAVE ALICANTE",
+      "pais_departamento": "España",
+      "horas_aprobadas": 276,
+      "email_departamento": "maisonnavetienda@gmail.com",
+      "area_manager": "48568773H"
+    },
+    {
+      "codigo_departamento": 92,
+      "nombre_departamento": "92.- CC MARINEDA CITY",
+      "pais_departamento": "España",
+      "horas_aprobadas": 200,
+      "email_departamento": "carcasasmarineda2018@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 93,
+      "nombre_departamento": "93.- PLENILUNIO LC 155",
+      "pais_departamento": "España",
+      "horas_aprobadas": 235,
+      "email_departamento": "carcasaspleniluniotienda@gmail.com",
+      "area_manager": "Y5515258X"
+    },
+    {
+      "codigo_departamento": 94,
+      "nombre_departamento": "94.- CC EL FARO (BADAJOZ)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 180,
+      "email_departamento": "carcasasbadajoztiendalcdlc@gmail.com",
+      "area_manager": "09202811M"
+    },
+    {
+      "codigo_departamento": 95,
+      "nombre_departamento": "95.- PARQUE COMERCIAL MENDIBIL",
+      "pais_departamento": "España",
+      "horas_aprobadas": 134,
+      "email_departamento": "roasmovilmendibil@gmail.com",
+      "area_manager": "14609221N"
+    },
+    {
+      "codigo_departamento": 101,
+      "nombre_departamento": "101.- PARQUE COMERCIAL TXINGUDI",
+      "pais_departamento": "España",
+      "horas_aprobadas": 87,
+      "email_departamento": "roasmoviltxingudi1@gmail.com",
+      "area_manager": "14609221N"
+    },
+    {
+      "codigo_departamento": 102,
+      "nombre_departamento": "102.- CC ANNEC BLAU",
+      "pais_departamento": "España",
+      "horas_aprobadas": 130,
+      "email_departamento": "anecblautienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 103,
+      "nombre_departamento": "103.- CC PONTE VELLA (ORENSE)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 120,
+      "email_departamento": "carcasaspontevella@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 104,
+      "nombre_departamento": "104.- CC TORRECARDENAS",
+      "pais_departamento": "España",
+      "horas_aprobadas": 233,
+      "email_departamento": "almeriacarcasas@gmail.com",
+      "area_manager": "77381165B"
+    },
+    {
+      "codigo_departamento": 105,
+      "nombre_departamento": "105.- DIAGONAL MAR",
+      "pais_departamento": "España",
+      "horas_aprobadas": 152,
+      "email_departamento": "105.ccdiagonalmar.tienda@gmail.com",
+      "area_manager": "Y6302375K"
+    },
+    {
+      "codigo_departamento": 106,
+      "nombre_departamento": "106.- CC SALERAS",
+      "pais_departamento": "España",
+      "horas_aprobadas": 149,
+      "email_departamento": "tiendalasalera2013@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 107,
+      "nombre_departamento": "107.- CC MAQUINISTA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 345,
+      "email_departamento": "carcasaslamaquinista@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 109,
+      "nombre_departamento": "109.- BADALONA CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 158,
+      "email_departamento": "badalonacarcasas@gmail.com",
+      "area_manager": "43565884C"
+    },
+    {
+      "codigo_departamento": 111,
+      "nombre_departamento": "111.- CALLE SAN MIGUEL - MALLORCA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 300,
+      "email_departamento": "sanmiguelcarcasas@gmail.com",
+      "area_manager": "70904782Z"
+    },
+    {
+      "codigo_departamento": 112,
+      "nombre_departamento": "112.- CC URBIL",
+      "pais_departamento": "España",
+      "horas_aprobadas": 88,
+      "email_departamento": "roasmovilurbil@gmail.com",
+      "area_manager": "14609221N"
+    },
+    {
+      "codigo_departamento": 113,
+      "nombre_departamento": "113.- GUADALAJARA TIENDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 144,
+      "email_departamento": "guadalajaracarcasas@gmail.com",
+      "area_manager": "54364887V"
+    },
+    {
+      "codigo_departamento": 114,
+      "nombre_departamento": "114.- C-TRIANA (LAS PALMAS G.C)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 163,
+      "email_departamento": "carcasastrianalaspalmas@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 115,
+      "nombre_departamento": "115.- CC MERIDIANO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 302,
+      "email_departamento": "carcasasmeridianotenerife@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 303,
+      "nombre_departamento": "303.- JEREZ CARREFOUR",
+      "pais_departamento": "España",
+      "horas_aprobadas": 82,
+      "email_departamento": "carcasasjerez@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 116,
+      "nombre_departamento": "116.- C-CONDE PEÑALVER",
+      "pais_departamento": "España",
+      "horas_aprobadas": 270,
+      "email_departamento": "tiendapenalver@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 117,
+      "nombre_departamento": "117.- CC LAS ARENAS (LAS PALMAS G.C)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 220,
+      "email_departamento": "carcasaslasarenas@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 118,
+      "nombre_departamento": "118.- SABADEL CENTRO (RAMBLA 18)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 188,
+      "email_departamento": "carcasassabadell@gmail.com",
+      "area_manager": "Y6302375K"
+    },
+    {
+      "codigo_departamento": 401,
+      "nombre_departamento": "401.- T4 - LADO AIRE (AEROPUERTO MADRID)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 246,
+      "email_departamento": "401.aeropuertot4.tienda@gmail.com",
+      "area_manager": "54364887V"
+    },
+    {
+      "codigo_departamento": 119,
+      "nombre_departamento": "119.- HUELVA CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 124,
+      "email_departamento": "carcasashuelvapalacios@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 122,
+      "nombre_departamento": "122.- CC PORTAL DE LA MARINA (ONDARA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 210,
+      "email_departamento": "carcasasportallamarina@gmail.com",
+      "area_manager": "48568773H"
+    },
+    {
+      "codigo_departamento": 126,
+      "nombre_departamento": "126.- CC VITORIA BOULEVARD",
+      "pais_departamento": "España",
+      "horas_aprobadas": 224,
+      "email_departamento": "carcasasboulevardtienda2019@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 121,
+      "nombre_departamento": "121.- CC HOLEA (HUELVA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 160,
+      "email_departamento": "carcasashuelvaholea@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 123,
+      "nombre_departamento": "123.- ESTACION JOAQUIN SOROLLA (Valencia)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 240,
+      "email_departamento": "carcasasjoaquinsorolla@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 124,
+      "nombre_departamento": "124.- PLAYA DE ARO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 207,
+      "email_departamento": "carcasasplayadearo@gmail.com",
+      "area_manager": "43565884C"
+    },
+    {
+      "codigo_departamento": 127,
+      "nombre_departamento": "127.- CASTELLON CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 109,
+      "email_departamento": "carcasascalleenmediocastellon@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 128,
+      "nombre_departamento": "128.- LUGO CENTRO (C-LA REINA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 140,
+      "email_departamento": "carcasaslugocentro@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 129,
+      "nombre_departamento": "129.- CC MOGAN MALL",
+      "pais_departamento": "España",
+      "horas_aprobadas": 235,
+      "email_departamento": "carcasasmoganmall2019@gmail.com",
+      "area_manager": "79084154B"
+    },
+    {
+      "codigo_departamento": 131,
+      "nombre_departamento": "131.- CC EL ROSAL (Ponferrada)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 133,
+      "email_departamento": "carcasasponferrada@gmail.com",
+      "area_manager": "09347036C"
+    },
+    {
+      "codigo_departamento": 132,
+      "nombre_departamento": "132.- CC SANT CUGAT",
+      "pais_departamento": "España",
+      "horas_aprobadas": 169,
+      "email_departamento": "carcasassantcugat@gmail.com",
+      "area_manager": "Y6302375K"
+    },
+    {
+      "codigo_departamento": 133,
+      "nombre_departamento": "133.- CC AS TERMAS (LUGO)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 194,
+      "email_departamento": "carcasastermas@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 134,
+      "nombre_departamento": "134.- GRANOLLERS",
+      "pais_departamento": "España",
+      "horas_aprobadas": 180,
+      "email_departamento": "134.granollers.tienda@gmail.com",
+      "area_manager": "Y6302375K"
+    },
+    {
+      "codigo_departamento": 135,
+      "nombre_departamento": "135.- CC FINSTRELLES ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 162,
+      "email_departamento": "carcasasfinestrelles135@gmail.com",
+      "area_manager": "45495901S"
+    },
+    {
+      "codigo_departamento": 136,
+      "nombre_departamento": "136.- CC ESPACIO MEDITERRANEO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 148,
+      "email_departamento": "carcasascartagena@gmail.com",
+      "area_manager": "77723788A"
+    },
+    {
+      "codigo_departamento": 137,
+      "nombre_departamento": "137.- CC LAGOH PALMAS ALTAS",
+      "pais_departamento": "España",
+      "horas_aprobadas": 249,
+      "email_departamento": "carcasaslagohsevilla@gmail.com",
+      "area_manager": "28625528G"
+    },
+    {
+      "codigo_departamento": 139,
+      "nombre_departamento": "139.- CC BARICENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 125,
+      "email_departamento": "carcasasbaricentro@gmail.com",
+      "area_manager": "Y6302375K"
+    },
+    {
+      "codigo_departamento": 138,
+      "nombre_departamento": "138.- CC BIOSFERA (LANZAROTE)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 190,
+      "email_departamento": "carcasasbiosfera@gmail.com",
+      "area_manager": "79084154B"
+    },
+    {
+      "codigo_departamento": 141,
+      "nombre_departamento": "141.- CALLE SIERPES (SEVILLA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 188,
+      "email_departamento": "carcasassierpes@gmail.com",
+      "area_manager": "28625528G"
+    },
+    {
+      "codigo_departamento": 147,
+      "nombre_departamento": "147.- CC BALLONTI",
+      "pais_departamento": "España",
+      "horas_aprobadas": 114,
+      "email_departamento": "roasmovilballonti@gmail.com",
+      "area_manager": "14609221N"
+    },
+    {
+      "codigo_departamento": 146,
+      "nombre_departamento": "146.- RONDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 152,
+      "email_departamento": "carcasasrondaespinel@gmail.com",
+      "area_manager": "44370989X"
+    },
+    {
+      "codigo_departamento": 142,
+      "nombre_departamento": "142.- CALLE ORENSE",
+      "pais_departamento": "España",
+      "horas_aprobadas": 238,
+      "email_departamento": "carcasaorense12@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 143,
+      "nombre_departamento": "143.- MERIDA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 107,
+      "email_departamento": "tiendamerida20@gmail.com",
+      "area_manager": "09202811M"
+    },
+    {
+      "codigo_departamento": 144,
+      "nombre_departamento": "144.- CC GAVIA  T. (NUEVA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 182,
+      "email_departamento": "carcasaslagavialcdlc@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 145,
+      "nombre_departamento": "145.- CC EL FERIAL (PARLA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 105,
+      "email_departamento": "tiendaparlaferial@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 601,
+      "nombre_departamento": "601.- FERNANDEZ TOMAS (OPORTO CENTRO)",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 137,
+      "email_departamento": "tiendafernandestomas@gmail.com",
+      "area_manager": "12623042"
+    },
+    {
+      "codigo_departamento": 602,
+      "nombre_departamento": "602.- AQUA PORTIMAO ",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 170,
+      "email_departamento": "tiendaaquaportimao@gmail.com",
+      "area_manager": "R333J2617"
+    },
+    {
+      "codigo_departamento": 151,
+      "nombre_departamento": "151.- BENIDORM - C-MARTINEZ ALEJO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 136,
+      "email_departamento": "tiendabenidormcarcasas@gmail.com",
+      "area_manager": "48568773H"
+    },
+    {
+      "codigo_departamento": 603,
+      "nombre_departamento": "603.- CC PARQUE NASCENTE (Rio tinto)",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 197,
+      "email_departamento": "tiendaparquenascente1@gmail.com",
+      "area_manager": "12623042"
+    },
+    {
+      "codigo_departamento": 604,
+      "nombre_departamento": "604.- CC UBBO  (LISBOA)",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 223,
+      "email_departamento": "tiendaubbo@gmail.com",
+      "area_manager": "32264992"
+    },
+    {
+      "codigo_departamento": 605,
+      "nombre_departamento": "605.- CC ALMA SHOPPING",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 165,
+      "email_departamento": "tiendaalmashopping@gmail.com",
+      "area_manager": "14249816"
+    },
+    {
+      "codigo_departamento": 606,
+      "nombre_departamento": "606.- NOSSO SHOPPING (VILA REAL)",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 280,
+      "email_departamento": "tiendanossoshopping@gmail.com",
+      "area_manager": "12811054"
+    },
+    {
+      "codigo_departamento": 149,
+      "nombre_departamento": "149.- CC LAS ROTONDAS (FUERTEVENTURA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 286,
+      "email_departamento": "carcasasrotondas@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 152,
+      "nombre_departamento": "152.- ZAMORA (C-Santa Clara)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 121,
+      "email_departamento": "carcasaszamora@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 154,
+      "nombre_departamento": "154.- SITGES",
+      "pais_departamento": "España",
+      "horas_aprobadas": 100,
+      "email_departamento": "154.sitgescentro.tienda@gmail.com",
+      "area_manager": "45495901S"
+    },
+    {
+      "codigo_departamento": 148,
+      "nombre_departamento": "148.- CC ISLAZUL ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 160,
+      "email_departamento": "carcasasislazul@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 157,
+      "nombre_departamento": "157.- TORREMOLINOS (C-San Miguel)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 133,
+      "email_departamento": "carcasastorremolinos@gmail.com",
+      "area_manager": "77383603B"
+    },
+    {
+      "codigo_departamento": 158,
+      "nombre_departamento": "158.- CC NERVIÓN",
+      "pais_departamento": "España",
+      "horas_aprobadas": 220,
+      "email_departamento": "carcasasnervion@gmail.com",
+      "area_manager": "28625528G"
+    },
+    {
+      "codigo_departamento": 155,
+      "nombre_departamento": "155.- VICH",
+      "pais_departamento": "España",
+      "horas_aprobadas": 87,
+      "email_departamento": "carcasasviccentro155@gmail.com",
+      "area_manager": "45495901S"
+    },
+    {
+      "codigo_departamento": 156,
+      "nombre_departamento": "156.- CC TRES AGUAS (Tienda)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 126,
+      "email_departamento": "carcasastresaguas2013@gmail.com",
+      "area_manager": "Y5515258X"
+    },
+    {
+      "codigo_departamento": 161,
+      "nombre_departamento": "161.- CC LAS TERRAZAS (Las Palmas)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 184,
+      "email_departamento": "carcasaslasterrazas@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 162,
+      "nombre_departamento": "162.- CC MATARO PARC",
+      "pais_departamento": "España",
+      "horas_aprobadas": 149,
+      "email_departamento": "matarocarcasas@gmail.com",
+      "area_manager": "43565884C"
+    },
+    {
+      "codigo_departamento": 163,
+      "nombre_departamento": "163.- TERRASA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 220,
+      "email_departamento": "terrassacarcasas@gmail.com",
+      "area_manager": "Y6302375K"
+    },
+    {
+      "codigo_departamento": 164,
+      "nombre_departamento": "164.- PLAZA SAN AGUSTIN (VALENCIA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 185,
+      "email_departamento": "sanagustintienda@gmail.com",
+      "area_manager": "52719246A"
+    },
+    {
+      "codigo_departamento": 165,
+      "nombre_departamento": "165.- REUS CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 145,
+      "email_departamento": "carcasasreuscentro@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 166,
+      "nombre_departamento": "166.- CC LA VERONICA (ANTEQUERA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 108,
+      "email_departamento": "carcasascclaveronica@gmail.com",
+      "area_manager": "44370989X"
+    },
+    {
+      "codigo_departamento": 167,
+      "nombre_departamento": "167.- CC EL PASEO - PUERTO SANTAMARIA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 135,
+      "email_departamento": "carcasaspuertosantamaria@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 168,
+      "nombre_departamento": "168.- CC LA SIERRA (CORDOBA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 112,
+      "email_departamento": "168.Sierratienda@gmail.com",
+      "area_manager": "44370989X"
+    },
+    {
+      "codigo_departamento": 607,
+      "nombre_departamento": "607.- BRAGA",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 135,
+      "email_departamento": "tiendabraga@gmail.com",
+      "area_manager": "12811054"
+    },
+    {
+      "codigo_departamento": 169,
+      "nombre_departamento": "169.- CC NEVADA SHOPPING",
+      "pais_departamento": "España",
+      "horas_aprobadas": 429,
+      "email_departamento": "nevadacarcasas@gmail.com",
+      "area_manager": "77383603B"
+    },
+    {
+      "codigo_departamento": 171,
+      "nombre_departamento": "171.- CC DOS MARES",
+      "pais_departamento": "España",
+      "horas_aprobadas": 138,
+      "email_departamento": "tiendadosmares@gmail.com",
+      "area_manager": "77723788A"
+    },
+    {
+      "codigo_departamento": 608,
+      "nombre_departamento": "608.- CC MAIA SHOPPING",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 128,
+      "email_departamento": "tiendamaiashopping@gmail.com",
+      "area_manager": "12623042"
+    },
+    {
+      "codigo_departamento": 609,
+      "nombre_departamento": "609.- FORUM VISEU",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 140,
+      "email_departamento": "tiendaforumviseu@gmail.com",
+      "area_manager": "14249816"
+    },
+    {
+      "codigo_departamento": 153,
+      "nombre_departamento": "153.- CALLE CASTILLO (Tenerife)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 213,
+      "email_departamento": "carcasascallecastillo@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 611,
+      "nombre_departamento": "611.- ALEGRO SINTRA",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 244,
+      "email_departamento": "tiendasintra@gmail.com",
+      "area_manager": "11472653"
+    },
+    {
+      "codigo_departamento": 612,
+      "nombre_departamento": "612.- CC ALGARVE",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 137,
+      "email_departamento": "tiendaalgarveshopping@gmail.com",
+      "area_manager": "R333J2617"
+    },
+    {
+      "codigo_departamento": 172,
+      "nombre_departamento": "172.- THE STYLE OUTLET GETAFE",
+      "pais_departamento": "España",
+      "horas_aprobadas": 175,
+      "email_departamento": "carcasasnassica@gmail.com",
+      "area_manager": "07256993X"
+    },
+    {
+      "codigo_departamento": 173,
+      "nombre_departamento": "173.- CC THE STYLE OUTLET A CORUÑA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 96,
+      "email_departamento": "carcasasoutlet@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 174,
+      "nombre_departamento": "174.- PALENCIA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 82,
+      "email_departamento": "TIENDAPALENCIA20@GMAIL.COM",
+      "area_manager": "09347036C"
+    },
+    {
+      "codigo_departamento": 175,
+      "nombre_departamento": "175.- UBEDA CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 83,
+      "email_departamento": "ubedacarcasas@gmail.com",
+      "area_manager": "77381165B"
+    },
+    {
+      "codigo_departamento": 176,
+      "nombre_departamento": "176.- CC LOS ALFARES (TALAVERA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 149,
+      "email_departamento": "carcasastalavera@gmail.com",
+      "area_manager": "Y5515258X"
+    },
+    {
+      "codigo_departamento": 177,
+      "nombre_departamento": "177.- JAEN CALLE",
+      "pais_departamento": "España",
+      "horas_aprobadas": 149,
+      "email_departamento": "jaencarcasas@gmail.com",
+      "area_manager": "77381165B"
+    },
+    {
+      "codigo_departamento": 178,
+      "nombre_departamento": "178.- CC PARQUE SUR",
+      "pais_departamento": "España",
+      "horas_aprobadas": 301,
+      "email_departamento": "parquesurcarcasas@gmail.com",
+      "area_manager": "54364887V"
+    },
+    {
+      "codigo_departamento": 179,
+      "nombre_departamento": "179.- RINCON DE LA VICTORIA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 95,
+      "email_departamento": "carcasasrincon@gmail.com",
+      "area_manager": "77381165B"
+    },
+    {
+      "codigo_departamento": 181,
+      "nombre_departamento": "181.- ALBACETE CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 185,
+      "email_departamento": "albacetecallemayor@gmail.com",
+      "area_manager": "29126798N"
+    },
+    {
+      "codigo_departamento": 182,
+      "nombre_departamento": "182.- PARQUE CEUTA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 125,
+      "email_departamento": "182.parqueceuta.tiendaa@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 183,
+      "nombre_departamento": "183.- CC ATLANTICO FUERTEVENTURA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 104,
+      "email_departamento": "carcasasatlantico@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 184,
+      "nombre_departamento": "184.- PALACIO DE HIELO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 165,
+      "email_departamento": "palaciodehielocarcasas@gmail.com",
+      "area_manager": "Y5515258X"
+    },
+    {
+      "codigo_departamento": 185,
+      "nombre_departamento": "185.- CC NUEVO CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 191,
+      "email_departamento": "tiendanuevocentro2013@gmail.com",
+      "area_manager": "29126798N"
+    },
+    {
+      "codigo_departamento": 186,
+      "nombre_departamento": "186.- CC PIRAMIDES",
+      "pais_departamento": "España",
+      "horas_aprobadas": 166,
+      "email_departamento": "carcasaspiramides@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 187,
+      "nombre_departamento": "187.- CC VARADERO SHOPPING ",
+      "pais_departamento": "España",
+      "horas_aprobadas": 126,
+      "email_departamento": "carcasasmeloneras@gmail.com",
+      "area_manager": "79084154B"
+    },
+    {
+      "codigo_departamento": 188,
+      "nombre_departamento": "188.- ALGECIRAS CENTRO (C-REGINO MARTINEZ)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 100,
+      "email_departamento": "carcasasalgeciras@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 189,
+      "nombre_departamento": "189.- AVILÉS (C- DE LA CAMARA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 102,
+      "email_departamento": "carcasasaviles@gmail.com",
+      "area_manager": "53757274H"
+    },
+    {
+      "codigo_departamento": 192,
+      "nombre_departamento": "192.- CALLE GONDOMAR (CORDOBA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 141,
+      "email_departamento": "carcasasgondomar@gmail.com",
+      "area_manager": "44370989X"
+    },
+    {
+      "codigo_departamento": 194,
+      "nombre_departamento": "194.- PASEO DE ALMERIA (ALMERIA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 155,
+      "email_departamento": "almeriacentro2020@gmail.com",
+      "area_manager": "77381165B"
+    },
+    {
+      "codigo_departamento": 198,
+      "nombre_departamento": "198.- PONTEVEDRA (Benito Corbal 16)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 195,
+      "email_departamento": "carcasaspontevedra@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 235,
+      "nombre_departamento": "235.- ESPAI GIRONES",
+      "pais_departamento": "España",
+      "horas_aprobadas": 155,
+      "email_departamento": "carcasasespaigirones@gmail.com",
+      "area_manager": "43565884C"
+    },
+    {
+      "codigo_departamento": 191,
+      "nombre_departamento": "191.- JEREZ - CALLE LARGA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 100,
+      "email_departamento": "carcasasjerezcallelarga@gmail.com",
+      "area_manager": "75814449D"
+    },
+    {
+      "codigo_departamento": 196,
+      "nombre_departamento": "196.- CC ATLANTICO VECINDARIO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 199,
+      "email_departamento": "Carcasasatlanticovecindario@gmail.com",
+      "area_manager": "54060356Y"
+    },
+    {
+      "codigo_departamento": 236,
+      "nombre_departamento": "236.- CALLE REAL (A CORUÑA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 105,
+      "email_departamento": "carcasascallereal@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 193,
+      "nombre_departamento": "193.- CALLE PASEO 40 - ORENSE CENTRO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 140,
+      "email_departamento": "carcasasourensepaseo@gmail.com",
+      "area_manager": "53115677Y"
+    },
+    {
+      "codigo_departamento": 197,
+      "nombre_departamento": "197.- GRAN VIA (MURCIA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 222,
+      "email_departamento": "tiendamurciacentro@gmail.com",
+      "area_manager": "77723788A"
+    },
+    {
+      "codigo_departamento": 199,
+      "nombre_departamento": "199.- CALLE SOL (PLASENCIA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 71,
+      "email_departamento": "199.plasencia.tienda@gmail.com",
+      "area_manager": "09202811M"
+    },
+    {
+      "codigo_departamento": 237,
+      "nombre_departamento": "237.- CC N4 ECIJA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 100,
+      "email_departamento": "carcasasecija@gmail.com",
+      "area_manager": "44370989X"
+    },
+    {
+      "codigo_departamento": 238,
+      "nombre_departamento": "238.- AEROPUERTO EL PRAT (BARCELONA)",
+      "pais_departamento": "España",
+      "horas_aprobadas": 480,
+      "email_departamento": "carcasaselprat@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 239,
+      "nombre_departamento": "239.- CALLE PELAYO",
+      "pais_departamento": "España",
+      "horas_aprobadas": 279,
+      "email_departamento": "carcasaspelayo@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 614,
+      "nombre_departamento": "614.- CC 8ª AVENIDA",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 142,
+      "email_departamento": "tienda8avenida@gmail.com",
+      "area_manager": "12623042"
+    },
+    {
+      "codigo_departamento": 613,
+      "nombre_departamento": "613.- NOVA ARCADA",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 163,
+      "email_departamento": "tiendanovaarcada@gmail.com",
+      "area_manager": "12811054"
+    },
+    {
+      "codigo_departamento": 615,
+      "nombre_departamento": "615.- CC VASCO DA GAMA",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 281,
+      "email_departamento": "tiendavascodagama@gmail.com",
+      "area_manager": "32264992"
+    },
+    {
+      "codigo_departamento": 616,
+      "nombre_departamento": "616.- CC RIOSUL SHOPPING",
+      "pais_departamento": "Portugal",
+      "horas_aprobadas": 141,
+      "email_departamento": "tiendariosul@gmail.com",
+      "area_manager": "R333J2617"
+    },
+    {
+      "codigo_departamento": 291,
+      "nombre_departamento": "291.- CC GARBERA",
+      "pais_departamento": "España",
+      "horas_aprobadas": 215,
+      "email_departamento": "291.garbera.tienda@gmail.com",
+      "area_manager": "14609221N"
+    },
+    {
+      "codigo_departamento": 375,
+      "nombre_departamento": "375.- CC HABANERAS STAND",
+      "pais_departamento": "España",
+      "horas_aprobadas": 0,
+      "email_departamento": "375.standhabaneras.tienda@gmail.com",
+      "area_manager": "77723788A"
+    },
+    {
+      "codigo_departamento": 4202,
+      "nombre_departamento": "4202.- MALL PLAZA BELLAVISTA",
+      "pais_departamento": "Peru",
+      "horas_aprobadas": 0,
+      "email_departamento": "4202.plazabellavista.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 4203,
+      "nombre_departamento": "4203.- MALL PLAZA AREQUIPA",
+      "pais_departamento": "Peru",
+      "horas_aprobadas": 0,
+      "email_departamento": "4203.plazaarequipa.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 4204,
+      "nombre_departamento": "4204.- OPEN PLAZA ANGAMOS",
+      "pais_departamento": "Peru",
+      "horas_aprobadas": 0,
+      "email_departamento": "4204.openangamos.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 4205,
+      "nombre_departamento": "4205.- OPEN PLAZA ATOCONGO",
+      "pais_departamento": "Peru",
+      "horas_aprobadas": 0,
+      "email_departamento": "4205.openatocongo.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 4206,
+      "nombre_departamento": "4206.- CENCO LIMA SUR",
+      "pais_departamento": "Peru",
+      "horas_aprobadas": 0,
+      "email_departamento": "4206.cencolimasur.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 4207,
+      "nombre_departamento": "4207.- CENCO AREQUIPA",
+      "pais_departamento": "Peru",
+      "horas_aprobadas": 0,
+      "email_departamento": "4207.cencoarequipa.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 2085,
+      "nombre_departamento": "2085.- Punto Sur",
+      "pais_departamento": "Mexico",
+      "horas_aprobadas": 0,
+      "email_departamento": "2085.puntosurLCDLC@gmail.com",
+      "area_manager": "JIAS861010"
+    },
+    {
+      "codigo_departamento": 4053,
+      "nombre_departamento": "4053.- ESPACIO URBANO MELIPILLA",
+      "pais_departamento": "Chile",
+      "horas_aprobadas": 0,
+      "email_departamento": "4053.espaciomelipilla.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 4055,
+      "nombre_departamento": "4055.- BOULEVARD MARINA ARAUCO",
+      "pais_departamento": "Chile",
+      "horas_aprobadas": 0,
+      "email_departamento": "4055.boulevardmarina.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 4056,
+      "nombre_departamento": "4056.- MALL DEL CENTRO CONCEPCION",
+      "pais_departamento": "Chile",
+      "horas_aprobadas": 0,
+      "email_departamento": "4056.malldelcentro.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 2625,
+      "nombre_departamento": "2625.- Stand Brno CC Galerie Vankovka",
+      "pais_departamento": "Republica Checa",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene2625@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 2628,
+      "nombre_departamento": "2628.- OSTRAVA AVION",
+      "pais_departamento": "Republica Checa",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene2628@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1721,
+      "nombre_departamento": "1721.- BARLAD VALUE CENTER",
+      "pais_departamento": "Rumania",
+      "horas_aprobadas": 110,
+      "email_departamento": "notiene1721@email.com",
+      "area_manager": "ZC759018"
+    },
+    {
+      "codigo_departamento": 1204,
+      "nombre_departamento": "1204.- PONTAULT COMBAULT",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1204@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1212,
+      "nombre_departamento": "1212.- STAND LES ULIS",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1212@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1208,
+      "nombre_departamento": "1208.- VALENCIENNES",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1208@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1206,
+      "nombre_departamento": "1206.- METZ MUSE",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1206@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1162,
+      "nombre_departamento": "1162.- ESPACE ANJOU",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1162@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1214,
+      "nombre_departamento": "1214.- AMIENS CENTRE VILLE",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1214@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1207,
+      "nombre_departamento": "1207.- LA DEFENSE CC LES QUATRE TEMPS",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1207@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1215,
+      "nombre_departamento": "1215.- CAEN MONDEVILLE",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1215@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1216,
+      "nombre_departamento": "1216.- BORDEAUX ST CATHERINE",
+      "pais_departamento": "Francia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1216@email.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 3518,
+      "nombre_departamento": "3518.- FALABELLA COLINA",
+      "pais_departamento": "Colombia",
+      "horas_aprobadas": 0,
+      "email_departamento": "3518.falabellacolina.tienda@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 2087,
+      "nombre_departamento": "2087.- Valquirico",
+      "pais_departamento": "Mexico",
+      "horas_aprobadas": 0,
+      "email_departamento": "2087.valquiricoLCDLC@gmail.com",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 3299,
+      "nombre_departamento": "3299.- TURQUÍA WAREHOUSE",
+      "pais_departamento": "España",
+      "horas_aprobadas": 0,
+      "email_departamento": "3299@lacasadelascarcasas.es",
+      "area_manager": null
+    },
+    {
+      "codigo_departamento": 1434,
+      "nombre_departamento": "1434.- Factory Ursus Varsovia",
+      "pais_departamento": "Polonia",
+      "horas_aprobadas": 0,
+      "email_departamento": "notiene1434@gmail.com",
+      "area_manager": null
+    }
+  ]
+}

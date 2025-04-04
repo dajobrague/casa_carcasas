@@ -408,7 +408,7 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
           </p>
           <p className="text-sm text-gray-700 flex items-start gap-2">
             <span className="text-blue-500">4.</span>
-            Haz clic en "Guardar Cambios" para actualizar el horario en Airtable.
+            Haz clic en 'Guardar Cambios' para actualizar el horario en Airtable.
           </p>
         </div>
       </div>
