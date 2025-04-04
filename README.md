@@ -30,16 +30,16 @@ Crear un archivo `.env.local` en la raíz del proyecto con las siguientes variab
 
 ```env
 # Airtable Configuration
-AIRTABLE_API_KEY=patFKh76g2DNkVk36.8f69188009d491d86e0ba54081887c274e21eb540a5f0cc5c4c8a7ed72332dde
-AIRTABLE_BASE_ID=appxCzcdyajOiece8
-AIRTABLE_SEMANAS_LABORALES_TABLE_ID=tblY4azExiLi7dbcw
-AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID=tblpHRqsBrADEkeUL
-AIRTABLE_ACTIVIDAD_DIARIA_TABLE_ID=tblbkzixVwxZ8oVqb
-AIRTABLE_DIAS_LABORALES_TABLE_ID=tblY4azExiLi7dbcw
+AIRTABLE_API_KEY=your_airtable_api_key_here
+AIRTABLE_BASE_ID=your_airtable_base_id_here
+AIRTABLE_SEMANAS_LABORALES_TABLE_ID=your_semanas_laborales_table_id
+AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID=your_tienda_supervisor_table_id
+AIRTABLE_ACTIVIDAD_DIARIA_TABLE_ID=your_actividad_diaria_table_id
+AIRTABLE_DIAS_LABORALES_TABLE_ID=your_dias_laborales_table_id
 
 # Traffic API Configuration
-TRAFICO_API_TOKEN=patFKh76g2DNkVk36.8f69188009d491d86e0ba54081887c274e21eb540a5f0cc5c4c8a7ed72332dde
-TRAFICO_API_BASE_URL=https://api.airtable.com/v0/appxCzcdyajOiece8/tblY4azExiLi7dbcw
+TRAFICO_API_TOKEN=your_trafico_api_token_here
+TRAFICO_API_BASE_URL=https://api.airtable.com/v0/your_base_id/your_table_id
 
 # Application URL
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
@@ -133,7 +133,6 @@ Maneja todas las operaciones relacionadas con Airtable.
 
 ### Tablas Principales
 1. **Semanas Laborales**
-   - ID: `tblY4azExiLi7dbcw`
    - Campos principales:
      - Name
      - Fecha de Inicio
@@ -141,21 +140,18 @@ Maneja todas las operaciones relacionadas con Airtable.
      - Year
 
 2. **Tienda y Supervisor**
-   - ID: `tblpHRqsBrADEkeUL`
    - Campos principales:
      - Name
      - Supervisor
      - Tienda
 
 3. **Actividad Diaria**
-   - ID: `tblbkzixVwxZ8oVqb`
    - Campos principales:
      - record_Id (from Tienda y Supervisor)
      - recordId (from Fecha)
      - Actividades
 
 4. **Días Laborales**
-   - ID: `tblY4azExiLi7dbcw`
    - Campos principales:
      - Name
      - Semanas Laborales
