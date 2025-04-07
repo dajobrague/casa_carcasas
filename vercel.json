@@ -1,38 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/login",
-      "dest": "/login",
-      "caseSensitive": true
-    },
-    {
-      "src": "/editor",
-      "dest": "/editor",
-      "caseSensitive": true
-    },
-    {
-      "src": "/tienda-horarios",
-      "dest": "/tienda-horarios",
-      "caseSensitive": true
-    },
-    {
-      "src": "/gestor-mensual",
-      "dest": "/gestor-mensual",
-      "caseSensitive": true
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_DISABLE_STATIC_GENERATION": "true"
+    "NODE_ENV": "production"
   }
 } 

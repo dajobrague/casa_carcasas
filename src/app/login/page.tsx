@@ -1,12 +1,25 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+// Indicar a Next.js que esta es una página dinámica
+export const dynamic = 'force-dynamic';
+
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
 
-export default function LoginPage() {
+// Componente para cargar mientras se resuelve el Suspense
+function LoadingLogin() {
+  return (
+    <div className="min-h-screen flex justify-center items-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
+
+// Componente interno que usa useSearchParams
+function LoginContent() {
   const [storeNumber, setStoreNumber] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -167,4 +180,13 @@ export default function LoginPage() {
       </div>
     </div>
   );
-} 
+}
+
+// Componente principal que implementa Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingLogin />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
