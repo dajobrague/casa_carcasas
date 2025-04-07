@@ -4,9 +4,6 @@ import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
-// Indicar a Next.js que esta es una página dinámica
-export const dynamic = 'force-dynamic';
-
 // Componente que utiliza useSearchParams
 function HomeContent() {
   const { isLoggedIn, loading } = useAuth();
