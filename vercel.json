@@ -1,10 +1,38 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "regions": ["cdg1"],
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/login",
+      "dest": "/login",
+      "caseSensitive": true
+    },
+    {
+      "src": "/editor",
+      "dest": "/editor",
+      "caseSensitive": true
+    },
+    {
+      "src": "/tienda-horarios",
+      "dest": "/tienda-horarios",
+      "caseSensitive": true
+    },
+    {
+      "src": "/gestor-mensual",
+      "dest": "/gestor-mensual",
+      "caseSensitive": true
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
   "env": {
-    "NEXT_PUBLIC_BASE_URL": "https://casa-carcasas.vercel.app"
+    "NEXT_PUBLIC_DISABLE_STATIC_GENERATION": "true"
   }
 } 

@@ -1,0 +1,11 @@
+# Excluir scripts de prueba
+scripts/
+# Excluir archivos de configuración de desarrollo
+.eslintrc*
+.prettierrc*
+# Excluir directorio de tests
+__tests__/
+# No incluir logs
+*.log
+# Archivos temporales
+*.tmp 

@@ -19,6 +19,27 @@ const nextConfig = {
   compiler: {
     emotion: true
   },
+
+  // Excluir páginas específicas de la generación estática
+  // Estas páginas usan useSearchParams() que necesita un límite de suspense
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  
+  // Configuración para páginas específicas
+  onDemandEntries: {
+    // Período en ms para mantener en memoria páginas no accedidas
+    maxInactiveAge: 25 * 1000,
+    // Número de páginas a mantener en memoria
+    pagesBufferLength: 4,
+  },
+  
+  // Esto es específicamente para Vercel y evitar la generación estática
+  env: {
+    VERCEL_FORCE_NO_BUILD_CACHE: 'true',
+  },
+  
+  // Configuraciones para páginas específicas
+  unstable_runtimeJS: true,
+  trailingSlash: false,
 };
 
 module.exports = nextConfig; 
