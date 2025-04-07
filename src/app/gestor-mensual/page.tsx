@@ -42,41 +42,39 @@ function GestorMensualContent() {
     fetchTiendaData();
   }, [storeRecordId]);
 
-  // Renderizar componente con protección de ruta
+  // Renderizar componente
   return (
-    <RouteGuard>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Gestor Mensual</h1>
-        
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
-            <p>{error}</p>
-          </div>
-        )}
-        
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : (
-          <>
-            <MesSelector 
-              tiendaId={storeRecordId || ''}
-              onSelectMes={setMesSeleccionado}
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Gestor Mensual</h1>
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-md mb-6">
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      ) : (
+        <>
+          <MesSelector 
+            tiendaId={storeRecordId || ''}
+            onSelectMes={setMesSeleccionado}
+            mesSeleccionado={mesSeleccionado}
+          />
+          
+          {mesSeleccionado && (
+            <EmpleadosSection
+              tiendaId={storeRecordId}
               mesSeleccionado={mesSeleccionado}
+              tiendaData={tiendaData}
             />
-            
-            {mesSeleccionado && (
-              <EmpleadosSection
-                tiendaId={storeRecordId}
-                mesSeleccionado={mesSeleccionado}
-                tiendaData={tiendaData}
-              />
-            )}
-          </>
-        )}
-      </div>
-    </RouteGuard>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -92,7 +90,9 @@ function GestorMensualFallback() {
 export default function GestorMensual() {
   return (
     <Suspense fallback={<GestorMensualFallback />}>
-      <GestorMensualContent />
+      <RouteGuard>
+        <GestorMensualContent />
+      </RouteGuard>
     </Suspense>
   );
 } 

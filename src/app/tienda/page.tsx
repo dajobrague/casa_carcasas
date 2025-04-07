@@ -3,10 +3,10 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTiendaNavigation } from '@/hooks/useTiendaNavigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, FileText, Clock, Users, Building, Map, Phone, Mail } from 'lucide-react';
 import { ScheduleProvider } from '@/context/ScheduleContext';
 import dynamic from 'next/dynamic';
+import RouteGuard from '@/components/auth/RouteGuard';
 
 // Componente de carga
 function LoadingSpinner() {
@@ -34,7 +34,7 @@ const HorariosContent = dynamic(() => import('@/components/tienda/HorariosConten
   loading: () => <LoadingSpinner />
 });
 
-// Componente principal envuelto en Suspense
+// Componente principal que requiere autenticación
 function TiendaContent() {
   const { storeRecordId } = useAuth();
   const { currentView } = useTiendaNavigation();
@@ -64,7 +64,9 @@ function TiendaContent() {
 export default function TiendaPage() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <TiendaContent />
+      <RouteGuard>
+        <TiendaContent />
+      </RouteGuard>
     </Suspense>
   );
 } 
