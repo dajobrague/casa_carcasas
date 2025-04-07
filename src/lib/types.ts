@@ -91,4 +91,14 @@ export interface ActividadDiariaRecord {
     [key: string]: any;
   };
   createdTime?: string;
+}
+
+/**
+ * Interfaz para respuestas estándar de la API
+ */
+export interface ApiResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
+  error?: any;
 } 

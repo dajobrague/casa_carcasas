@@ -26,6 +26,36 @@ export interface EmpleadoRecord {
   };
 }
 
+export interface EmpleadoCompleto {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  codigo: string;
+  tipoJornada: string;
+  horasContrato: number;
+  status: string;
+  tiendaId?: string;
+  tiendaNombre?: string;
+}
+
+export interface EmpleadoPendiente {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  fechaSolicitud: string;
+  status: string;
+}
+
+export interface EmpleadoAnclaje {
+  id: string;
+  nombre: string;
+  horario: {
+    inicio: string;
+    fin: string;
+  };
+  dias: string[];
+}
+
 export interface VacanteRecord {
   id: string;
   fields: {

@@ -1,6 +1,22 @@
 'use client';
 
 import { TiendaData, EmpleadoRecord, VacanteRecord, SemanaLaboralRecord, ActividadSemanalRecord, STATUS_EMPLEADO } from './types';
+import { ESTADO_EMPLEADO } from '@/lib/constants';
+import { ApiResponse } from '@/lib/types';
+import { EmpleadoAnclaje, EmpleadoCompleto, EmpleadoPendiente } from './types';
+
+/**
+ * Obtiene la URL base para las peticiones API
+ * Funciona tanto en cliente como en servidor
+ */
+function getBaseUrl() {
+  // En el servidor, usamos la URL absoluta
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  }
+  // En el cliente, usamos la URL relativa
+  return '';
+}
 
 // Función para obtener datos de la tienda
 export async function obtenerDatosTienda(storeId: string): Promise<TiendaData> {
@@ -27,68 +43,50 @@ export async function obtenerDatosTienda(storeId: string): Promise<TiendaData> {
 }
 
 /**
- * Función para obtener empleados de una tienda específica
- * @param storeId ID de la tienda
- * @param status Status del empleado (opcional, si es null se obtienen todos los empleados)
- * @returns Array de empleados
+ * Obtiene todos los empleados activos de una tienda o de todas las tiendas
+ * @param storeId ID de la tienda o "todas" para obtener de todas las tiendas
+ * @returns Lista de empleados
  */
-export async function obtenerEmpleados(storeId: string, status?: string | null): Promise<EmpleadoRecord[]> {
-  // Utilizar URL relativa cuando se ejecuta en el navegador
+export async function obtenerEmpleados(
+  storeId: string = 'todas',
+  status: string = STATUS_EMPLEADO.ACTIVO,
+  from: string = ''
+): Promise<EmpleadoCompleto[]> {
   try {
-    console.log(`API Cliente: Obteniendo empleados para tienda ${storeId || '[todas]'}${status ? `, status: ${status}` : ', todos los status'}`);
+    console.log(`API Cliente: Obteniendo empleados para tienda [${storeId}], status: ${status}`);
     
-    // Construir los parámetros de la URL
-    let url = `/api/airtable?action=obtenerEmpleadosTienda`;
+    // Construir URL dependiendo de los parámetros
+    const baseUrl = getBaseUrl();
+    let url = `${baseUrl}/api/airtable?action=obtenerEmpleadosTienda`;
     
-    // Solo agregar storeId si está definido y no está vacío
-    if (storeId && storeId.trim() !== '') {
+    // Agregar parámetros opcionales
+    if (storeId !== 'todas') {
       url += `&storeId=${encodeURIComponent(storeId)}`;
     }
     
-    // Agregar status si está definido
-    if (status !== null && status !== undefined) {
+    if (status) {
       url += `&status=${encodeURIComponent(status)}`;
     }
     
-    console.log('API Cliente: URL de consulta:', url);
+    console.log(`API Cliente: URL de consulta: ${url}`);
     
     const response = await fetch(url);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API Cliente: Error en respuesta (${response.status}):`, errorText);
-      throw new Error(`Error al obtener empleados: ${response.status} - ${errorText}`);
+      throw new Error(`Error al obtener empleados: ${response.status}`);
     }
     
-    const data = await response.json();
+    const data: ApiResponse = await response.json();
     
-    // Log detallado de la respuesta
-    console.log('API Cliente: Total empleados recibidos:', data.records?.length || 0);
-    
-    if (!data.records || !Array.isArray(data.records)) {
-      console.error('API Cliente: Respuesta inválida, no hay records o no es un array:', data);
-      return [];
+    if (!data.success) {
+      throw new Error(data.message || 'Error desconocido al obtener empleados');
     }
     
-    if (data.records.length > 0) {
-      console.log('API Cliente: Ejemplo del primer empleado:', JSON.stringify(data.records[0], null, 2));
-      console.log('API Cliente: Campos disponibles en empleados:', Object.keys(data.records[0].fields));
-      
-      // Log de tienda links encontrados
-      const tiendaLinks = data.records.map((emp: EmpleadoRecord) => {
-        return {
-          id: emp.id,
-          nombre: emp.fields.Nombre,
-          tiendaLink: emp.fields['Tienda [Link]'] || emp.fields['record_Id (from Tienda y Supervisor)'] || emp.fields['Tienda'] || null
-        };
-      });
-      console.log('API Cliente: Tienda Links en empleados:', JSON.stringify(tiendaLinks, null, 2));
-    }
+    console.log(`API Cliente: Empleados obtenidos: ${data.data?.length || 0}`);
     
-    return data.records || [];
+    return data.data as EmpleadoCompleto[];
   } catch (error) {
-    console.error('API Cliente: Error en obtenerEmpleados:', error);
-    // Devolver array vacío en lugar de propagar el error
+    console.log(`API Cliente: Error en obtenerEmpleados: ${error}`);
     return [];
   }
 }
@@ -709,4 +707,32 @@ export async function buscarEmpleados(searchTerm: string): Promise<EmpleadoRecor
   
   // Devolver array vacío si no tenemos datos en caché
   return [];
+}
+
+/**
+ * Obtiene las solicitudes de empleados pendientes para una tienda
+ */
+export async function obtenerSolicitudesPendientes(storeId: string): Promise<EmpleadoPendiente[]> {
+  try {
+    console.log(`Obteniendo solicitudes pendientes para tienda: ${storeId}`);
+    const baseUrl = getBaseUrl();
+    const url = `${baseUrl}/api/airtable?action=obtenerEmpleadosTienda&storeId=${encodeURIComponent(storeId)}&status=${encodeURIComponent(STATUS_EMPLEADO.PENDIENTE)}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Error al obtener solicitudes pendientes: ${response.status}`);
+    }
+    
+    const data: ApiResponse = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Error desconocido al obtener solicitudes pendientes');
+    }
+    
+    return data.data as EmpleadoPendiente[];
+  } catch (error) {
+    console.error("Error al obtener solicitudes pendientes:", error);
+    return [];
+  }
 } 

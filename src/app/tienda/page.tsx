@@ -8,6 +8,15 @@ import { Calendar, FileText, Clock, Users, Building, Map, Phone, Mail } from 'lu
 import { ScheduleProvider } from '@/context/ScheduleContext';
 import dynamic from 'next/dynamic';
 
+// Componente de carga
+function LoadingSpinner() {
+  return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
+
 // Importaciones dinámicas para los componentes
 const DashboardContent = dynamic(() => import('@/components/tienda/DashboardContent'), {
   loading: () => <LoadingSpinner />
@@ -25,16 +34,8 @@ const HorariosContent = dynamic(() => import('@/components/tienda/HorariosConten
   loading: () => <LoadingSpinner />
 });
 
-// Componente de carga
-function LoadingSpinner() {
-  return (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  );
-}
-
-export default function TiendaPage() {
+// Componente principal envuelto en Suspense
+function TiendaContent() {
   const { storeRecordId } = useAuth();
   const { currentView } = useTiendaNavigation();
   
@@ -58,4 +59,12 @@ export default function TiendaPage() {
   };
 
   return <>{renderContent()}</>;
+}
+
+export default function TiendaPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <TiendaContent />
+    </Suspense>
+  );
 } 
