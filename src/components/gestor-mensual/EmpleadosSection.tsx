@@ -554,6 +554,15 @@ export default function EmpleadosSection({ tiendaId, mesSeleccionado, tiendaData
                 <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-20 py-1 border border-gray-200">
                   <button
                     className="text-left w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    onClick={handleAsignarEmpleado}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Asignar Empleado
+                  </button>
+                  <button
+                    className="text-left w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                     onClick={(e) => {
                       // Detener inmediatamente la propagación de eventos
                       e.stopPropagation();
@@ -621,6 +630,23 @@ export default function EmpleadosSection({ tiendaId, mesSeleccionado, tiendaData
                 {isVacante ? 'Vacante' : 'Activo'}
               </span>
             </div>
+            
+            {isVacante ? (
+              <div className="flex space-x-2 mb-2">
+                <button 
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAsignarEmpleado(e);
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Asignar Empleado
+                </button>
+              </div>
+            ) : null}
             
             <button 
               className={`w-full mt-2 flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${

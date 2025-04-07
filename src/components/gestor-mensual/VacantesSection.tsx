@@ -140,10 +140,24 @@ export default function VacantesSection() {
                             )}
                           </div>
                           <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
-                            <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md text-sm transition-colors">
+                            <button 
+                              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md text-sm transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Por ahora, mostrar un mensaje de que esta funcionalidad está en desarrollo
+                                alert("Esta funcionalidad está disponible en la sección de 'Vacantes' en la lista de empleados");
+                              }}
+                            >
                               Asignar
                             </button>
-                            <button className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-md text-sm transition-colors">
+                            <button 
+                              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-md text-sm transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Por ahora, mostrar un mensaje de que esta funcionalidad está en desarrollo
+                                alert("Esta funcionalidad está disponible en la sección de 'Vacantes' en la lista de empleados");
+                              }}
+                            >
                               Eliminar
                             </button>
                           </div>
