@@ -1,15 +1,23 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
+
+// Función auxiliar para obtener URL base
+function getBaseUrl() {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+}
 
 // Función para obtener datos de la tienda
 async function fetchTiendaData(recordId: string) {
   try {
-    const response = await fetch(`/api/airtable?action=obtenerTienda&recordId=${recordId}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/airtable?action=obtenerTienda&recordId=${recordId}`);
     if (!response.ok) {
       throw new Error('Error al obtener los datos de la tienda');
     }
@@ -20,7 +28,32 @@ async function fetchTiendaData(recordId: string) {
   }
 }
 
-export default function StoreNavigation() {
+// Componente de carga mientras se resuelve Suspense
+function NavigationLoading() {
+  return (
+    <nav className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-50 w-full">
+      <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-6 sm:px-8">
+        <div className="flex items-center pl-1">
+          <div className="flex-shrink-0">
+            <Image 
+              src="/images/a1f5f4d1aeb6ac161feb1b4d91bda0240020897d.png" 
+              alt="Logo La Casa de las Carcasas" 
+              width={100} 
+              height={32}
+              className="h-8 w-auto"
+            />
+          </div>
+        </div>
+        <div className="flex justify-center flex-1">
+          <div className="text-sm text-gray-500">Cargando navegación...</div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// Componente interno que usa useSearchParams
+function NavigationContent() {
   const searchParams = useSearchParams();
   const pathname = usePathname() || '';
   const recordId = searchParams?.get('recordId') || pathname.split('/')[2];
@@ -58,7 +91,6 @@ export default function StoreNavigation() {
         {/* Logo a la izquierda */}
         <div className="flex items-center pl-1">
           <div className="flex-shrink-0">
-            {/* Ruta del logo en la carpeta public */}
             <Image 
               src="/images/a1f5f4d1aeb6ac161feb1b4d91bda0240020897d.png" 
               alt="Logo La Casa de las Carcasas" 
@@ -150,5 +182,14 @@ export default function StoreNavigation() {
         </div>
       </div>
     </nav>
+  );
+}
+
+// Componente principal con Suspense
+export default function StoreNavigation() {
+  return (
+    <Suspense fallback={<NavigationLoading />}>
+      <NavigationContent />
+    </Suspense>
   );
 } 

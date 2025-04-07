@@ -4,6 +4,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 
+// Función auxiliar para obtener URL base
+function getBaseUrl() {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+}
+
 interface AuthContextType {
   isLoggedIn: boolean;
   storeRecordId: string | null;
@@ -76,8 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
+      const baseUrl = getBaseUrl();
       // Verificar si el password (record ID) permite obtener datos de la tienda
-      const response = await fetch(`/api/airtable?action=obtenerDatosTienda&storeId=${password}`);
+      const response = await fetch(`${baseUrl}/api/airtable?action=obtenerDatosTienda&storeId=${password}`);
       
       if (!response.ok) {
         throw new Error('No se pudo autenticar con los datos proporcionados');
@@ -122,8 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
+      const baseUrl = getBaseUrl();
       // Verificar si el record ID permite obtener datos de la tienda
-      const response = await fetch(`/api/airtable?action=obtenerDatosTienda&storeId=${recordId}`);
+      const response = await fetch(`${baseUrl}/api/airtable?action=obtenerDatosTienda&storeId=${recordId}`);
       
       if (!response.ok) {
         throw new Error('No se pudo autenticar con el record ID proporcionado');
