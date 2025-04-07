@@ -3,36 +3,44 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
+  // Configuración para APIs
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://casa-carcasas.vercel.app/api/:path*',
+      },
+    ];
+  },
+  
   // Esencial para Airtable
   experimental: {
     serverComponentsExternalPackages: ['airtable']
   },
   
-  // Configuración de salida
-  output: 'standalone',
-  
-  // Forzar todas las páginas a ser dinámicas
-  staticPageGenerationTimeout: 1000,
-  
-  // Marcar aplicación completa como dinámica
-  // Esto es CLAVE para resolver el problema con useSearchParams
-  distDir: process.env.NODE_ENV === 'production' ? '.next-prod' : '.next',
-};
-
-// Marcar páginas específicas como dinámicas
-if (process.env.NODE_ENV === 'production') {
-  nextConfig.env = {
-    NEXT_PUBLIC_RUNTIME_ENV: 'production'
-  };
-  
-  // Ignorar errores de prerenderizado en producción
-  nextConfig.typescript = {
+  // Ignorar errores para el build en producción
+  typescript: {
     ignoreBuildErrors: true
-  };
+  },
   
-  nextConfig.eslint = {
+  eslint: {
     ignoreDuringBuilds: true
-  };
-}
+  },
+  
+  // Desactivar completamente la prerenderización
+  images: {
+    unoptimized: true
+  },
+  
+  // URLs absolutas para las APIs
+  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://casa-carcasas.vercel.app' : '',
+  basePath: '',
+  
+  // Configuración para APIs
+  env: {
+    NEXT_PUBLIC_API_URL: 'https://casa-carcasas.vercel.app',
+    NEXT_PUBLIC_RUNTIME_ENV: 'production'
+  }
+};
 
 module.exports = nextConfig; 
