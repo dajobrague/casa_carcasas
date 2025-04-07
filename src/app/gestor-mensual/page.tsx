@@ -8,9 +8,6 @@ import { TiendaData } from '@/components/gestor-mensual/types';
 import MesSelector from '@/components/gestor-mensual/MesSelector';
 import EmpleadosSection from '@/components/gestor-mensual/EmpleadosSection';
 
-// Indicar a Next.js que esta es una página dinámica
-export const dynamic = 'force-dynamic';
-
 function GestorMensualContent() {
   const { storeRecordId } = useAuth();
   const [mesSeleccionado, setMesSeleccionado] = useState<string>('');

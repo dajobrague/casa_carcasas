@@ -1,8 +1,5 @@
 'use client';
 
-// Indicar a Next.js que esta es una página dinámica
-export const dynamic = 'force-dynamic';
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';

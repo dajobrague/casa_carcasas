@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import RouteGuard from '@/components/auth/RouteGuard';
 
-// Indicar a Next.js que esta es una página dinámica
-export const dynamic = 'force-dynamic';
-
 function EditorContent() {
   const { storeRecordId, loading } = useAuth();
   const router = useRouter();
