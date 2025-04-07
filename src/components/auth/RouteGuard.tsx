@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 interface RouteGuardProps {
@@ -14,15 +14,22 @@ const BYPASS_TOKEN = 'cc_access_token';
 export default function RouteGuard({ children }: RouteGuardProps) {
   const { isLoggedIn, loading, loginWithRecordId } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [bypassChecked, setBypassChecked] = useState(false);
   const [bypassLoading, setBypassLoading] = useState(true);
 
   useEffect(() => {
+    // Solo ejecutar en el lado del cliente
+    if (typeof window === 'undefined') {
+      setBypassLoading(false);
+      setBypassChecked(true);
+      return;
+    }
+
     const checkBypass = async () => {
-      // Verificar si hay un token en la URL
-      const token = searchParams?.get('token');
-      const id = searchParams?.get('id');
+      // Usar URLSearchParams en lugar de useSearchParams hook
+      const searchParams = new URLSearchParams(window.location.search);
+      const token = searchParams.get('token');
+      const id = searchParams.get('id');
       
       if (token === BYPASS_TOKEN && id) {
         // Este es un acceso directo con token válido, intentar login con el ID de la tienda
@@ -52,9 +59,12 @@ export default function RouteGuard({ children }: RouteGuardProps) {
       setBypassLoading(false);
       setBypassChecked(true);
     }
-  }, [isLoggedIn, loading, searchParams, loginWithRecordId, router]);
+  }, [isLoggedIn, loading, loginWithRecordId, router]);
 
   useEffect(() => {
+    // No ejecutar en el servidor
+    if (typeof window === 'undefined') return;
+
     // Redirección a login solo si:
     // 1. No está cargando la autenticación normal
     // 2. No está cargando el proceso de bypass 
