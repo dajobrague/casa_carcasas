@@ -8,6 +8,7 @@ const API_TOKEN = process.env.TRAFICO_API_TOKEN || '';
 interface RequestOptions {
   useCache?: boolean;
   forceRefresh?: boolean;
+  fallbackToCache?: boolean;
 }
 
 // Función base para peticiones API
@@ -55,44 +56,42 @@ async function makeApiRequest(
   }
 }
 
-// Función para obtener usuarios con manejo de caché
+// Función para obtener usuarios sin usar caché
 export async function getUsers(options: RequestOptions = {}): Promise<any> {
   const endpoint = '/api/v1/rrhh/get_users';
-  const cacheType = EndpointType.USERS;
   
-  // Verificar si debemos usar caché
-  if (options.useCache && !options.forceRefresh) {
-    const cachedData = await getLatestCache(cacheType);
-    if (cachedData) {
-      console.log('Usando datos en caché para usuarios');
-      return cachedData;
-    }
-  }
-  
-  // Hacer petición a la API
+  // Hacer petición a la API, sin depender del caché
   console.log('Obteniendo datos de usuarios desde API');
   
   try {
     const data = await makeApiRequest(endpoint);
     
-    // Guardar en caché
-    await saveToCache(cacheType, data);
-    console.log('Datos de usuarios guardados en caché');
+    // Solo guardamos en caché si la opción está habilitada, pero siempre devolvemos los datos frescos
+    if (options.useCache) {
+      // Guardamos en caché solo para registros históricos, pero no lo usamos como fuente
+      saveToCache(EndpointType.USERS, data).catch(err => 
+        console.error('Error al guardar en caché los datos de usuarios:', err)
+      );
+    }
     
     return data;
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
     
-    // Si hay un error pero tenemos datos en caché, los usamos como fallback
-    if (options.useCache) {
-      const cachedData = await getLatestCache(cacheType);
-      if (cachedData) {
-        console.log('Usando datos en caché como fallback debido a error de API');
-        return {
-          ...cachedData,
-          fromCache: true,
-          apiError: (error as Error).message
-        };
+    // Si hay un error y hay opción de usar caché como último recurso
+    if (options.useCache && options.fallbackToCache) {
+      try {
+        const cachedData = await getLatestCache(EndpointType.USERS);
+        if (cachedData) {
+          console.log('FALLBACK - Usando datos en caché como último recurso debido a error de API');
+          return {
+            ...cachedData,
+            fromCache: true,
+            apiError: (error as Error).message
+          };
+        }
+      } catch (cacheError) {
+        console.error('Error al intentar usar el caché como fallback:', cacheError);
       }
     }
     
@@ -100,44 +99,42 @@ export async function getUsers(options: RequestOptions = {}): Promise<any> {
   }
 }
 
-// Función para obtener tiendas con manejo de caché
+// Función para obtener tiendas sin usar caché
 export async function getStores(options: RequestOptions = {}): Promise<any> {
   const endpoint = '/api/v1/rrhh/get_stores';
-  const cacheType = EndpointType.STORES;
   
-  // Verificar si debemos usar caché
-  if (options.useCache && !options.forceRefresh) {
-    const cachedData = await getLatestCache(cacheType);
-    if (cachedData) {
-      console.log('Usando datos en caché para tiendas');
-      return cachedData;
-    }
-  }
-  
-  // Hacer petición a la API
+  // Hacer petición a la API, sin depender del caché
   console.log('Obteniendo datos de tiendas desde API');
   
   try {
     const data = await makeApiRequest(endpoint);
     
-    // Guardar en caché
-    await saveToCache(cacheType, data);
-    console.log('Datos de tiendas guardados en caché');
+    // Solo guardamos en caché si la opción está habilitada, pero siempre devolvemos los datos frescos
+    if (options.useCache) {
+      // Guardamos en caché solo para registros históricos, pero no lo usamos como fuente
+      saveToCache(EndpointType.STORES, data).catch(err => 
+        console.error('Error al guardar en caché los datos de tiendas:', err)
+      );
+    }
     
     return data;
   } catch (error) {
     console.error('Error al obtener tiendas:', error);
     
-    // Si hay un error pero tenemos datos en caché, los usamos como fallback
-    if (options.useCache) {
-      const cachedData = await getLatestCache(cacheType);
-      if (cachedData) {
-        console.log('Usando datos en caché como fallback debido a error de API');
-        return {
-          ...cachedData,
-          fromCache: true,
-          apiError: (error as Error).message
-        };
+    // Si hay un error y hay opción de usar caché como último recurso
+    if (options.useCache && options.fallbackToCache) {
+      try {
+        const cachedData = await getLatestCache(EndpointType.STORES);
+        if (cachedData) {
+          console.log('FALLBACK - Usando datos en caché como último recurso debido a error de API');
+          return {
+            ...cachedData,
+            fromCache: true,
+            apiError: (error as Error).message
+          };
+        }
+      } catch (cacheError) {
+        console.error('Error al intentar usar el caché como fallback:', cacheError);
       }
     }
     

@@ -27,11 +27,9 @@ export default function ApiSyncPage() {
   const { isAdminLoggedIn, loading, adminLogout } = useAuth();
   
   const [syncType, setSyncType] = useState<SyncType>(SyncType.USERS);
-  const [forceRefresh, setForceRefresh] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
   const [showDataViewer, setShowDataViewer] = useState<boolean>(false);
   
   // Protección de ruta para administradores
@@ -45,7 +43,6 @@ export default function ApiSyncPage() {
   const handleSync = async () => {
     setIsLoading(true);
     setError(null);
-    setApiError(null);
     setResult(null);
     setShowDataViewer(false);
     
@@ -54,10 +51,10 @@ export default function ApiSyncPage() {
       
       switch (syncType) {
         case SyncType.USERS:
-          url = `/api/lcdc/users?sync=true&forceRefresh=${forceRefresh}`;
+          url = `/api/lcdc/users?sync=true`;
           break;
         case SyncType.STORES:
-          url = `/api/lcdc/stores?sync=true&forceRefresh=${forceRefresh}`;
+          url = `/api/lcdc/stores?sync=true`;
           break;
       }
       
@@ -66,11 +63,6 @@ export default function ApiSyncPage() {
       
       if (!response.ok) {
         throw new Error(data.error || 'Error en la sincronización');
-      }
-      
-      // Comprobamos si hay un error de API pero datos de caché
-      if (data.apiError) {
-        setApiError(data.apiError);
       }
       
       setResult(data);
@@ -94,9 +86,8 @@ export default function ApiSyncPage() {
     return null; // Redirecciona en useEffect
   }
   
-  // Determinar si hay datos para mostrar (incluso con error de API)
+  // Determinar si hay datos para mostrar
   const hasData = result && result.data;
-  const isApiErrorWithCache = apiError && hasData;
   
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -140,7 +131,7 @@ export default function ApiSyncPage() {
             <div className="border-b border-gray-200 px-6 py-4">
               <h1 className="text-xl font-bold text-gray-900">Sincronización API LCDC</h1>
               <p className="mt-1 text-sm text-gray-500">
-                Actualiza los datos de usuarios y tiendas desde la API de LCDC a Airtable
+                Actualiza los datos de usuarios y tiendas directamente desde la API de LCDC a Airtable
               </p>
             </div>
             
@@ -178,21 +169,6 @@ export default function ApiSyncPage() {
                     </div>
                   </div>
                   
-                  <div className="mb-6">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <div className={`w-4 h-4 border rounded flex items-center justify-center ${forceRefresh ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
-                        {forceRefresh && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                      <input 
-                        type="checkbox"
-                        checked={forceRefresh}
-                        onChange={(e) => setForceRefresh(e.target.checked)}
-                        className="sr-only"
-                      />
-                      <span className="text-gray-700">Forzar actualización (no usar caché)</span>
-                    </label>
-                  </div>
-                  
                   <button
                     onClick={handleSync}
                     disabled={isLoading}
@@ -216,7 +192,7 @@ export default function ApiSyncPage() {
                 <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Estado de sincronización</h2>
                   
-                  {!isLoading && !error && !result && !apiError && (
+                  {!isLoading && !error && !result && (
                     <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                       <Database className="w-12 h-12 mb-4 text-gray-400" />
                       <p className="text-center">No hay datos sincronizados todavía.</p>
@@ -245,23 +221,6 @@ export default function ApiSyncPage() {
                     </div>
                   )}
                   
-                  {apiError && (
-                    <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-lg mb-4">
-                      <div className="flex">
-                        <Key className="w-5 h-5 mr-2 flex-shrink-0" />
-                        <div>
-                          <p className="font-semibold">Error de conexión con la API</p>
-                          <p className="text-sm">{apiError}</p>
-                          {hasData && (
-                            <p className="text-sm mt-2">
-                              Usando datos de caché como alternativa. Estos datos podrían no estar actualizados.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
                   {hasData && (
                     <div className="mt-4">
                       <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-lg mb-4">
@@ -270,9 +229,7 @@ export default function ApiSyncPage() {
                           <div>
                             <p className="font-semibold">Sincronización completada</p>
                             <p className="text-sm">
-                              {isApiErrorWithCache
-                                ? 'Datos recuperados desde caché.'
-                                : 'Datos sincronizados correctamente con Airtable.'}
+                              Datos sincronizados correctamente con Airtable.
                             </p>
                           </div>
                         </div>

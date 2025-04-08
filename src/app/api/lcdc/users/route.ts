@@ -9,23 +9,23 @@ export async function GET(request: Request) {
   try {
     // Obtener parámetros de la petición
     const { searchParams } = new URL(request.url);
-    const forceRefresh = searchParams.get('forceRefresh') === 'true';
     
-    // Obtener datos (con o sin caché)
+    // Obtener datos siempre frescos, sin posibilidad de caché
     const data = await getUsers({ 
-      useCache: true, 
-      forceRefresh 
+      useCache: false, // No usar caché en ningún caso
+      forceRefresh: true,
+      fallbackToCache: false
     });
     
-    // Determinar si los datos provienen del caché debido a un error
-    const fromCache = data.fromCache || !forceRefresh;
-    const apiError = data.apiError || null;
+    // Determinar si los datos provienen del caché (siempre falso)
+    const fromCache = false;
+    const apiError = null;
     
-    // Sincronizar con Airtable si se solicita y no hay error de API
+    // Sincronizar con Airtable si se solicita
     const shouldSync = searchParams.get('sync') === 'true';
     let syncResult = null;
     
-    if (shouldSync && !apiError) {
+    if (shouldSync) {
       try {
         syncResult = await syncUsers(data);
       } catch (syncError) {
@@ -33,8 +33,6 @@ export async function GET(request: Request) {
           { 
             success: false, 
             error: `Error al sincronizar con Airtable: ${(syncError as Error).message}`,
-            fromCache,
-            apiError,
             timestamp: new Date().toISOString(),
             data
           },
@@ -46,8 +44,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ 
       success: true, 
       timestamp: new Date().toISOString(),
-      fromCache,
-      apiError,
       syncResult,
       data 
     });
