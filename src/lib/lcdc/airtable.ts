@@ -450,4 +450,259 @@ export async function syncUsers(usersData: any): Promise<any> {
     createResults,
     tiendasNoEncontradas: Array.from(tiendasNoEncontradas)
   };
+}
+
+/**
+ * Sincroniza un lote de usuarios con Airtable
+ * @param usersBatch Array de usuarios para sincronizar
+ * @returns Resultado de la sincronización con número de actualizaciones y creaciones
+ */
+export async function syncUserBatch(usersBatch: any[]): Promise<{updates: number, creates: number, errors: string[]}> {
+  if (!Array.isArray(usersBatch) || usersBatch.length === 0) {
+    return { updates: 0, creates: 0, errors: ['No se proporcionaron datos de usuarios'] };
+  }
+  
+  // Referencia a las tablas
+  const employeeTable = base(EMPLOYEE_TABLE_ID);
+  const storeTable = base(STORE_TABLE_ID);
+  
+  // Obtener tiendas existentes para obtener IDs
+  const allStores = await storeTable.select({
+    fields: ['N°']
+  }).all();
+  
+  // Mapear códigos de tienda a IDs
+  const storeIdMap = new Map();
+  allStores.forEach(record => {
+    const numero = record.get('N°');
+    if (numero) {
+      storeIdMap.set(numero.toString(), record.id);
+    }
+  });
+  
+  // Obtener empleados existentes
+  const allEmployees = await employeeTable.select({
+    fields: ['CodigoEmpleado']
+  }).all();
+  
+  // Mapear códigos de empleado a IDs
+  const employeeIdMap = new Map();
+  allEmployees.forEach(record => {
+    const codigo = record.get('CodigoEmpleado');
+    if (codigo) {
+      employeeIdMap.set(codigo.toString(), record.id);
+    }
+  });
+  
+  // Preparar actualizaciones y creaciones
+  const usersToUpdate: any[] = [];
+  const usersToCreate: any[] = [];
+  const errors: string[] = [];
+  
+  // Clasificar usuarios en actualizaciones o creaciones
+  for (const user of usersBatch) {
+    try {
+      const codigoEmpleado = user.codigo_empleado?.toString();
+      if (!codigoEmpleado) continue;
+      
+      const existingId = employeeIdMap.get(codigoEmpleado);
+      const nombre = user.nombre || '';
+      const apellidos = user.apellidos || '';
+      const perfil = user.perfil || '';
+      const horasContrato = user.horas_contrato;
+      const codigoDepartamento = user.codigo_departamento?.toString();
+      
+      // Obtener ID de tienda si existe
+      const tiendaRecordId = codigoDepartamento ? storeIdMap.get(codigoDepartamento) : null;
+      
+      // Crear los campos a guardar
+      const fields: Record<string, any> = {
+        "Perfil": perfil,
+        "Horas Semanales": horasContrato
+      };
+      
+      // Añadir tienda solo si se encontró
+      if (tiendaRecordId) {
+        fields["Tienda [Link]"] = [tiendaRecordId];
+      }
+      
+      if (existingId) {
+        // Actualizar empleado existente
+        usersToUpdate.push({
+          id: existingId,
+          fields
+        });
+      } else {
+        // Crear empleado nuevo
+        fields["CodigoEmpleado"] = codigoEmpleado;
+        fields["Nombre"] = nombre;
+        fields["Apellidos"] = apellidos;
+        
+        usersToCreate.push({
+          fields
+        });
+      }
+    } catch (error) {
+      errors.push(`Error procesando usuario ${user.codigo_empleado}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  let updates = 0;
+  let creates = 0;
+  
+  // Procesar actualizaciones
+  if (usersToUpdate.length > 0) {
+    try {
+      const updateResults = await employeeTable.update(usersToUpdate);
+      updates = updateResults.length;
+    } catch (error) {
+      errors.push(`Error actualizando empleados: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  // Procesar creaciones
+  if (usersToCreate.length > 0) {
+    try {
+      const createResults = await employeeTable.create(usersToCreate);
+      creates = createResults.length;
+    } catch (error) {
+      errors.push(`Error creando empleados: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  return { updates, creates, errors };
+}
+
+/**
+ * Sincroniza un lote de tiendas con Airtable
+ * @param storesBatch Array de tiendas para sincronizar
+ * @returns Resultado de la sincronización con número de actualizaciones y creaciones
+ */
+export async function syncStoreBatch(storesBatch: any[]): Promise<{updates: number, creates: number, errors: string[]}> {
+  if (!Array.isArray(storesBatch) || storesBatch.length === 0) {
+    return { updates: 0, creates: 0, errors: ['No se proporcionaron datos de tiendas'] };
+  }
+  
+  // Referencia a la tabla de tiendas
+  const storeTable = base(STORE_TABLE_ID);
+  
+  // Obtener tiendas existentes
+  const allStores = await storeTable.select({
+    fields: ['N°']
+  }).all();
+  
+  // Crear un mapa para facilitar la búsqueda por número
+  const existingStoresMap = new Map();
+  allStores.forEach(record => {
+    const numero = record.get('N°');
+    if (numero) {
+      existingStoresMap.set(numero.toString(), record.id);
+    }
+  });
+  
+  // Obtener todos los area managers válidos de Airtable
+  const validAreaManagers = new Map();
+  try {
+    // Intentamos obtener la lista de area managers, si existe
+    const areaManagerTable = process.env.AIRTABLE_AREA_MANAGER_TABLE_ID 
+      ? base(process.env.AIRTABLE_AREA_MANAGER_TABLE_ID)
+      : null;
+    
+    if (areaManagerTable) {
+      const areaManagers = await areaManagerTable.select().all();
+      areaManagers.forEach(manager => {
+        const dni = manager.get('DNI') || manager.get('Identificador');
+        if (dni) {
+          validAreaManagers.set(dni.toString(), manager.id);
+        }
+      });
+    }
+  } catch (error) {
+    console.warn('No se pudo obtener la lista de area managers:', error);
+  }
+  
+  // Preparar actualizaciones y creaciones
+  const storesToUpdate: any[] = [];
+  const storesToCreate: any[] = [];
+  const errors: string[] = [];
+  
+  // Clasificar tiendas en actualizaciones o creaciones
+  for (const store of storesBatch) {
+    try {
+      const codigoDepartamento = store.codigo_departamento?.toString();
+      if (!codigoDepartamento) continue;
+      
+      const existingId = existingStoresMap.get(codigoDepartamento);
+      const nombreDepartamento = store.nombre_departamento?.replace(/^\d+\.\-\s*/, '') || '';
+      const paisDepartamento = normalizeCountry(store.pais_departamento || 'España');
+      
+      // Obtener el area manager correcto si existe
+      let areaManagerIds: string[] = [];
+      const areaManagerDNI = store.area_manager?.toString();
+      
+      if (areaManagerDNI && validAreaManagers.has(areaManagerDNI)) {
+        areaManagerIds = [validAreaManagers.get(areaManagerDNI)];
+      }
+      
+      // Crear los campos a guardar
+      const fields: Record<string, any> = {
+        "TIENDA": nombreDepartamento,
+        "PAIS": paisDepartamento
+      };
+      
+      // Añadir el email si existe
+      if (store.email_departamento) {
+        fields["Email Supervisor"] = store.email_departamento;
+      }
+      
+      // Añadir Area Manager si hay IDs válidos
+      if (areaManagerIds.length > 0) {
+        fields["Area Manager"] = areaManagerIds;
+      }
+      
+      if (existingId) {
+        // Actualizar tienda existente
+        storesToUpdate.push({
+          id: existingId,
+          fields
+        });
+      } else {
+        // Crear tienda nueva (aseguramos que tenga el número)
+        const tiendaNumero = parseInt(codigoDepartamento, 10);
+        if (isNaN(tiendaNumero)) continue;
+        
+        fields["N°"] = tiendaNumero;
+        storesToCreate.push({
+          fields
+        });
+      }
+    } catch (error) {
+      errors.push(`Error procesando tienda ${store.codigo_departamento}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  let updates = 0;
+  let creates = 0;
+  
+  // Procesar actualizaciones
+  if (storesToUpdate.length > 0) {
+    try {
+      const updateResults = await storeTable.update(storesToUpdate);
+      updates = updateResults.length;
+    } catch (error) {
+      errors.push(`Error actualizando tiendas: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  // Procesar creaciones
+  if (storesToCreate.length > 0) {
+    try {
+      const createResults = await storeTable.create(storesToCreate);
+      creates = createResults.length;
+    } catch (error) {
+      errors.push(`Error creando tiendas: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  return { updates, creates, errors };
 } 
