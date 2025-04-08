@@ -8,47 +8,60 @@ export function middleware(request: NextRequest) {
   // Obtener la ruta actual
   const path = request.nextUrl.pathname;
   
-  // Verificar si la ruta está protegida
-  const isProtectedAdminRoute = path === '/admin/api-sync' || path.startsWith('/admin/api-sync/');
-  const isProtectedTiendaRoute = path === '/tienda' || path.startsWith('/tienda/') || 
-                              path === '/gestor-mensual' || path.startsWith('/gestor-mensual/');
+  // Rutas públicas permitidas sin autenticación
+  const isPublicRoute = 
+    path === '/login' || 
+    path === '/admin/login' || 
+    path === '/' || 
+    path.startsWith('/view/');
   
-  // No proteger las rutas de login
-  const isAdminLoginPage = path === '/admin/login';
-  const isLoginPage = path === '/login';
+  // Rutas de administrador
+  const isAdminRoute = path.startsWith('/admin');
   
-  // Obtener los parámetros de búsqueda para comprobar token de bypass
+  // Rutas protegidas de usuario normal que requieren autenticación
+  const isProtectedUserRoute = 
+    path === '/tienda' || 
+    path.startsWith('/tienda/') ||
+    path === '/editor' || 
+    path.startsWith('/editor/') ||
+    path === '/gestor-mensual' || 
+    path.startsWith('/gestor-mensual/') ||
+    path === '/tienda-horarios' || 
+    path.startsWith('/tienda-horarios/') ||
+    path === '/calendario' || 
+    path.startsWith('/calendario/');
+  
+  // Verificar si hay un token válido de bypass para tienda
   const { searchParams } = request.nextUrl;
   const bypassToken = searchParams.get('token');
   const storeId = searchParams.get('id');
-  
-  // Verificar si hay un token válido de bypass
   const hasValidBypass = bypassToken === BYPASS_TOKEN && storeId;
   
   // Obtener el estado de autenticación de admin desde cookies
   const adminAuth = request.cookies.get('adminAuth')?.value;
   const isAdminAuthenticated = !!adminAuth;
   
-  // Obtener el estado de autenticación de tienda desde cookies o sessionStorage no es posible en middleware
-  // Este estado se maneja en el RouteGuard para las rutas de tienda
+  // Rutas públicas siempre están permitidas
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
   
-  // Redireccionar si es ruta admin protegida y el usuario no está autenticado
-  if (isProtectedAdminRoute && !isAdminAuthenticated) {
-    // Construir la URL de redirección
+  // Redireccionar si es ruta admin y el usuario no está autenticado como admin
+  if (isAdminRoute && !isAdminAuthenticated) {
     const redirectUrl = new URL('/admin/login', request.url);
     return NextResponse.redirect(redirectUrl);
   }
   
-  // Redireccionar si el usuario admin ya está autenticado y va a la página de login
-  if (isAdminLoginPage && isAdminAuthenticated) {
-    const redirectUrl = new URL('/admin/api-sync', request.url);
-    return NextResponse.redirect(redirectUrl);
+  // Si es una ruta protegida de usuario y tiene token válido de bypass, permitir acceso
+  if (isProtectedUserRoute && hasValidBypass) {
+    return NextResponse.next();
   }
   
-  // Si es una ruta de tienda protegida pero tiene token válido de bypass, permitir acceso
-  if (isProtectedTiendaRoute && hasValidBypass) {
-    console.log('Bypass de autenticación aplicado para ruta de tienda');
-    return NextResponse.next();
+  // Para cualquier otra ruta que no sea pública ni de admin, redireccionar a /tienda
+  // La autenticación se manejará en el componente RouteGuard si es necesario
+  if (!isPublicRoute && !isAdminRoute) {
+    const redirectUrl = new URL('/tienda', request.url);
+    return NextResponse.redirect(redirectUrl);
   }
   
   // Si ninguna condición se cumple, continuar con la solicitud
@@ -58,12 +71,6 @@ export function middleware(request: NextRequest) {
 // Configurar las rutas a las que se aplica el middleware
 export const config = {
   matcher: [
-    '/admin/api-sync', 
-    '/admin/api-sync/:path*', 
-    '/admin/login',
-    '/tienda',
-    '/tienda/:path*',
-    '/gestor-mensual',
-    '/gestor-mensual/:path*'
+    '/((?!api|_next/static|_next/image|favicon.ico|images).*)',
   ],
 }; 

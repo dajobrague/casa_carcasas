@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 interface RouteGuardProps {
@@ -14,12 +14,27 @@ const BYPASS_TOKEN = 'cc_access_token';
 export default function RouteGuard({ children }: RouteGuardProps) {
   const { isLoggedIn, loading, loginWithRecordId } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [bypassChecked, setBypassChecked] = useState(false);
   const [bypassLoading, setBypassLoading] = useState(true);
+
+  // Verificar si la ruta actual es una ruta pública que no requiere autenticación
+  const isPublicRoute = 
+    pathname === '/login' || 
+    pathname === '/admin/login' || 
+    pathname === '/' || 
+    pathname?.startsWith('/view/');
 
   useEffect(() => {
     // Solo ejecutar en el lado del cliente
     if (typeof window === 'undefined') {
+      setBypassLoading(false);
+      setBypassChecked(true);
+      return;
+    }
+
+    // Si es una ruta pública, no necesitamos verificar bypass ni redirigir
+    if (isPublicRoute) {
       setBypassLoading(false);
       setBypassChecked(true);
       return;
@@ -59,11 +74,14 @@ export default function RouteGuard({ children }: RouteGuardProps) {
       setBypassLoading(false);
       setBypassChecked(true);
     }
-  }, [isLoggedIn, loading, loginWithRecordId, router]);
+  }, [isLoggedIn, loading, loginWithRecordId, router, pathname, isPublicRoute]);
 
   useEffect(() => {
     // No ejecutar en el servidor
     if (typeof window === 'undefined') return;
+
+    // No verificar autenticación para rutas públicas
+    if (isPublicRoute) return;
 
     // Redirección a login solo si:
     // 1. No está cargando la autenticación normal
@@ -73,7 +91,7 @@ export default function RouteGuard({ children }: RouteGuardProps) {
     if (!loading && !bypassLoading && bypassChecked && !isLoggedIn) {
       router.push('/login');
     }
-  }, [isLoggedIn, loading, router, bypassLoading, bypassChecked]);
+  }, [isLoggedIn, loading, router, bypassLoading, bypassChecked, isPublicRoute]);
 
   // Mostrar loader mientras se verifica la autenticación (normal o bypass)
   if (loading || bypassLoading) {
@@ -84,6 +102,6 @@ export default function RouteGuard({ children }: RouteGuardProps) {
     );
   }
 
-  // Si está autenticado, mostrar el contenido
-  return isLoggedIn ? <>{children}</> : null;
+  // Si es una ruta pública o el usuario está autenticado, mostrar el contenido
+  return isPublicRoute || isLoggedIn ? <>{children}</> : null;
 } 
