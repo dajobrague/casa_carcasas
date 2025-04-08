@@ -164,30 +164,29 @@ export default function ApiSyncPage() {
     setShowDataViewer(false);
     
     try {
-      // 1. Obtener todos los datos primero
-      const rawData = await fetchData(syncType);
+      let url = '';
       
-      if (!rawData.data || !Array.isArray(rawData.data) || rawData.data.length === 0) {
-        throw new Error('No se obtuvieron datos para sincronizar');
+      switch (syncType) {
+        case SyncType.USERS:
+          url = `/api/lcdc/users?sync=true`;
+          break;
+        case SyncType.STORES:
+          url = `/api/lcdc/stores?sync=true`;
+          break;
       }
       
-      // 2. Procesar los datos en lotes
-      const processResult = await processAllBatches(syncType, rawData.data);
+      const response = await fetch(url);
+      const data = await response.json();
       
-      // 3. Establecer resultado final
-      setResult({
-        ...processResult,
-        syncResult: {
-          updates: processResult.updates,
-          creates: processResult.creates
-        }
-      });
+      if (!response.ok) {
+        throw new Error(data.error || 'Error en la sincronización');
+      }
       
+      setResult(data);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setIsLoading(false);
-      // Resetear estado de progreso de lotes
       setBatchProgress({
         current: 0,
         total: 0,
