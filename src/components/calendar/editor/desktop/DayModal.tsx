@@ -179,50 +179,64 @@ export function DayModal({
       const success = await actualizarHorario(actividadId, tiempo, valor);
       
       if (success) {
-        // Actualizar el estado local
-        setActividades(prev => 
-          prev.map(actividad => 
-            actividad.id === actividadId 
-              ? { ...actividad, fields: { ...actividad.fields, [tiempo]: valor } } 
-              : actividad
-          )
-        );
-        
-        // Recalcular horas efectivas
-        if (tiendaData) {
-          const actividadesActualizadas = actividades.map(a => 
-            a.id === actividadId 
-              ? { ...a, fields: { ...a.fields, [tiempo]: valor } } 
-              : a
-          );
-          
-          const horasEfectivas = calcularHorasEfectivasDiarias(
-            actividadesActualizadas,
-            {
-              PAIS: tiendaData.fields.PAIS,
-              Apertura: tiendaData.fields.Apertura,
-              Cierre: tiendaData.fields.Cierre
+        // Recargar los datos completos después de la actualización
+        if (diaId && storeRecordId) {
+          try {
+            const actividadesActualizadas = await obtenerActividadesDiarias(storeRecordId, diaId);
+            if (actividadesActualizadas) {
+              // Ordenar actividades por nombre (con VACANTE al final)
+              const actividadesOrdenadas = [...actividadesActualizadas].sort((a, b) => {
+                const nombreA = (a.fields.Nombre || '').toString().toUpperCase();
+                const nombreB = (b.fields.Nombre || '').toString().toUpperCase();
+                
+                if (nombreA === 'VACANTE') return 1;
+                if (nombreB === 'VACANTE') return -1;
+                
+                return nombreA.localeCompare(nombreB);
+              });
+              
+              setActividades(actividadesOrdenadas);
+              
+              // Recalcular horas efectivas con los datos actualizados
+              if (tiendaData) {
+                const horasEfectivas = calcularHorasEfectivasDiarias(
+                  actividadesOrdenadas,
+                  {
+                    PAIS: tiendaData.fields.PAIS,
+                    Apertura: tiendaData.fields.Apertura,
+                    Cierre: tiendaData.fields.Cierre
+                  }
+                );
+                
+                // Actualizar las horas efectivas diarias
+                setHorasEfectivasDiarias(horasEfectivas);
+                
+                // Actualizar también las horas efectivas semanales
+                const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
+                setHorasEfectivasSemanales(prev => 
+                  Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
+                );
+              }
             }
-          );
-          
-          // Log para verificar cambios en horas efectivas
-          console.log('Actualización de horario:', {
-            tipo: valor,
-            tiempo,
-            horasEfectivasAntes: horasEfectivasDiarias,
-            horasEfectivasDespues: horasEfectivas,
-            diferencia: horasEfectivas - horasEfectivasDiarias
-          });
-          
-          // Actualizar las horas efectivas diarias
-          setHorasEfectivasDiarias(horasEfectivas);
-          
-          // Actualizar también las horas efectivas semanales
-          // Calculando la diferencia respecto al día original y sumándola al total semanal
-          const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
-          setHorasEfectivasSemanales(prev => 
-            // Asegurarse de que no sea negativo
-            Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
+          } catch (reloadError) {
+            console.error('Error al recargar actividades:', reloadError);
+            // Continuar con la actualización local como fallback
+            setActividades(prev => 
+              prev.map(actividad => 
+                actividad.id === actividadId 
+                  ? { ...actividad, fields: { ...actividad.fields, [tiempo]: valor } } 
+                  : actividad
+              )
+            );
+          }
+        } else {
+          // Actualizar el estado local como fallback si no podemos recargar
+          setActividades(prev => 
+            prev.map(actividad => 
+              actividad.id === actividadId 
+                ? { ...actividad, fields: { ...actividad.fields, [tiempo]: valor } } 
+                : actividad
+            )
           );
         }
         
@@ -280,8 +294,68 @@ export function DayModal({
         }
       }
       
-      if (allSuccess) {
-        // Actualizar el estado local
+      // Recargar los datos completos después de la actualización
+      if (allSuccess && diaId && storeRecordId) {
+        try {
+          const actividadesActualizadas = await obtenerActividadesDiarias(storeRecordId, diaId);
+          if (actividadesActualizadas) {
+            // Ordenar actividades por nombre (con VACANTE al final)
+            const actividadesOrdenadas = [...actividadesActualizadas].sort((a, b) => {
+              const nombreA = (a.fields.Nombre || '').toString().toUpperCase();
+              const nombreB = (b.fields.Nombre || '').toString().toUpperCase();
+              
+              if (nombreA === 'VACANTE') return 1;
+              if (nombreB === 'VACANTE') return -1;
+              
+              return nombreA.localeCompare(nombreB);
+            });
+            
+            setActividades(actividadesOrdenadas);
+            
+            // Recalcular horas efectivas con los datos actualizados
+            if (tiendaData) {
+              const horasEfectivas = calcularHorasEfectivasDiarias(
+                actividadesOrdenadas,
+                {
+                  PAIS: tiendaData.fields.PAIS,
+                  Apertura: tiendaData.fields.Apertura,
+                  Cierre: tiendaData.fields.Cierre
+                }
+              );
+              
+              // Actualizar las horas efectivas diarias
+              setHorasEfectivasDiarias(horasEfectivas);
+              
+              // Actualizar también las horas efectivas semanales
+              const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
+              setHorasEfectivasSemanales(prev => 
+                Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
+              );
+              
+              console.log('Asignación a todo el día completada, datos actualizados:', {
+                tipo: valor,
+                horasEfectivasActualizadas: horasEfectivas
+              });
+            }
+          }
+        } catch (reloadError) {
+          console.error('Error al recargar actividades después de asignar a todo el día:', reloadError);
+          // Continuar con la actualización local como fallback
+          setActividades(prev => 
+            prev.map(actividad => {
+              if (actividad.id === actividadId) {
+                const updatedFields = { ...actividad.fields };
+                columnasTiempo.forEach(tiempo => {
+                  updatedFields[tiempo] = valor;
+                });
+                return { ...actividad, fields: updatedFields };
+              }
+              return actividad;
+            })
+          );
+        }
+      } else {
+        // Actualizar el estado local como fallback si hay errores o no podemos recargar
         setActividades(prev => 
           prev.map(actividad => {
             if (actividad.id === actividadId) {
@@ -294,49 +368,9 @@ export function DayModal({
             return actividad;
           })
         );
-        
-        // Recalcular horas efectivas
-        if (tiendaData) {
-          const updatedActividades = actividades.map(a => {
-            if (a.id === actividadId) {
-              const updatedFields = { ...a.fields };
-              columnasTiempo.forEach(tiempo => {
-                updatedFields[tiempo] = valor;
-              });
-              return { ...a, fields: updatedFields };
-            }
-            return a;
-          });
-          
-          const horasEfectivas = calcularHorasEfectivasDiarias(
-            updatedActividades,
-            {
-              PAIS: tiendaData.fields.PAIS,
-              Apertura: tiendaData.fields.Apertura,
-              Cierre: tiendaData.fields.Cierre
-            }
-          );
-          setHorasEfectivasDiarias(horasEfectivas);
-          
-          // Actualizar también las horas efectivas semanales
-          // Calculando la diferencia respecto al día original y sumándola al total semanal
-          const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
-          setHorasEfectivasSemanales(prev => 
-            // Asegurarse de que no sea negativo
-            Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
-          );
-          
-          // Log para verificar cambios en horas efectivas
-          console.log('Asignación a todo el día:', {
-            tipo: valor,
-            horasEfectivasAntes: horasEfectivasDiarias,
-            horasEfectivasDespues: horasEfectivas,
-            diferenciaDiaria,
-            horasEfectivasDiariasIniciales,
-            nuevasHorasEfectivasSemanales: Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
-          });
-        }
-        
+      }
+      
+      if (allSuccess) {
         mostrarNotificacion('Horarios actualizados correctamente', 'success');
       } else if (errores > 3) {
         mostrarNotificacion(`Se detuvieron las actualizaciones después de ${errores} errores`, 'error');

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Select, Option } from '@/components/ui/Select';
-import { getBackgroundColor } from '@/lib/utils';
+import { getBackgroundColor, getOptionClasses } from '@/lib/utils';
 import { ActividadDiariaRecord } from '@/lib/airtable';
 
 interface ScheduleTableProps {
@@ -39,9 +39,12 @@ export function ScheduleTable({
     if (!nuevasSelecciones[actividadId]) {
       nuevasSelecciones[actividadId] = {};
     }
+    
+    // Para cada columna de tiempo, actualizamos
     columnasTiempo.forEach(tiempo => {
       nuevasSelecciones[actividadId][tiempo] = valor;
     });
+    
     setSeleccionesLocales(nuevasSelecciones);
     
     // Actualizar el estado de asignación pendiente
@@ -50,7 +53,7 @@ export function ScheduleTable({
       [actividadId]: valor
     }));
 
-    // Llamar a la función original
+    // Llamar a la función original que se conecta con el API
     await handleAsignarATodoElDia(actividadId, valor);
   };
 
@@ -64,7 +67,7 @@ export function ScheduleTable({
     nuevasSelecciones[actividadId][tiempo] = valor;
     setSeleccionesLocales(nuevasSelecciones);
 
-    // Llamar a la función original
+    // Llamar a la función original que se conecta con el API
     await handleUpdateHorario(actividadId, tiempo, valor);
   };
 
@@ -157,9 +160,9 @@ export function ScheduleTable({
             <thead className="sticky top-0 z-10 bg-white">
               <tr className="bg-gray-50">
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-52 border-b border-gray-100">Nombre</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-28 border-b border-gray-100">Hrs Contrato</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-28 border-b border-gray-100">Hrs +</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-28 border-b border-gray-100">Hrs -</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-28 border-b border-gray-100">Horas Contrato</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-28 border-b border-gray-100">Horas +</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-28 border-b border-gray-100">Horas -</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-32 border-b border-gray-100">DNI</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider w-64 border-b border-gray-100">Asignar Día</th>
                 {columnasTiempo.map(tiempo => (
@@ -180,52 +183,104 @@ export function ScheduleTable({
                       {actividad.fields.Nombre || 'N/A'}
                     </div>
                   </td>
-                  <td className="px-4 py-3 border-b border-gray-100">{actividad.fields['Horas Contrato'] || '-'}</td>
+                  <td className="px-4 py-3 border-b border-gray-100">{actividad.fields['Horas de Contrato'] || actividad.fields['Horas Contrato'] || '-'}</td>
                   <td className="px-4 py-3 border-b border-gray-100">
                     <span className="px-2 py-1 rounded-md bg-green-50 text-green-700 text-sm font-medium">
-                      {typeof actividad.fields['Horas +'] === 'number' 
-                        ? actividad.fields['Horas +'].toFixed(1) 
-                        : '0.0'}
+                      {(() => {
+                        // Leer directamente del campo sin cálculos
+                        let horasPlus = null;
+                        if (typeof actividad.fields['Horas +'] === 'number') {
+                          horasPlus = actividad.fields['Horas +'];
+                        } else if (typeof actividad.fields['Horas+'] === 'number') {
+                          horasPlus = actividad.fields['Horas+'];
+                        } else if (typeof actividad.fields['Horas Plus'] === 'number') {
+                          horasPlus = actividad.fields['Horas Plus'];
+                        } else {
+                          // Intentar parsear como string
+                          const strValue = 
+                            actividad.fields['Horas +'] || 
+                            actividad.fields['Horas+'] || 
+                            actividad.fields['Horas Plus'];
+                          if (strValue) {
+                            horasPlus = parseFloat(String(strValue));
+                          }
+                        }
+                        
+                        // Mostrar el valor formateado o valor por defecto
+                        return (horasPlus != null && !isNaN(horasPlus)) 
+                          ? horasPlus.toFixed(1) 
+                          : '0.0';
+                      })()}
                     </span>
                   </td>
                   <td className="px-4 py-3 border-b border-gray-100">
                     <span className="px-2 py-1 rounded-md bg-red-50 text-red-700 text-sm font-medium">
-                      {typeof actividad.fields['Horas -'] === 'number' 
-                        ? actividad.fields['Horas -'].toFixed(1) 
-                        : '0.0'}
+                      {(() => {
+                        // Leer directamente del campo sin cálculos
+                        let horasMinus = null;
+                        if (typeof actividad.fields['Horas -'] === 'number') {
+                          horasMinus = actividad.fields['Horas -'];
+                        } else if (typeof actividad.fields['Horas-'] === 'number') {
+                          horasMinus = actividad.fields['Horas-'];
+                        } else if (typeof actividad.fields['Horas Minus'] === 'number') {
+                          horasMinus = actividad.fields['Horas Minus'];
+                        } else {
+                          // Intentar parsear como string
+                          const strValue = 
+                            actividad.fields['Horas -'] || 
+                            actividad.fields['Horas-'] || 
+                            actividad.fields['Horas Minus'];
+                          if (strValue) {
+                            horasMinus = parseFloat(String(strValue));
+                          }
+                        }
+                        
+                        // Mostrar el valor formateado o valor por defecto
+                        return (horasMinus != null && !isNaN(horasMinus)) 
+                          ? horasMinus.toFixed(1) 
+                          : '0.0';
+                      })()}
                     </span>
                   </td>
                   <td className="px-4 py-3 border-b border-gray-100 text-gray-600">{actividad.fields.DNI || '-'}</td>
                   <td className="px-4 py-4 border-b border-gray-100">
-                    <Select
-                      options={[
-                        { value: '', label: 'Asignar todo' },
-                        ...options.filter(opt => opt.value !== '')
-                      ]}
-                      value={asignacionesPendientes[actividad.id] || ''}
-                      onChange={(e) => handleAsignacionLocal(actividad.id, e.target.value)}
-                      fullWidth
-                      className="shadow-sm text-base h-10 min-w-[200px]"
-                    />
+                    <div className="relative">
+                      <Select
+                        options={[
+                          { value: '', label: 'Asignar todo' },
+                          ...options.filter(opt => opt.value !== '')
+                        ]}
+                        value={asignacionesPendientes[actividad.id] || ''}
+                        onChange={(e) => handleAsignacionLocal(actividad.id, typeof e === 'object' && e !== null && 'target' in e ? (e as any).target.value : e)}
+                        fullWidth
+                        className={`shadow-sm text-base h-10 min-w-[200px] !h-10 ${getOptionClasses(asignacionesPendientes[actividad.id])}`}
+                      />
+                    </div>
                   </td>
                   {columnasTiempo.map(tiempo => (
                     <td key={`${actividad.id}-${tiempo}`} className="px-3 py-4 border-b border-gray-100 border-l border-gray-100">
-                      <Select
-                        options={options}
-                        value={
-                          seleccionesLocales[actividad.id]?.[tiempo] !== undefined
-                            ? seleccionesLocales[actividad.id][tiempo]
-                            : actividad.fields[tiempo] || ''
-                        }
-                        onChange={(e) => handleUpdateHorarioLocal(actividad.id, tiempo, e.target.value)}
-                        estado={
-                          seleccionesLocales[actividad.id]?.[tiempo] !== undefined
-                            ? seleccionesLocales[actividad.id][tiempo]
-                            : actividad.fields[tiempo]
-                        }
-                        fullWidth
-                        className="shadow-sm text-base h-10 min-w-[180px]"
-                      />
+                      <div className="relative">
+                        <Select
+                          options={options}
+                          value={
+                            seleccionesLocales[actividad.id]?.[tiempo] !== undefined
+                              ? seleccionesLocales[actividad.id][tiempo]
+                              : actividad.fields[tiempo] || ''
+                          }
+                          onChange={(e) => handleUpdateHorarioLocal(actividad.id, tiempo, typeof e === 'object' && e !== null && 'target' in e ? (e as any).target.value : e)}
+                          estado={
+                            seleccionesLocales[actividad.id]?.[tiempo] !== undefined
+                              ? seleccionesLocales[actividad.id][tiempo]
+                              : actividad.fields[tiempo]
+                          }
+                          fullWidth
+                          className={`shadow-sm text-base h-10 min-w-[180px] !h-10 ${getOptionClasses(
+                            seleccionesLocales[actividad.id]?.[tiempo] !== undefined
+                              ? seleccionesLocales[actividad.id][tiempo]
+                              : actividad.fields[tiempo]
+                          )}`}
+                        />
+                      </div>
                     </td>
                   ))}
                 </tr>
