@@ -606,158 +606,165 @@ export function MonthView({
         </div>
       ) : (
         <div className="w-full space-y-3">
-          {semanas.map(week => {
-            // Ajustar las fechas para empezar en lunes y terminar en domingo
-            let fechaInicio = week.fields['Fecha de Inicio'] ? new Date(week.fields['Fecha de Inicio']) : new Date();
-            let fechaFin = week.fields['Fecha de fin'] ? new Date(week.fields['Fecha de fin']) : new Date();
-            
-            // Si la fecha de inicio es domingo, moverla al lunes siguiente
-            if (fechaInicio.getDay() === 0) {
-              fechaInicio.setDate(fechaInicio.getDate() + 1);
-            }
-            
-            // Si la fecha fin es sábado, moverla al domingo siguiente
-            if (fechaFin.getDay() === 6) {
-              fechaFin.setDate(fechaFin.getDate() + 1);
-            }
+          {[...semanas]
+            .sort((a, b) => {
+              // Ordenar por fecha de inicio (más tempranas primero)
+              const fechaInicioA = a.fields['Fecha de Inicio'] ? new Date(a.fields['Fecha de Inicio']).getTime() : 0;
+              const fechaInicioB = b.fields['Fecha de Inicio'] ? new Date(b.fields['Fecha de Inicio']).getTime() : 0;
+              return fechaInicioA - fechaInicioB; // Orden ascendente por fecha
+            })
+            .map(week => {
+              // Ajustar las fechas para empezar en lunes y terminar en domingo
+              let fechaInicio = week.fields['Fecha de Inicio'] ? new Date(week.fields['Fecha de Inicio']) : new Date();
+              let fechaFin = week.fields['Fecha de fin'] ? new Date(week.fields['Fecha de fin']) : new Date();
+              
+              // Si la fecha de inicio es domingo, moverla al lunes siguiente
+              if (fechaInicio.getDay() === 0) {
+                fechaInicio.setDate(fechaInicio.getDate() + 1);
+              }
+              
+              // Si la fecha fin es sábado, moverla al domingo siguiente
+              if (fechaFin.getDay() === 6) {
+                fechaFin.setDate(fechaFin.getDate() + 1);
+              }
 
-            const isExpanded = expandedWeeks.has(week.id);
-            const isLoading = loadingWeeks.has(week.id);
-            const horasSemana = getHorasSemana(week.id);
+              const isExpanded = expandedWeeks.has(week.id);
+              const isLoading = loadingWeeks.has(week.id);
+              const horasSemana = getHorasSemana(week.id);
 
-            // Asignar una función de callback para la referencia del elemento
-            const setHorasEfectivasRef = (el: HTMLSpanElement | null) => {
-              semanasElementRefs.current[week.id] = el;
-            };
+              // Asignar una función de callback para la referencia del elemento
+              const setHorasEfectivasRef = (el: HTMLSpanElement | null) => {
+                semanasElementRefs.current[week.id] = el;
+              };
 
-            return (
-              <div key={week.id} className="week-container mb-4">
-                <div
-                  className="week-header w-full bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-500 transition-colors cursor-pointer"
-                  onClick={() => toggleWeekExpansion(week.id)}
-                >
-                  <div className="w-full p-3 sm:p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div className="flex-grow">
-                        <h3 className="text-base sm:text-lg font-medium">{week.fields.Name || `Semana ${week.id}`}</h3>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                          {formatearFecha(fechaInicio)} - {formatearFecha(fechaFin)}
-                        </p>
-                        
-                        {/* Indicadores de Horas de la Semana - Con skeleton loader */}
-                        {isLoading ? (
-                          <SkeletonHorasSemana />
-                        ) : (
-                          <div className="flex items-center flex-wrap gap-2 mt-1 text-xs">
-                            <span className="text-blue-700 font-medium">HA: </span>
-                            <span className="font-bold mr-3">{horasSemana.horasAprobadas.toFixed(1)}</span>
-                            
-                            <span className="text-green-700 font-medium">HC: </span>
-                            <span className="font-bold mr-3">{horasSemana.horasContratadas.toFixed(1)}</span>
-                            
-                            <span className="text-red-700 font-medium">HE: </span>
-                            <span 
-                              ref={setHorasEfectivasRef}
-                              className="font-bold py-1 px-2 rounded-full transition-colors"
-                            >
-                              {horasSemana.horasEfectivas.toFixed(1)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                        <Button 
-                          variant="primary"
-                          size="sm"
-                          className="text-xs sm:text-sm py-1 px-2 sm:py-2 sm:px-3"
-                          onClick={(e) => handleOpenWeekViewModal(week.id, e)}
-                        >
-                          <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                          <span className="hidden sm:inline">Generar PDF</span>
-                          <span className="sm:hidden">PDF</span>
-                        </Button>
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          width="16" 
-                          height="16" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                        >
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
+              return (
+                <div key={week.id} className="week-container mb-4">
+                  <div
+                    className="week-header w-full bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-500 transition-colors cursor-pointer"
+                    onClick={() => toggleWeekExpansion(week.id)}
+                  >
+                    <div className="w-full p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex-grow">
+                          <h3 className="text-base sm:text-lg font-medium">{week.fields.Name || `Semana ${week.id}`}</h3>
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            {formatearFecha(fechaInicio)} - {formatearFecha(fechaFin)}
+                          </p>
+                          
+                          {/* Indicadores de Horas de la Semana - Con skeleton loader */}
+                          {isLoading ? (
+                            <SkeletonHorasSemana />
+                          ) : (
+                            <div className="flex items-center flex-wrap gap-2 mt-1 text-xs">
+                              <span className="text-blue-700 font-medium">HA: </span>
+                              <span className="font-bold mr-3">{horasSemana.horasAprobadas.toFixed(1)}</span>
+                              
+                              <span className="text-green-700 font-medium">HC: </span>
+                              <span className="font-bold mr-3">{horasSemana.horasContratadas.toFixed(1)}</span>
+                              
+                              <span className="text-red-700 font-medium">HE: </span>
+                              <span 
+                                ref={setHorasEfectivasRef}
+                                className="font-bold py-1 px-2 rounded-full transition-colors"
+                              >
+                                {horasSemana.horasEfectivas.toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                          <Button 
+                            variant="primary"
+                            size="sm"
+                            className="text-xs sm:text-sm py-1 px-2 sm:py-2 sm:px-3"
+                            onClick={(e) => handleOpenWeekViewModal(week.id, e)}
+                          >
+                            <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            <span className="hidden sm:inline">Generar PDF</span>
+                            <span className="sm:hidden">PDF</span>
+                          </Button>
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            width="16" 
+                            height="16" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                          >
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {isExpanded && (
-                  <div className="week-content mt-3 sm:mt-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
-                      {diasSemana.map((day, index) => {
-                        // Calcular la fecha para este día
-                        const fecha = new Date(fechaInicio);
-                        fecha.setDate(fechaInicio.getDate() + index);
-                        
-                        // Determinar si es fin de semana
-                        const isWeekend = day === 'Domingo' || day === 'Sábado';
-                        
-                        // Determinar si es hoy
-                        const isToday = new Date().toDateString() === fecha.toDateString();
-                        
-                        // Buscar el ID del día laboral si existe
-                        const diaLaboral = week.fields['Dias Laborales']?.[index];
-                        
-                        // Obtener horas efectivas para este día
-                        const horasEfectivas = diaLaboral ? getHorasEfectivasDia(diaLaboral) : 0;
-                        
-                        return (
-                          <div 
-                            key={day}
-                            className={`bg-white rounded-lg shadow-sm border ${isToday ? 'border-green-500' : 'border-gray-200'} ${diaLaboral ? 'cursor-pointer hover:border-blue-500' : 'opacity-70'} transition-colors overflow-hidden`}
-                            onClick={() => diaLaboral && handleSelectDay(diaLaboral, fecha)}
-                          >
-                            <div className={`day-header ${isWeekend ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'} ${isToday ? 'bg-green-50 text-green-700' : ''} p-2 sm:p-3 text-center border-b ${isToday ? 'border-green-100' : isWeekend ? 'border-indigo-100' : 'border-blue-100'}`}>
-                              <div className="text-sm sm:text-base font-semibold">{day}</div>
-                            </div>
-                            <div className="p-2 sm:p-3">
-                              <div className="text-center">
-                                <div className="text-xs sm:text-sm text-gray-600 mb-2">
-                                  {fecha.getDate()} de {fecha.toLocaleString('es-ES', { month: 'long' })}
-                                </div>
-                                
-                                {/* Indicador de Horas Efectivas del Día - Con skeleton loader */}
-                                {diaLaboral && (
-                                  isLoading ? (
-                                    <SkeletonHorasEfectivasDia />
-                                  ) : (
-                                    <div className="bg-red-50 p-1 rounded text-xs mt-2">
-                                      <span className="block text-red-700 font-medium">Horas Efectivas:</span>
-                                      <span className="font-bold">{horasEfectivas.toFixed(1)}</span>
-                                    </div>
-                                  )
-                                )}
-                                
-                                {!diaLaboral && (
-                                  <div className="text-xs text-gray-400 mt-1">
-                                    No disponible
+                  
+                  {isExpanded && (
+                    <div className="week-content mt-3 sm:mt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+                        {diasSemana.map((day, index) => {
+                          // Calcular la fecha para este día
+                          const fecha = new Date(fechaInicio);
+                          fecha.setDate(fechaInicio.getDate() + index);
+                          
+                          // Determinar si es fin de semana
+                          const isWeekend = day === 'Domingo' || day === 'Sábado';
+                          
+                          // Determinar si es hoy
+                          const isToday = new Date().toDateString() === fecha.toDateString();
+                          
+                          // Buscar el ID del día laboral si existe
+                          const diaLaboral = week.fields['Dias Laborales']?.[index];
+                          
+                          // Obtener horas efectivas para este día
+                          const horasEfectivas = diaLaboral ? getHorasEfectivasDia(diaLaboral) : 0;
+                          
+                          return (
+                            <div 
+                              key={day}
+                              className={`bg-white rounded-lg shadow-sm border ${isToday ? 'border-green-500' : 'border-gray-200'} ${diaLaboral ? 'cursor-pointer hover:border-blue-500' : 'opacity-70'} transition-colors overflow-hidden`}
+                              onClick={() => diaLaboral && handleSelectDay(diaLaboral, fecha)}
+                            >
+                              <div className={`day-header ${isWeekend ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'} ${isToday ? 'bg-green-50 text-green-700' : ''} p-2 sm:p-3 text-center border-b ${isToday ? 'border-green-100' : isWeekend ? 'border-indigo-100' : 'border-blue-100'}`}>
+                                <div className="text-sm sm:text-base font-semibold">{day}</div>
+                              </div>
+                              <div className="p-2 sm:p-3">
+                                <div className="text-center">
+                                  <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                                    {fecha.getDate()} de {fecha.toLocaleString('es-ES', { month: 'long' })}
                                   </div>
-                                )}
+                                  
+                                  {/* Indicador de Horas Efectivas del Día - Con skeleton loader */}
+                                  {diaLaboral && (
+                                    isLoading ? (
+                                      <SkeletonHorasEfectivasDia />
+                                    ) : (
+                                      <div className="bg-red-50 p-1 rounded text-xs mt-2">
+                                        <span className="block text-red-700 font-medium">Horas Efectivas:</span>
+                                        <span className="font-bold">{horasEfectivas.toFixed(1)}</span>
+                                      </div>
+                                    )
+                                  )}
+                                  
+                                  {!diaLaboral && (
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      No disponible
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
 

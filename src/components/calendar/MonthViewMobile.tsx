@@ -439,185 +439,192 @@ export function MonthViewMobile({
         </div>
       ) : (
         <div className="w-full space-y-4">
-          {semanas.map(week => {
-            // Ajustar las fechas para empezar en lunes y terminar en domingo
-            let fechaInicio = week.fields['Fecha de Inicio'] ? new Date(week.fields['Fecha de Inicio']) : new Date();
-            let fechaFin = week.fields['Fecha de fin'] ? new Date(week.fields['Fecha de fin']) : new Date();
-            
-            // Si la fecha de inicio es domingo, moverla al lunes siguiente
-            if (fechaInicio.getDay() === 0) {
-              fechaInicio.setDate(fechaInicio.getDate() + 1);
-            }
-            
-            // Si la fecha fin es sábado, moverla al domingo siguiente
-            if (fechaFin.getDay() === 6) {
-              fechaFin.setDate(fechaFin.getDate() + 1);
-            }
-            
-            const isExpanded = expandedWeeks.has(week.id);
-            const isLoading = loadingWeeks.has(week.id);
-            const horasSemana = getHorasSemana(week.id);
+          {[...semanas]
+            .sort((a, b) => {
+              // Ordenar por fecha de inicio (más tempranas primero)
+              const fechaInicioA = a.fields['Fecha de Inicio'] ? new Date(a.fields['Fecha de Inicio']).getTime() : 0;
+              const fechaInicioB = b.fields['Fecha de Inicio'] ? new Date(b.fields['Fecha de Inicio']).getTime() : 0;
+              return fechaInicioA - fechaInicioB; // Orden ascendente por fecha
+            })
+            .map(week => {
+              // Ajustar las fechas para empezar en lunes y terminar en domingo
+              let fechaInicio = week.fields['Fecha de Inicio'] ? new Date(week.fields['Fecha de Inicio']) : new Date();
+              let fechaFin = week.fields['Fecha de fin'] ? new Date(week.fields['Fecha de fin']) : new Date();
+              
+              // Si la fecha de inicio es domingo, moverla al lunes siguiente
+              if (fechaInicio.getDay() === 0) {
+                fechaInicio.setDate(fechaInicio.getDate() + 1);
+              }
+              
+              // Si la fecha fin es sábado, moverla al domingo siguiente
+              if (fechaFin.getDay() === 6) {
+                fechaFin.setDate(fechaFin.getDate() + 1);
+              }
+              
+              const isExpanded = expandedWeeks.has(week.id);
+              const isLoading = loadingWeeks.has(week.id);
+              const horasSemana = getHorasSemana(week.id);
 
-            const setHorasEfectivasRef = (el: HTMLSpanElement | null) => {
-              semanasElementRefs.current[week.id] = el;
-            };
+              const setHorasEfectivasRef = (el: HTMLSpanElement | null) => {
+                semanasElementRefs.current[week.id] = el;
+              };
 
-            return (
-              <div key={week.id} className="week-container mb-5">
-                {/* Cabecera de semana con diseño responsive y mejoras para móvil */}
-                <div
-                  className="week-header w-full bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-500 transition-colors cursor-pointer relative"
-                  onClick={() => toggleWeekExpansion(week.id)}
-                >
-                  <div className="w-full p-4">
-                    <div className="flex flex-col gap-3">
-                      <div className="flex-grow">
-                        <div className="flex justify-between items-start">
-                          <h3 className="text-base sm:text-lg font-medium pr-8">{week.fields.Name}</h3>
-                          {/* Flecha para expandir/colapsar reposicionada */}
-                          <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            width="24" 
-                            height="24"
-                            viewBox="0 0 24 24" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            className={`text-gray-500 transition-transform duration-200 absolute top-4 right-4 ${isExpanded ? 'rotate-180' : ''}`}
-                          >
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                          </svg>
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                          {formatearFecha(fechaInicio)} - {formatearFecha(fechaFin)}
-                        </p>
-                        
-                        {isLoading ? (
-                          <SkeletonHorasSemana />
-                        ) : (
-                          <div className="flex items-center flex-wrap gap-2 mt-2 text-sm">
-                            <span className="text-blue-700 font-medium">HA: </span>
-                            <span className="font-bold mr-3">{horasSemana.horasAprobadas.toFixed(1)}</span>
-                            
-                            <span className="text-green-700 font-medium">HC: </span>
-                            <span className="font-bold mr-3">{horasSemana.horasContratadas.toFixed(1)}</span>
-                            
-                            <span className="text-red-700 font-medium">HE: </span>
-                            <span 
-                              ref={setHorasEfectivasRef}
-                              className="font-bold py-1 px-2 rounded-full transition-colors"
+              return (
+                <div key={week.id} className="week-container mb-5">
+                  {/* Cabecera de semana con diseño responsive y mejoras para móvil */}
+                  <div
+                    className="week-header w-full bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-500 transition-colors cursor-pointer relative"
+                    onClick={() => toggleWeekExpansion(week.id)}
+                  >
+                    <div className="w-full p-4">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex-grow">
+                          <div className="flex justify-between items-start">
+                            <h3 className="text-base sm:text-lg font-medium pr-8">{week.fields.Name}</h3>
+                            {/* Flecha para expandir/colapsar reposicionada */}
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              width="24" 
+                              height="24"
+                              viewBox="0 0 24 24" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              className={`text-gray-500 transition-transform duration-200 absolute top-4 right-4 ${isExpanded ? 'rotate-180' : ''}`}
                             >
-                              {horasSemana.horasEfectivas.toFixed(1)}
-                            </span>
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
                           </div>
-                        )}
-                      </div>
-                      {/* Botón PDF actualizado para descarga directa con mensaje modificado */}
-                      <div className="w-full">
-                        <Button 
-                          variant="primary"
-                          size="sm"
-                          className="text-sm py-3 px-4 w-full sm:w-auto"
-                          onClick={(e) => handleOpenWeekViewModal(e, week.id)}
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Generar PDF
-                        </Button>
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            {formatearFecha(fechaInicio)} - {formatearFecha(fechaFin)}
+                          </p>
+                          
+                          {isLoading ? (
+                            <SkeletonHorasSemana />
+                          ) : (
+                            <div className="flex items-center flex-wrap gap-2 mt-2 text-sm">
+                              <span className="text-blue-700 font-medium">HA: </span>
+                              <span className="font-bold mr-3">{horasSemana.horasAprobadas.toFixed(1)}</span>
+                              
+                              <span className="text-green-700 font-medium">HC: </span>
+                              <span className="font-bold mr-3">{horasSemana.horasContratadas.toFixed(1)}</span>
+                              
+                              <span className="text-red-700 font-medium">HE: </span>
+                              <span 
+                                ref={setHorasEfectivasRef}
+                                className="font-bold py-1 px-2 rounded-full transition-colors"
+                              >
+                                {horasSemana.horasEfectivas.toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {/* Botón PDF actualizado para descarga directa con mensaje modificado */}
+                        <div className="w-full">
+                          <Button 
+                            variant="primary"
+                            size="sm"
+                            className="text-sm py-3 px-4 w-full sm:w-auto"
+                            onClick={(e) => handleOpenWeekViewModal(e, week.id)}
+                          >
+                            <FileText className="w-4 h-4 mr-2" />
+                            Generar PDF
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Contenido de la semana (días) mostrados en formato vertical para móvil */}
-                {isExpanded && (
-                  <div className="week-content mt-3">
-                    {/* En lugar de grid-cols-7, usamos un diseño de lista vertical optimizado para móvil */}
-                    <div className="flex flex-col gap-2">
-                      {diasSemana.map((day, index) => {
-                        const fecha = new Date(fechaInicio);
-                        fecha.setDate(fechaInicio.getDate() + index);
-                        
-                        const isWeekend = day === 'Domingo' || day === 'Sábado';
-                        const isToday = new Date().toDateString() === fecha.toDateString();
-                        const diaLaboral = week.fields['Dias Laborales']?.[index];
-                        const horasEfectivas = diaLaboral ? getHorasEfectivasDia(diaLaboral) : 0;
-                        
-                        return (
-                          <div 
-                            key={day}
-                            className={`bg-white rounded-lg shadow-sm border ${isToday ? 'border-green-500' : 'border-gray-200'} ${diaLaboral ? 'cursor-pointer hover:border-blue-500 active:bg-blue-50' : 'opacity-70'} transition-colors overflow-hidden`}
-                            onClick={() => diaLaboral && handleSelectDay(diaLaboral, fecha)}
-                          >
-                            {/* Diseño más compacto para tarjetas de día en móvil */}
-                            <div className="flex items-center">
-                              {/* Indicador de día con diseño más compacto */}
-                              <div 
-                                className={`w-20 flex-shrink-0 h-full py-3 px-2 flex flex-col justify-center items-center
-                                  ${isWeekend ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'} 
-                                  ${isToday ? 'bg-green-50 text-green-700' : ''}
-                                  border-r ${isToday ? 'border-green-100' : isWeekend ? 'border-indigo-100' : 'border-blue-100'}`}
-                              >
-                                <div className="text-base font-semibold">{day.substring(0, 3)}</div>
-                                <div className="text-sm">
-                                  {fecha.getDate()}
-                                </div>
-                              </div>
-                              
-                              {/* Contenido del día con diseño mejorado */}
-                              <div className="flex-grow p-3">
-                                <div className="text-xs text-gray-600">
-                                  {fecha.getDate()} de {fecha.toLocaleString('es-ES', { month: 'long' })}
+                  
+                  {/* Contenido de la semana (días) mostrados en formato vertical para móvil */}
+                  {isExpanded && (
+                    <div className="week-content mt-3">
+                      {/* En lugar de grid-cols-7, usamos un diseño de lista vertical optimizado para móvil */}
+                      <div className="flex flex-col gap-2">
+                        {diasSemana.map((day, index) => {
+                          const fecha = new Date(fechaInicio);
+                          fecha.setDate(fechaInicio.getDate() + index);
+                          
+                          const isWeekend = day === 'Domingo' || day === 'Sábado';
+                          const isToday = new Date().toDateString() === fecha.toDateString();
+                          const diaLaboral = week.fields['Dias Laborales']?.[index];
+                          const horasEfectivas = diaLaboral ? getHorasEfectivasDia(diaLaboral) : 0;
+                          
+                          return (
+                            <div 
+                              key={day}
+                              className={`bg-white rounded-lg shadow-sm border ${isToday ? 'border-green-500' : 'border-gray-200'} ${diaLaboral ? 'cursor-pointer hover:border-blue-500 active:bg-blue-50' : 'opacity-70'} transition-colors overflow-hidden`}
+                              onClick={() => diaLaboral && handleSelectDay(diaLaboral, fecha)}
+                            >
+                              {/* Diseño más compacto para tarjetas de día en móvil */}
+                              <div className="flex items-center">
+                                {/* Indicador de día con diseño más compacto */}
+                                <div 
+                                  className={`w-20 flex-shrink-0 h-full py-3 px-2 flex flex-col justify-center items-center
+                                    ${isWeekend ? 'bg-indigo-50 text-indigo-700' : 'bg-blue-50 text-blue-700'} 
+                                    ${isToday ? 'bg-green-50 text-green-700' : ''}
+                                    border-r ${isToday ? 'border-green-100' : isWeekend ? 'border-indigo-100' : 'border-blue-100'}`}
+                                >
+                                  <div className="text-base font-semibold">{day.substring(0, 3)}</div>
+                                  <div className="text-sm">
+                                    {fecha.getDate()}
+                                  </div>
                                 </div>
                                 
-                                {diaLaboral ? (
-                                  isLoading ? (
-                                    <SkeletonHorasEfectivasDia />
+                                {/* Contenido del día con diseño mejorado */}
+                                <div className="flex-grow p-3">
+                                  <div className="text-xs text-gray-600">
+                                    {fecha.getDate()} de {fecha.toLocaleString('es-ES', { month: 'long' })}
+                                  </div>
+                                  
+                                  {diaLaboral ? (
+                                    isLoading ? (
+                                      <SkeletonHorasEfectivasDia />
+                                    ) : (
+                                      <div className="mt-1 flex items-center">
+                                        <span className="text-red-700 font-medium mr-2">Horas Efectivas:</span>
+                                        <span className="bg-red-50 text-red-800 font-bold py-1 px-3 rounded-full">
+                                          {horasEfectivas.toFixed(1)}
+                                        </span>
+                                      </div>
+                                    )
                                   ) : (
-                                    <div className="mt-1 flex items-center">
-                                      <span className="text-red-700 font-medium mr-2">Horas Efectivas:</span>
-                                      <span className="bg-red-50 text-red-800 font-bold py-1 px-3 rounded-full">
-                                        {horasEfectivas.toFixed(1)}
-                                      </span>
+                                    <div className="text-sm italic text-gray-400 mt-1">
+                                      No disponible
                                     </div>
-                                  )
-                                ) : (
-                                  <div className="text-sm italic text-gray-400 mt-1">
-                                    No disponible
+                                  )}
+                                </div>
+
+                                {/* Indicador visual para días seleccionables */}
+                                {diaLaboral && (
+                                  <div className="pr-3">
+                                    <svg 
+                                      xmlns="http://www.w3.org/2000/svg" 
+                                      width="20" 
+                                      height="20" 
+                                      viewBox="0 0 24 24" 
+                                      fill="none" 
+                                      stroke="currentColor" 
+                                      strokeWidth="2" 
+                                      strokeLinecap="round" 
+                                      strokeLinejoin="round" 
+                                      className="text-gray-400"
+                                    >
+                                      <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
                                   </div>
                                 )}
                               </div>
-
-                              {/* Indicador visual para días seleccionables */}
-                              {diaLaboral && (
-                                <div className="pr-3">
-                                  <svg 
-                                    xmlns="http://www.w3.org/2000/svg" 
-                                    width="20" 
-                                    height="20" 
-                                    viewBox="0 0 24 24" 
-                                    fill="none" 
-                                    stroke="currentColor" 
-                                    strokeWidth="2" 
-                                    strokeLinecap="round" 
-                                    strokeLinejoin="round" 
-                                    className="text-gray-400"
-                                  >
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                  </svg>
-                                </div>
-                              )}
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
 
