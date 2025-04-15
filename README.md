@@ -1,200 +1,133 @@
-# Casa Carcasas - Aplicación de Gestión de Horarios
+# Casa Carcasas - Sistema de Gestión
 
-## Descripción General
-Esta aplicación web permite gestionar horarios y actividades diarias para tiendas, utilizando Airtable como base de datos. La aplicación está construida con Next.js 14 y utiliza TypeScript para el desarrollo.
+Sistema de administración y sincronización para La Casa de las Carcasas, que permite la gestión de tiendas, usuarios y horarios a través de un panel de administración y APIs personalizadas.
 
-## Tecnologías Principales
-- Next.js 14
-- TypeScript
-- Tailwind CSS
-- Airtable API
-- React Context API
-- React Query
+## Características Principales
+
+- **Sincronización Bidireccional**: Integración con Airtable para mantener sincronizados los datos de tiendas y empleados.
+- **Programador de Sincronizaciones**: Configuración de tareas automáticas con frecuencia diaria o semanal.
+- **Importación CSV**: Carga masiva de datos desde archivos CSV.
+- **Panel de Administración**: Gestión completa de tiendas, empleados y horarios.
+- **API REST**: Endpoints para acceder a la información desde aplicaciones externas.
+- **Sistema de Autenticación**: Control de acceso para administradores y supervisores.
+
+## Tecnologías Utilizadas
+
+- **Next.js**: Framework React para aplicaciones web del lado del servidor
+- **TypeScript**: Tipado estático para JavaScript
+- **Airtable**: Base de datos/CRM para almacenamiento de datos
+- **Tailwind CSS**: Framework CSS para diseño de interfaz
+- **NextAuth**: Autenticación y manejo de sesiones
 
 ## Estructura del Proyecto
+
 ```
-src/
-├── app/                    # Rutas y páginas de Next.js
-│   ├── api/               # API Routes
-│   ├── editor/            # Página de edición
-│   └── view/              # Página de visualización
-├── components/            # Componentes React reutilizables
-├── lib/                   # Utilidades y configuraciones
-└── types/                 # Definiciones de tipos TypeScript
-```
-
-## Configuración del Entorno
-
-### Variables de Entorno
-Crear un archivo `.env.local` en la raíz del proyecto con las siguientes variables:
-
-```env
-# Airtable Configuration
-AIRTABLE_API_KEY=your_airtable_api_key_here
-AIRTABLE_BASE_ID=your_airtable_base_id_here
-AIRTABLE_SEMANAS_LABORALES_TABLE_ID=your_semanas_laborales_table_id
-AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID=your_tienda_supervisor_table_id
-AIRTABLE_ACTIVIDAD_DIARIA_TABLE_ID=your_actividad_diaria_table_id
-AIRTABLE_DIAS_LABORALES_TABLE_ID=your_dias_laborales_table_id
-
-# Traffic API Configuration
-TRAFICO_API_TOKEN=your_trafico_api_token_here
-TRAFICO_API_BASE_URL=https://api.airtable.com/v0/your_base_id/your_table_id
-
-# Application URL
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+/src
+  /app                   # Páginas y rutas de la aplicación
+    /admin               # Panel de administración
+      /api-sync          # Sincronización manual con API
+      /csv-import        # Importación de datos CSV
+      /sync-scheduler    # Programador de sincronizaciones
+    /api                 # Endpoints de API
+      /admin             # APIs de administración
+      /lcdc              # APIs para datos de tiendas y usuarios
+  /components            # Componentes React reutilizables
+  /context               # Contextos de React para estado global
+  /lib                   # Bibliotecas y utilidades
+    /lcdc                # Lógica de integración con API externa
+      /api.ts            # Cliente para API externa
+      /airtable.ts       # Lógica de sincronización con Airtable
+    /auth.ts             # Configuración de autenticación
 ```
 
-## Conexión con Airtable
+## Configuración
 
-### Implementación
-La conexión con Airtable se realiza a través de la API REST utilizando `curl` para manejar las peticiones HTTP. Esta implementación fue elegida para resolver problemas de latencia y conexión en ciertas ubicaciones geográficas.
+El sistema requiere las siguientes variables de entorno:
 
-### Estructura de la Conexión
-1. **Configuración Base**
-   - API Key: Token de autenticación
-   - Base ID: Identificador de la base de datos
-   - Table IDs: Identificadores de las tablas específicas
+```
+# Airtable
+AIRTABLE_API_KEY=
+AIRTABLE_BASE_ID=
+AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID=
+AIRTABLE_EMPLEADOS_TABLE_ID=
+AIRTABLE_AREA_MANAGER_TABLE_ID=
 
-2. **Método de Conexión**
-   ```typescript
-   async function curlRequest(url: string, method: string = 'GET', data?: any) {
-     const headers = [
-       `-H "Authorization: Bearer ${apiKey}"`,
-       '-H "Content-Type: application/json"'
-     ];
-     
-     let command = `curl -s ${headers.join(' ')}`;
-     
-     if (method === 'PATCH' && data) {
-       command += ` -X PATCH -d '${JSON.stringify(data)}'`;
-     }
-     
-     command += ` "${url}"`;
-     
-     const { stdout, stderr } = await execAsync(command);
-     
-     if (stderr) {
-       throw new Error(stderr);
-     }
-     
-     return JSON.parse(stdout);
-   }
-   ```
+# API Externa
+TRAFICO_API_BASE_URL=
+TRAFICO_API_TOKEN=
 
-## API Routes
+# Autenticación
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+NEXT_PUBLIC_ADMIN_SECRET=
 
-### 1. `/api/airtable`
-Maneja todas las operaciones relacionadas con Airtable.
+# Base URL para sincronizaciones programadas
+NEXT_PUBLIC_BASE_URL=
+```
 
-#### Endpoints GET
-1. **verificarConexion**
-   - Verifica la conexión con Airtable
-   - URL: `/api/airtable?action=verificarConexion`
+## Sincronización con Airtable
 
-2. **obtenerDatosTienda**
-   - Obtiene datos de una tienda específica
-   - URL: `/api/airtable?action=obtenerDatosTienda&storeId={storeId}`
+El sistema sincroniza dos tipos principales de datos:
 
-3. **obtenerActividadesDiarias**
-   - Obtiene actividades para una tienda y día específicos
-   - URL: `/api/airtable?action=obtenerActividadesDiarias&storeId={storeId}&diaId={diaId}`
+### Tiendas
 
-4. **obtenerDiasLaboralesSemana**
-   - Obtiene días laborales para una semana específica
-   - URL: `/api/airtable?action=obtenerDiasLaboralesSemana&semanaId={semanaId}`
+- **Campos sincronizados**: 
+  - Número de tienda (N°)
+  - Nombre de tienda (TIENDA)
+  - País (PAIS)
+  - Email del supervisor (Email Supervisor)
+  - Horas aprobadas (Horas Aprobadas Value)
+  - Area Manager (ID de relación con la tabla de managers)
 
-5. **obtenerDiaLaboralPorId**
-   - Obtiene un día laboral específico
-   - URL: `/api/airtable?action=obtenerDiaLaboralPorId&diaId={diaId}`
+### Usuarios
 
-6. **obtenerSemanaPorId**
-   - Obtiene una semana específica
-   - URL: `/api/airtable?action=obtenerSemanaPorId&semanaId={semanaId}`
+- **Campos sincronizados**:
+  - Código de empleado (CodigoEmpleado)
+  - Nombre (Nombre)
+  - Apellidos (Apellidos)
+  - Perfil (Perfil)
+  - Horas semanales (Horas Semanales)
+  - Relación con tienda (Tienda [Link])
 
-7. **obtenerSemanasLaborales**
-   - Obtiene semanas laborales para un mes y año específicos
-   - URL: `/api/airtable?action=obtenerSemanasLaborales&mes={mes}&año={año}`
+## API Endpoints
 
-#### Endpoints POST
-1. **actualizarActividad**
-   - Actualiza una actividad específica
-   - URL: `/api/airtable`
-   - Body: 
-     ```json
-     {
-       "action": "actualizarActividad",
-       "actividadId": "string",
-       "campos": {}
-     }
-     ```
+### Sincronización
 
-## Estructura de Datos en Airtable
+- `GET /api/lcdc/stores?sync=true` - Sincroniza tiendas con Airtable
+- `GET /api/lcdc/users?sync=true` - Sincroniza usuarios con Airtable
 
-### Tablas Principales
-1. **Semanas Laborales**
-   - Campos principales:
-     - Name
-     - Fecha de Inicio
-     - Fecha de fin
-     - Year
+### Programador de Sincronización
 
-2. **Tienda y Supervisor**
-   - Campos principales:
-     - Name
-     - Supervisor
-     - Tienda
+- `GET /api/admin/scheduler?operation=check` - Verifica tareas programadas
+- `GET /api/admin/scheduler?operation=run&type=tiendas` - Ejecuta sincronización de tiendas
+- `GET /api/admin/scheduler?operation=run&type=usuarios` - Ejecuta sincronización de usuarios
 
-3. **Actividad Diaria**
-   - Campos principales:
-     - record_Id (from Tienda y Supervisor)
-     - recordId (from Fecha)
-     - Actividades
+### Configuración del Programador
 
-4. **Días Laborales**
-   - Campos principales:
-     - Name
-     - Semanas Laborales
-     - Fecha
+- `GET /api/admin/sync-schedule` - Obtiene configuración actual
+- `POST /api/admin/sync-schedule` - Actualiza configuración
 
-## Manejo de Errores
-La aplicación implementa un sistema robusto de manejo de errores:
-1. Logging detallado de errores
-2. Respuestas HTTP apropiadas
-3. Mensajes de error descriptivos
-4. Manejo de timeouts y reintentos
+## Mejoras Recientes
 
-## Instalación y Ejecución
+- Optimización del proceso de sincronización para evitar timeouts
+- Mejora en el manejo de valores numéricos para "Horas Aprobadas Value"
+- Implementación de mecanismo de timeout para sincronizaciones largas
+- Eliminación de almacenamiento de resultados detallados para mejorar el rendimiento
+
+## Desarrollo
 
 1. Clonar el repositorio
-2. Instalar dependencias:
-   ```bash
-   npm install
-   ```
-3. Configurar variables de entorno
-4. Iniciar el servidor de desarrollo:
-   ```bash
-   npm run dev
-   ```
-5. Construir para producción:
-   ```bash
-   npm run build
-   ```
+2. Instalar dependencias: `npm install`
+3. Configurar archivo `.env.local` con las variables de entorno necesarias
+4. Iniciar servidor de desarrollo: `npm run dev`
 
-## Consideraciones de Seguridad
-1. Las variables de entorno no están expuestas al cliente
-2. Las API keys se manejan de forma segura
-3. Las peticiones a Airtable incluyen autenticación
-4. Los datos sensibles no se almacenan en el cliente
+## Despliegue
 
-## Mantenimiento y Actualizaciones
-1. Verificar regularmente las dependencias
-2. Monitorear el uso de la API de Airtable
-3. Mantener actualizadas las variables de entorno
-4. Revisar los logs de error periódicamente
+El sistema está configurado para despliegue en Vercel. Para un despliegue manual:
 
-## Solución de Problemas
-1. Verificar la conexión con Airtable
-2. Comprobar las variables de entorno
-3. Revisar los logs de error
-4. Verificar la disponibilidad de la API de Airtable 
+1. Construir la aplicación: `npm run build`
+2. Iniciar la aplicación: `npm start`
+
+## Licencia
+
+© 2023-2024 La Casa de las Carcasas. Todos los derechos reservados. 
