@@ -7,6 +7,15 @@ import { generarResumenSemanal } from '@/lib/trafico/estadisticas';
 import { RespuestaTraficoSemanal, TraficoDia, RecomendacionDiaria, EmpleadoActividad } from '@/lib/trafico/types';
 import logger from '@/lib/logger';
 import { obtenerActividadesDiarias } from '@/lib/airtable';
+import Airtable from 'airtable';
+
+// Configuración de Airtable para consultas directas
+const apiKey = process.env.AIRTABLE_API_KEY || '';
+const baseId = process.env.AIRTABLE_BASE_ID || '';
+const tiendaSupervisorTableId = process.env.AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID || '';
+
+// Inicializar Airtable
+const airtableClient = new Airtable({ apiKey }).base(baseId);
 
 /**
  * API para obtener recomendaciones semanales basadas en tráfico
@@ -69,6 +78,12 @@ export default async function handler(
     const diasLaborales = await obtenerDiasLaborales(semanaId as string);
     console.log(`API trafico-semana: Encontrados ${diasLaborales.length} días laborales`);
     
+    // Verificar los datos de la tienda y sus horarios
+    console.log(`API trafico-semana: Datos de la tienda - ID: ${tienda.id}, Nombre: ${tienda.nombre}`);
+    // Datos directos desde Airtable para verificar
+    const tiendaRecord = await airtableClient(tiendaSupervisorTableId).find(storeId as string);
+    console.log(`API trafico-semana: Horarios originales en Airtable - Apertura=${tiendaRecord.fields.Apertura}, Cierre=${tiendaRecord.fields.Cierre}`);
+    
     // Arreglos para almacenar datos procesados
     const traficosDiarios: TraficoDia[] = [];
     const recomendacionesDiarias: RecomendacionDiaria[] = [];
@@ -83,12 +98,36 @@ export default async function handler(
           continue;
         }
         
+        // Asegurar que estamos utilizando los datos de horario correctos
+        // Ahora tomamos SIEMPRE los valores de la tienda en Airtable
+        const horarioAperturaField = tiendaRecord.fields.Apertura || tiendaRecord.fields['Horario Apertura'];
+        const horarioCierreField = tiendaRecord.fields.Cierre || tiendaRecord.fields['Horario Cierre'];
+        
+        // Convertir a string para asegurar el tipo correcto
+        const horarioApertura = typeof horarioAperturaField === 'string' ? horarioAperturaField : '09:00';
+        const horarioCierre = typeof horarioCierreField === 'string' ? horarioCierreField : '21:00';
+        
+        // Añadir logs para verificar los datos de horario
+        console.log(`API trafico-semana: Horario para ${diaLaboral.fecha} - Apertura: "${horarioApertura}" (original: "${diaLaboral.horarioApertura}"), Cierre: "${horarioCierre}" (original: "${diaLaboral.horarioCierre}")`);
+        
+        // FORZAR a utilizar los valores de horario de la tienda
+        diaLaboral.horarioApertura = horarioApertura;
+        diaLaboral.horarioCierre = horarioCierre;
+        
         // Obtener datos de tráfico
         let traficoDia: TraficoDia | null = null;
         try {
+          // Usar fechaTrafico si está disponible, para consultar datos históricos correctos
+          const fechaConsulta = diaLaboral.fechaTrafico || diaLaboral.fecha;
+          
+          // Añadir logs para mayor claridad
+          if (diaLaboral.fechaTrafico && diaLaboral.fechaTrafico !== diaLaboral.fecha) {
+            console.log(`API trafico-semana: Usando fecha tráfico ${diaLaboral.fechaTrafico} en lugar de fecha normal ${diaLaboral.fecha}`);
+          }
+          
           // Usamos el número de tienda para obtener datos de tráfico
           // Si el número es 0 o inválido, se usarán datos simulados
-          traficoDia = await obtenerTraficoDelDia(tienda.numero, diaLaboral.fecha);
+          traficoDia = await obtenerTraficoDelDia(tienda.numero, fechaConsulta);
           console.log(`API trafico-semana: Tráfico para ${diaLaboral.fecha}: ${traficoDia.metadatos.totalEntradas} entradas`);
         } catch (error) {
           const mensaje = error instanceof Error ? error.message : String(error);
@@ -108,6 +147,8 @@ export default async function handler(
             horarioCierre: diaLaboral.horarioCierre,
             redondear: true
           };
+          
+          console.log(`API trafico-semana: Opciones para cálculo - Apertura: "${opciones.horarioApertura}", Cierre: "${opciones.horarioCierre}"`);
           
           const recomendacionDiaria = calcularRecomendacionesDelDia(traficoDia, opciones, diaLaboral);
           recomendacionesDiarias.push(recomendacionDiaria);

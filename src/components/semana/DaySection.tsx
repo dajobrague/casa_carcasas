@@ -25,7 +25,7 @@ const DaySection: React.FC<DaySectionProps> = ({ dia, isEven }) => {
         ? dia.tienda['Atención Deseada']
         : (dia.tienda?.['Atencion Deseada'] && typeof dia.tienda['Atencion Deseada'] === 'number')
           ? dia.tienda['Atencion Deseada']
-          : dia.recomendaciones.recomendacionesPorHora[0]?.detalles.atencionDeseada || 25;
+          : dia.recomendaciones.recomendacionesPorHora[0]?.detalles.atencionDeseada || 10;
   
   // Determinar el fondo para el día de la semana
   const getDayGradient = (diaSemana: string) => {
@@ -47,6 +47,90 @@ const DaySection: React.FC<DaySectionProps> = ({ dia, isEven }) => {
       default:
         return 'linear-gradient(135deg, #2980b9, #3498db)';
     }
+  };
+  
+  // Formatear el horario para mostrar de forma legible y visualmente atractiva
+  const formatearHorario = (horarioApertura: string, horarioCierre: string) => {
+    // Imprimir información para debug
+    console.log(`DaySection recibió: horarioApertura='${horarioApertura}', horarioCierre='${horarioCierre}'`);
+    console.log(`Tipo de horarioApertura: ${typeof horarioApertura}, incluye '-': ${horarioApertura?.includes('-')}, incluye ',': ${horarioApertura?.includes(',')}`);
+    
+    // Si es formato de múltiples intervalos (contiene '-' y ',')
+    if (horarioApertura && typeof horarioApertura === 'string' && horarioApertura.includes('-') && horarioApertura.includes(',')) {
+      // Dividir por comas para obtener cada intervalo
+      const intervalos = horarioApertura.split(',');
+      console.log(`Detectados ${intervalos.length} intervalos: ${JSON.stringify(intervalos)}`);
+      
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <div style={{ fontSize: '0.85rem', marginBottom: '3px' }}>Horario:</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {intervalos.map((intervalo, idx) => {
+              const [inicio, fin] = intervalo.split('-');
+              return (
+                <div 
+                  key={idx} 
+                  style={{ 
+                    backgroundColor: 'rgba(255,255,255,0.2)', 
+                    padding: '3px 8px', 
+                    borderRadius: '4px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>Intervalo {idx+1}:</span> {inicio} a {fin}
+                </div>
+              );
+            })}
+          </div>
+          {horasArray.length > 0 && (
+            <div style={{ marginTop: '4px', fontSize: '0.8rem', opacity: 0.9 }}>
+              {horasArray.length} horas totales
+            </div>
+          )}
+        </div>
+      );
+    } else if (horarioApertura && typeof horarioApertura === 'string' && horarioApertura.includes('-')) {
+      console.log(`Detectado formato simple con guion: ${horarioApertura}`);
+      const [inicio, fin] = horarioApertura.split('-');
+      
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <div style={{ fontSize: '0.85rem', marginBottom: '3px' }}>Horario:</div>
+          <div 
+            style={{ 
+              backgroundColor: 'rgba(255,255,255,0.2)', 
+              padding: '3px 8px', 
+              borderRadius: '4px',
+              fontSize: '0.85rem',
+              fontWeight: 600
+            }}
+          >
+            {inicio} a {fin}
+          </div>
+          {horasArray.length > 0 && (
+            <div style={{ marginTop: '4px', fontSize: '0.8rem', opacity: 0.9 }}>
+              {horasArray.length} horas totales
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Si es un horario simple
+    return (
+      <>
+        Horario: {horarioApertura} a {horarioCierre}
+        {horasArray.length > 0 && (
+          <span style={{ marginLeft: '10px', fontSize: '0.8rem', opacity: 0.8 }}>
+            ({horasArray.length} horas)
+          </span>
+        )}
+      </>
+    );
   };
   
   return (
@@ -103,7 +187,7 @@ const DaySection: React.FC<DaySectionProps> = ({ dia, isEven }) => {
             fontWeight: 500
           }}>
             <IoMdTime style={{ marginRight: '6px', fontSize: '1.2rem' }} /> 
-            Horario: {dia.horarioApertura} a {dia.horarioCierre}
+            {formatearHorario(dia.horarioApertura, dia.horarioCierre)}
           </span>
         </div>
       </div>
@@ -118,4 +202,4 @@ const DaySection: React.FC<DaySectionProps> = ({ dia, isEven }) => {
   );
 };
 
-export default DaySection; 
+export default DaySection;

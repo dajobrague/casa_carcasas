@@ -20,7 +20,7 @@ export function calcularRecomendacionParaHora(
   }
   
   // Extraer opciones con valores por defecto
-  const atencionDeseada = opciones.atencionDeseada || 25;
+  const atencionDeseada = opciones.atencionDeseada || 10;
   
   // El factor de crecimiento viene como decimal (ej: 0.15 para 15%)
   // Multiplicamos por 100 para obtener el porcentaje para los cálculos
@@ -84,7 +84,7 @@ export function calcularRecomendacionParaHora(
 export function calcularRecomendacionesDelDia(
   traficoDia: TraficoDia,
   opciones: OpcionesRecomendacion,
-  diaLaboral: { id: string; fecha: string; diaSemana: string; nombre: string; horarioApertura: string; horarioCierre: string }
+  diaLaboral: { id: string; fecha: string; diaSemana: string; nombre: string; horarioApertura?: string; horarioCierre?: string }
 ): RecomendacionDiaria {
   // Establecer opciones con valores por defecto
   const opcionesCompletas: OpcionesRecomendacion = {
@@ -98,29 +98,68 @@ export function calcularRecomendacionesDelDia(
   };
   
   console.log(`Procesando recomendaciones para ${diaLaboral.fecha} - Horario: ${opcionesCompletas.horarioApertura} a ${opcionesCompletas.horarioCierre}`);
+  console.log(`calcularRecomendacionesDelDia: Usando horario - Apertura: "${diaLaboral.horarioApertura}", Cierre: "${diaLaboral.horarioCierre}" para ${diaLaboral.fecha}`);
   
   const recomendacionesPorHora: RecomendacionHora[] = [];
   let totalPersonalRecomendado = 0;
   let totalPersonalRedondeado = 0;
   let horasOmitidas = 0;
   
-  // Filtrar horas que están dentro del horario de apertura
-  const horaApertura = parseInt(opcionesCompletas.horarioApertura?.split(':')[0] || '9');
-  const horaCierre = parseInt(opcionesCompletas.horarioCierre?.split(':')[0] || '21');
-  
-  // Calcular recomendación para cada hora con tráfico
-  for (const [hora, entradas] of Object.entries(traficoDia.entradasPorHora)) {
-    const horaActual = parseInt(hora.split(':')[0]);
+  // Verificar si estamos usando el nuevo formato con múltiples intervalos
+  if (opcionesCompletas.horarioApertura && opcionesCompletas.horarioApertura.includes('-')) {
+    // Generar un array con todas las horas que están dentro de algún intervalo
+    const intervalos = opcionesCompletas.horarioApertura.split(',');
+    const horasValidas: string[] = [];
     
-    // Solo incluir horas dentro del horario de apertura
-    if (horaActual >= horaApertura && horaActual < horaCierre) {
-      const recomendacion = calcularRecomendacionParaHora(hora, entradas, opcionesCompletas);
-      recomendacionesPorHora.push(recomendacion);
+    // Para cada intervalo, extraer las horas inicio-fin
+    intervalos.forEach(intervalo => {
+      const [inicio, fin] = intervalo.split('-');
+      if (!inicio || !fin) return;
       
-      totalPersonalRecomendado += recomendacion.recomendacionExacta;
-      totalPersonalRedondeado += recomendacion.recomendacionRedondeada;
-    } else {
-      horasOmitidas++;
+      // Convertir a horas enteras para comparar
+      const horaInicio = parseInt(inicio.split(':')[0]);
+      const horaFin = parseInt(fin.split(':')[0]);
+      
+      // Añadir cada hora del intervalo
+      for (let h = horaInicio; h < horaFin; h++) {
+        horasValidas.push(`${h.toString().padStart(2, '0')}:00`);
+      }
+    });
+    
+    // Calcular recomendación para cada hora con tráfico que esté en algún intervalo válido
+    for (const [hora, entradas] of Object.entries(traficoDia.entradasPorHora)) {
+      const horaActual = hora.split(':')[0] + ':00'; // Normalizar a formato HH:00
+      
+      if (horasValidas.includes(horaActual)) {
+        const recomendacion = calcularRecomendacionParaHora(hora, entradas, opcionesCompletas);
+        recomendacionesPorHora.push(recomendacion);
+        
+        totalPersonalRecomendado += recomendacion.recomendacionExacta;
+        totalPersonalRedondeado += recomendacion.recomendacionRedondeada;
+      } else {
+        horasOmitidas++;
+      }
+    }
+  } else {
+    // Código existente para el formato antiguo (un solo intervalo)
+    // Filtrar horas que están dentro del horario de apertura
+    const horaApertura = parseInt(opcionesCompletas.horarioApertura?.split(':')[0] || '9');
+    const horaCierre = parseInt(opcionesCompletas.horarioCierre?.split(':')[0] || '21');
+    
+    // Calcular recomendación para cada hora con tráfico
+    for (const [hora, entradas] of Object.entries(traficoDia.entradasPorHora)) {
+      const horaActual = parseInt(hora.split(':')[0]);
+      
+      // Solo incluir horas dentro del horario de apertura
+      if (horaActual >= horaApertura && horaActual < horaCierre) {
+        const recomendacion = calcularRecomendacionParaHora(hora, entradas, opcionesCompletas);
+        recomendacionesPorHora.push(recomendacion);
+        
+        totalPersonalRecomendado += recomendacion.recomendacionExacta;
+        totalPersonalRedondeado += recomendacion.recomendacionRedondeada;
+      } else {
+        horasOmitidas++;
+      }
     }
   }
   
@@ -147,4 +186,57 @@ export function calcularRecomendacionesDelDia(
   };
   
   return recomendacionDiaria;
-} 
+}
+
+const tienda = {
+  atencionDeseada: 25,
+  factorCrecimiento: 0.15
+};
+
+const diaLaboral = {
+  id: '1',
+  fecha: '2024-04-01',
+  diaSemana: 'Lunes',
+  nombre: 'Tienda 1',
+  horarioApertura: '09:00',
+  horarioCierre: '21:00'
+};
+
+const traficoDia: TraficoDia = {
+  fecha: '2024-04-01',
+  entradasPorHora: {
+    '09:00': 10,
+    '10:00': 15,
+    '11:00': 20,
+    '12:00': 25,
+    '13:00': 30,
+    '14:00': 35,
+    '15:00': 40,
+    '16:00': 45,
+    '17:00': 50,
+    '18:00': 55,
+    '19:00': 60,
+    '20:00': 65,
+    '21:00': 70
+  },
+  metadatos: {
+    totalEntradas: 520,
+    horaMaxima: '21:00',
+    entradasHoraMaxima: 70,
+    promedioEntradasPorHora: 40,
+    horasConTrafico: 13,
+    simulado: false
+  }
+};
+
+const opciones = {
+  atencionDeseada: tienda.atencionDeseada,
+  crecimiento: tienda.factorCrecimiento,
+  horarioApertura: diaLaboral.horarioApertura,
+  horarioCierre: diaLaboral.horarioCierre,
+  redondear: true
+};
+
+console.log(`calcularRecomendacionesDelDia: Usando horario - Apertura: "${diaLaboral.horarioApertura}", Cierre: "${diaLaboral.horarioCierre}" para ${diaLaboral.fecha}`);
+
+const recomendacionDiaria = calcularRecomendacionesDelDia(traficoDia, opciones, diaLaboral); 

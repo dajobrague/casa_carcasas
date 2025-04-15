@@ -42,8 +42,7 @@ export async function procesarTraficoParaDia(
       // Si es un objeto día, intentar obtener la fecha específica
       const dia = diaOFecha;
       fechaConsulta = dia.fields?.['fecha entradas'] || 
-                      dia.fields?.['Fecha Entradas'] || 
-                      dia.fields?.Name;
+                      dia.fields?.['Fecha Entradas'];
       
       if (!fechaConsulta) {
         console.warn(`⚠️ [PDF-TRAFFIC] Día sin fecha de entradas definida: ${dia.fields?.Name}, usando fecha del día`);
@@ -52,6 +51,8 @@ export async function procesarTraficoParaDia(
       
       diaId = dia.id || fechaConsulta;
       nombreDia = dia.fields?.Name || fechaConsulta;
+      
+      console.log(`[PDF-TRAFFIC] Usando fecha entradas ${fechaConsulta} para el día ${nombreDia}`);
     }
     
     if (!fechaConsulta) {
@@ -153,11 +154,17 @@ export async function procesarTraficoParaDia(
       fechaConsulta = format(diaOFecha, 'yyyy-MM-dd');
       diaId = fechaConsulta;
     } else {
+      // CAMBIO: Priorizar el campo 'fecha entradas' también en el manejo de errores
       fechaConsulta = diaOFecha.fields?.['fecha entradas'] || 
-                    diaOFecha.fields?.['Fecha Entradas'] || 
-                    diaOFecha.fields?.Name || 
-                    'fecha-desconocida';
+                    diaOFecha.fields?.['Fecha Entradas'];
+      
+      if (!fechaConsulta) {
+        console.warn(`⚠️ [PDF-TRAFFIC] Día sin fecha de entradas definida en error handler: ${diaOFecha.fields?.Name}, usando fecha del día`);
+        fechaConsulta = diaOFecha.fields?.Name || 'fecha-desconocida';
+      }
+      
       diaId = diaOFecha.id || fechaConsulta;
+      console.log(`[PDF-TRAFFIC] En error handler - Usando fecha entradas ${fechaConsulta} para el día ${diaOFecha.fields?.Name}`);
     }
     
     // Crear opciones básicas para el cálculo
@@ -296,7 +303,14 @@ export async function procesarTraficoParaTodosLosDias(
   // Procesar cada día laboral para obtener su fecha específica
   for (const dia of diasLaborales) {
     try {
-      console.log(`[PDF-TRAFFIC] 🗓️ Procesando día: ${dia.fields?.Name} (ID: ${dia.id})`);
+      // Obtener y mostrar la fecha de entradas si existe
+      const fechaEntradas = dia.fields?.['fecha entradas'] || dia.fields?.['Fecha Entradas'];
+      const fechaOriginal = dia.fields?.Name;
+      
+      console.log(`[PDF-TRAFFIC] 🗓️ Procesando día: ${fechaOriginal} (ID: ${dia.id})`);
+      if (fechaEntradas) {
+        console.log(`[PDF-TRAFFIC] 📅 Usando fecha de entradas: ${fechaEntradas} para el día ${fechaOriginal}`);
+      }
       
       const resultado = await procesarTraficoParaDia(dia, tiendaId);
       
@@ -311,7 +325,8 @@ export async function procesarTraficoParaTodosLosDias(
       resultadosProcesamiento.push({
         diaId: dia.id,
         nombre: dia.fields?.Name,
-        fecha: resultado.fechaConsulta,
+        fechaOriginal: dia.fields?.Name,
+        fechaConsulta: resultado.fechaConsulta,
         simulado: resultado.simulado,
         error: resultado.error
       });
@@ -329,7 +344,8 @@ export async function procesarTraficoParaTodosLosDias(
   // Mostrar tabla con resultados
   console.table(resultadosProcesamiento.map(r => ({
     'Día': r.nombre,
-    'Fecha consultada': r.fecha,
+    'Fecha Documento': r.fechaOriginal,
+    'Fecha Consultada': r.fechaConsulta,
     'Datos': r.simulado ? 'SIMULADOS' : 'REALES',
     'Estado': r.error ? '❌ ERROR' : '✅ OK'
   })));

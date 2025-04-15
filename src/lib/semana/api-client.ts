@@ -94,6 +94,14 @@ export async function obtenerDiaLaboral(diaId: string): Promise<DiaLaboral> {
       throw new Error('Datos de día laboral no válidos o vacíos');
     }
     
+    // Log de TODOS los campos para diagnóstico
+    console.log('RESPUESTA COMPLETA DE AIRTABLE:');
+    console.log(JSON.stringify(data, null, 2));
+    console.log('CAMPOS ESPECÍFICOS:');
+    Object.keys(data.fields).forEach(key => {
+      console.log(`${key}: ${JSON.stringify(data.fields[key])}`);
+    });
+    
     // IMPORTANTE: En esta tabla, la fecha está en el campo 'Name' en formato YYYY-MM-DD
     // Si existe 'Fecha', usamos ese campo, sino usamos 'Name'
     const fecha = data.fields['Fecha'] || data.fields['Name'] || '';
@@ -103,6 +111,15 @@ export async function obtenerDiaLaboral(diaId: string): Promise<DiaLaboral> {
     const esFormatoFechaValido = /^\d{4}-\d{2}-\d{2}$/.test(fecha);
     if (!esFormatoFechaValido) {
       console.warn(`El día laboral ${diaId} no tiene una fecha válida: ${fecha}`);
+    }
+    
+    // Priorizar fecha entradas para consulta de tráfico
+    let fechaTrafico = data.fields['fecha entradas'] || data.fields['Fecha Entradas'];
+    if (fechaTrafico) {
+      console.log(`IMPORTANTE: El día ${fecha} utilizará la fecha entradas ${fechaTrafico} para consultar tráfico`);
+    } else {
+      fechaTrafico = fecha;
+      console.log(`NOTA: El día ${fecha} no tiene fecha entradas definida, se usará la fecha principal`);
     }
     
     // Si no viene el día de la semana, intentar calcularlo desde la fecha
@@ -129,15 +146,27 @@ export async function obtenerDiaLaboral(diaId: string): Promise<DiaLaboral> {
       }
     }
     
-    // Para horarios, es posible que estén en otros campos como "Apertura" y "Cierre"
-    const horarioApertura = data.fields['Horario Apertura'] || data.fields['Apertura'] || '09:00';
-    const horarioCierre = data.fields['Horario Cierre'] || data.fields['Cierre'] || '21:00';
+    // Extraer campos de horario y asegurar que sean string
+    const aperturaField = data.fields['Apertura'] || data.fields['Horario Apertura'];
+    const cierreField = data.fields['Cierre'] || data.fields['Horario Cierre'];
     
-    console.log(`Día laboral obtenido: ${fecha} (${diaSemana}), horario: ${horarioApertura}-${horarioCierre}`);
+    // Convertir a string sin proporcionar valores por defecto
+    // Importante: ahora permitimos valores undefined para que puedan ser llenados desde la tienda
+    let horarioApertura = typeof aperturaField === 'string' ? aperturaField : undefined;
+    let horarioCierre = typeof cierreField === 'string' ? cierreField : undefined;
+    
+    // Agregar logs más detallados para el debug
+    console.log(`Campos originales de Airtable - 'Apertura': ${JSON.stringify(data.fields['Apertura'])}, 'Horario Apertura': ${JSON.stringify(data.fields['Horario Apertura'])}`);
+    console.log(`Valor de horarioApertura seleccionado: ${horarioApertura}`);
+    
+    // El formato horarioApertura puede ser "09:00" o "09:00-14:00,16:00-22:00" (nuevo formato con intervalos)
+    // No necesitamos modificar el valor, solo asegurarnos de que lo pasamos correctamente
+    console.log(`Día laboral obtenido: ${fecha} (${diaSemana}), horario: ${horarioApertura}`);
     
     return {
       id: data.id,
       fecha: fecha,
+      fechaTrafico: fechaTrafico,
       diaSemana: diaSemana,
       nombre: data.fields['Name'] || '',
       horarioApertura: horarioApertura,

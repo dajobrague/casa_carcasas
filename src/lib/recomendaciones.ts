@@ -60,7 +60,7 @@ export function calcularRecomendaciones(
   opciones: OpcionesRecomendacion
 ): ResultadosRecomendacion {
   // Validar opciones y establecer valores por defecto
-  const atencionDeseada = opciones.atencionDeseada || 25;
+  const atencionDeseada = opciones.atencionDeseada || 10;
   const crecimiento = opciones.crecimiento || 0;
   const redondear = opciones.redondear !== undefined ? opciones.redondear : false;
   const mostrarDetalles = opciones.mostrarDetalles !== undefined ? opciones.mostrarDetalles : true;

@@ -21,9 +21,10 @@ export interface SemanaLaboral {
 export interface DiaLaboral {
   id: string;
   fecha: string; // formato "YYYY-MM-DD"
+  fechaTrafico?: string; // Fecha a usar para consultar datos de tráfico (puede ser de un año anterior)
   diaSemana: string; // "Lunes", "Martes", etc.
   nombre: string; // Pueden tener nombres personalizados
-  horarioApertura: string; // formato "HH:MM"
-  horarioCierre: string; // formato "HH:MM"
-  semanasLaborales?: string[]; // IDs de las semanas laborales asociadas
+  horarioApertura?: string;  // Ahora opcional
+  horarioCierre?: string;    // Ahora opcional
+  semanasLaborales: string[]; // IDs de las semanas laborales asociadas
 } 
