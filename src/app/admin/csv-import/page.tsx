@@ -18,9 +18,9 @@ import { RefreshCw, FileText, LogOut } from 'lucide-react';
 export type TiendaRecord = {
   "N°": string;
   "TIENDA"?: string;
-  "Horas Aprobadas"?: string | number; // Formato: Número
-  "Crecimiento"?: string | number; // Formato: Porcentaje
-  "Atención Deseada"?: string | number; // Formato: Número
+  "Horas Aprobadas Value"?: string | number; // Formato: Número
+  "Crecimiento Value"?: string | number; // Formato: Número (sin el símbolo %)
+  "Atencion Value"?: string | number; // Formato: Número
   [key: string]: any; // Para campos adicionales que pueden venir en el CSV
 };
 
@@ -62,7 +62,7 @@ export default function CSVImportPage() {
     errors: []
   });
   const [importSessionId, setImportSessionId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'api' | 'csv'>('csv');
+  const [activeTab, setActiveTab] = useState<'api' | 'csv' | 'semanal'>('csv');
   const router = useRouter();
   
   // Usamos la autenticación de administrador
@@ -81,7 +81,7 @@ export default function CSVImportPage() {
     setCsvHeaders(headers);
     
     // Intentar mapeo automático donde coincidan los nombres
-    const expectedFields = ["N°", "TIENDA", "Horas Aprobadas", "Crecimiento", "Atención Deseada"];
+    const expectedFields = ["N°", "TIENDA", "Horas Aprobadas Value", "Crecimiento Value", "Atencion Value"];
     const autoMapping: Record<string, string> = {};
     
     headers.forEach(header => {
@@ -94,9 +94,9 @@ export default function CSVImportPage() {
         const match = expectedFields.find(field => 
           field.toLowerCase().replace(/\s+/g, '') === normalizedHeader ||
           (normalizedHeader.includes('tienda') && field === 'TIENDA') ||
-          (normalizedHeader.includes('horas') && field === 'Horas Aprobadas') ||
-          (normalizedHeader.includes('crecimiento') && field === 'Crecimiento') ||
-          (normalizedHeader.includes('atencion') && field === 'Atención Deseada')
+          (normalizedHeader.includes('horas') && field === 'Horas Aprobadas Value') ||
+          (normalizedHeader.includes('crecimiento') && field === 'Crecimiento Value') ||
+          (normalizedHeader.includes('atencion') && field === 'Atencion Value')
         );
         
         if (match) {
@@ -239,7 +239,7 @@ export default function CSVImportPage() {
           if (typeof oldValue === 'string') oldValue = oldValue.trim();
           
           // Convertir a número para campos numéricos
-          if (targetField === 'Horas Aprobadas' || targetField === 'Atención Deseada' || targetField === 'Crecimiento') {
+          if (targetField === 'Horas Aprobadas Value' || targetField === 'Atencion Value' || targetField === 'Crecimiento Value') {
             if (newValue !== undefined && newValue !== null && newValue !== '') {
               newValue = parseFloat(String(newValue).replace(',', '.'));
             }
@@ -339,6 +339,11 @@ export default function CSVImportPage() {
     router.push(path);
   };
   
+  // Navegar a la importación semanal
+  const navigateToSemanasImport = () => {
+    router.push('/admin/semanas-csv-import');
+  };
+  
   // Gestionar el cierre de sesión de admin
   const handleLogout = () => {
     adminLogout();
@@ -354,68 +359,6 @@ export default function CSVImportPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo y título */}
-            <div className="flex items-center">
-              <div className="relative h-10 w-24 mr-3">
-                <Image 
-                  src="/images/a1f5f4d1aeb6ac161feb1b4d91bda0240020897d.png" 
-                  alt="Casa de las Carcasas Logo"
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  priority
-                />
-              </div>
-              <div className="border-l-2 border-gray-200 pl-3">
-                <div className="text-gray-900 text-lg font-bold">Administración</div>
-                <div className="text-sm text-blue-600 font-medium">Importación CSV</div>
-              </div>
-            </div>
-
-            {/* Tabs para cambiar entre API y CSV */}
-            <div className="flex space-x-4 flex-1 justify-center">
-              <button
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === 'api' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-                onClick={() => {
-                  setActiveTab('api');
-                  navigateTo('/admin/api-sync');
-                }}
-              >
-                <RefreshCw className="h-4 w-4 inline mr-2" />
-                API Sync
-              </button>
-              <button
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === 'csv' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-                onClick={() => setActiveTab('csv')}
-              >
-                <FileText className="h-4 w-4 inline mr-2" />
-                Importar CSV
-              </button>
-            </div>
-            
-            {/* Botón de cerrar sesión */}
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-      </header>
-
       {/* Contenido principal */}
       <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -565,15 +508,6 @@ export default function CSVImportPage() {
           </Card>
         </div>
       </main>
-      
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} Casa de las Carcasas. Todos los derechos reservados.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 } 
