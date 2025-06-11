@@ -214,6 +214,54 @@ export async function captureIframeAsPdf(iframe: HTMLIFrameElement, filename: st
     try {
       // Asegurar que todos los estilos se hayan cargado
       await forceStylesLoading(iframeDocument);
+
+      // PASO 1: Ocultar todas las leyendas de actividades en cada día
+      // Buscar y ocultar las leyendas en cada sección diaria
+      const dayCards = iframeDocument.querySelectorAll('.day-section');
+      console.log(`Encontradas ${dayCards.length} secciones de día para procesar`);
+      
+      // Recorrer cada tarjeta de día y ocultar sus leyendas
+      dayCards.forEach((dayCard, index) => {
+        // 1. Buscar por la clase direct "icons-legend"
+        const iconLegends = dayCard.querySelectorAll('.icons-legend');
+        iconLegends.forEach(el => {
+          console.log(`Ocultando legends-icon en día ${index+1}`);
+          (el as HTMLElement).style.display = 'none';
+        });
+        
+        // 2. Buscar por la clase "activities-legend"
+        const activityLegends = dayCard.querySelectorAll('.activities-legend');
+        activityLegends.forEach(el => {
+          console.log(`Ocultando activities-legend en día ${index+1}`);
+          (el as HTMLElement).style.display = 'none';
+        });
+        
+        // 3. Buscar elementos h5 que contengan "Leyenda de Actividades"
+        Array.from(dayCard.querySelectorAll('h5')).forEach(h5 => {
+          if (h5.textContent && h5.textContent.includes('Leyenda de Actividades')) {
+            console.log(`Ocultando h5 con leyenda en día ${index+1}`);
+            // Encontrar el div contenedor padre (hasta 3 niveles arriba)
+            let container: Element = h5;
+            for (let i = 0; i < 3; i++) {
+              if (container.parentElement) {
+                container = container.parentElement;
+              }
+            }
+            (container as HTMLElement).style.display = 'none';
+          }
+        });
+        
+        // 4. Buscar cualquier elemento div con "Leyenda"
+        Array.from(dayCard.querySelectorAll('div')).forEach(div => {
+          if (div.textContent && div.textContent.includes('Leyenda de Actividades')) {
+            // Si no está dentro de print-header (que es el encabezado principal)
+            if (!div.closest('.print-header')) {
+              console.log(`Ocultando div con leyenda en día ${index+1}`);
+              (div as HTMLElement).style.display = 'none';
+            }
+          }
+        });
+      });
       
       // Aplicar estilos adicionales para mejorar la impresión
       const printStyleTag = iframeDocument.createElement('style');
@@ -234,6 +282,13 @@ export async function captureIframeAsPdf(iframe: HTMLIFrameElement, filename: st
           margin: 0;
         }
         .no-print {
+          display: none !important;
+        }
+        /* Estilos para ocultar leyendas */
+        .day-section .icons-legend {
+          display: none !important;
+        }
+        .day-section .activities-legend {
           display: none !important;
         }
       `;
@@ -266,8 +321,24 @@ export async function captureIframeAsPdf(iframe: HTMLIFrameElement, filename: st
         backgroundColor: '#ffffff', // Asegurar fondo blanco
         ignoreElements: (element: Element) => {
           if (element.classList?.contains('no-print')) return true;
+          
           const style = window.getComputedStyle(element);
           if (style.display === 'none' || style.visibility === 'hidden') return true;
+          
+          // Ignorar elementos de leyenda dentro de secciones de día
+          if (element.closest('.day-section')) {
+            if (element.classList?.contains('icons-legend') || 
+                element.classList?.contains('activities-legend')) {
+              return true;
+            }
+            
+            // Ignorar elementos que contienen texto de leyenda excepto en el header
+            if (element.textContent?.includes('Leyenda de Actividades') && 
+                !element.closest('.print-header')) {
+              return true;
+            }
+          }
+          
           return false;
         },
         onclone: (clonedDoc: Document) => {
@@ -285,6 +356,35 @@ export async function captureIframeAsPdf(iframe: HTMLIFrameElement, filename: st
             } catch (e) {
               console.warn('No se pudo acceder a cssRules:', e);
             }
+          });
+          
+          // Aplicar ocultación de leyendas también en el clon
+          const clonedDayCards = clonedDoc.querySelectorAll('.day-section');
+          clonedDayCards.forEach((dayCard) => {
+            const iconLegends = dayCard.querySelectorAll('.icons-legend');
+            iconLegends.forEach(el => (el as HTMLElement).style.display = 'none');
+            
+            const activityLegends = dayCard.querySelectorAll('.activities-legend');
+            activityLegends.forEach(el => (el as HTMLElement).style.display = 'none');
+            
+            // Elementos h5 con texto de leyenda
+            Array.from(dayCard.querySelectorAll('h5')).forEach(h5 => {
+              if (h5.textContent?.includes('Leyenda de Actividades')) {
+                let container: Element = h5;
+                for (let i = 0; i < 3; i++) {
+                  if (container.parentElement) container = container.parentElement;
+                }
+                (container as HTMLElement).style.display = 'none';
+              }
+            });
+            
+            // Divs con texto de leyenda
+            Array.from(dayCard.querySelectorAll('div')).forEach(div => {
+              if (div.textContent?.includes('Leyenda de Actividades') && 
+                  !div.closest('.print-header')) {
+                (div as HTMLElement).style.display = 'none';
+              }
+            });
           });
         }
       };

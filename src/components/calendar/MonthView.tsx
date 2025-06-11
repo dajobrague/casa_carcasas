@@ -495,10 +495,8 @@ export function MonthView({
     });
   }, [expandedWeeks, semanas, storeRecordId]);
 
-  // Modificar la función handleSelectDay para precargar de inmediato
-  const handleSelectDay = (diaId: string, fecha: Date) => {
-    const horasEfectivas = getHorasEfectivasDia(diaId);
-    
+  // Modificar la función handleSelectDay para obtener horas semanales correctas
+  const handleSelectDay = async (diaId: string, fecha: Date) => {
     // Si tenemos storeRecordId, precargar datos de tráfico inmediatamente
     if (storeRecordId) {
       precargarDatosTrafico(diaId, storeRecordId);
@@ -506,11 +504,37 @@ export function MonthView({
     
     // Obtener la semana a la que pertenece este día
     const semanaId = getSemanaIdPorDia(diaId);
+    let horasEfectivasSemanales = 0;
     
     if (semanaId) {
+      // Guardar relación día-semana en localStorage
+      window.localStorage.setItem(`dia_semana_${diaId}`, semanaId);
+      window.localStorage.setItem('ultima_semana_seleccionada', semanaId);
+      
       // Si no hemos expandido esta semana todavía, expandirla
       if (!expandedWeeks.has(semanaId)) {
         toggleWeekExpansion(semanaId);
+      }
+      
+      // Intentar obtener datos de la semana desde el estado local primero
+      const datosSemanaLocal = getHorasSemana(semanaId);
+      
+      if (datosSemanaLocal.horasEfectivas > 0) {
+        // Si tenemos datos locales válidos, usarlos
+        horasEfectivasSemanales = datosSemanaLocal.horasEfectivas;
+        console.log(`Usando horas efectivas locales para semana ${semanaId}: ${horasEfectivasSemanales}`);
+      } else if (storeRecordId) {
+        // Si no tenemos datos locales, calcular usando la función centralizada
+        console.log(`Calculando horas efectivas para semana ${semanaId}...`);
+        try {
+          const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
+          horasEfectivasSemanales = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
+          console.log(`Horas efectivas calculadas para semana ${semanaId}: ${horasEfectivasSemanales}`);
+        } catch (error) {
+          console.error('Error al calcular horas efectivas semanales:', error);
+          // Usar valor local como fallback
+          horasEfectivasSemanales = datosSemanaLocal.horasEfectivas;
+        }
       }
       
       // Actualizar registro de la última semana actualizada si existe
@@ -518,9 +542,11 @@ export function MonthView({
         // @ts-ignore - Esta propiedad especial no está en la definición de tipos original
         horasEfectivasActualizadas.semanas.lastUpdated = semanaId;
       }
+    } else {
+      console.warn(`No se pudo identificar la semana para el día ${diaId}`);
     }
     
-    onSelectDay(diaId, fecha, horasEfectivas);
+    onSelectDay(diaId, fecha, horasEfectivasSemanales);
   };
 
   // Función para abrir el modal con la vista semanal

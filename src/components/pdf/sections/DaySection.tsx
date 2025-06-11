@@ -50,6 +50,7 @@ export const DaySection: React.FC<DaySectionProps> = ({ dia, isEven }) => {
             recomendaciones={dia.recomendaciones.recomendacionesPorHora}
             atencionDeseada={atencionDeseada}
             esFrancia={esFrancia}
+            showLegend={false}
           />
         </View>
       </View>

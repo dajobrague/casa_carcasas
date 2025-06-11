@@ -43,6 +43,9 @@ export async function generarPDFSimple(
       throw new Error(`No se encontraron datos para la tienda ${idTienda}`);
     }
     
+    // Verificar los datos de horario
+    console.log(`[PDF-GENERATOR] Datos de horario en tienda: Apertura=${tiendaData.fields.Apertura}, Cierre=${tiendaData.fields.Cierre}, País=${tiendaData.fields.PAIS || tiendaData.fields.Pais || tiendaData.fields.País}`);
+    
     // Obtener datos de actividades para la semana
     console.log(`[PDF-GENERATOR] Obteniendo actividades para semana ${semanaId}`);
     const actividadesResponse = await fetchPost('/api/actividades', { 
@@ -142,6 +145,34 @@ function añadirEncabezado(doc: jsPDF, tiendaData: any, nombreSemana: string): v
   doc.text(`Tienda: ${nombreTienda}`, 15, 25);
   doc.text(`Dirección: ${direccion}`, 15, 30);
   doc.text(`País: ${pais}`, 15, 35);
+  
+  // Leyenda de actividades
+  const legendStartX = doc.internal.pageSize.width - 80;
+  doc.setFontSize(9);
+  doc.setTextColor(64, 87, 109);
+  doc.text('Leyenda de actividades:', legendStartX, 25);
+  
+  // Círculos de colores con letras para la leyenda
+  doc.setFillColor(227, 242, 253); // Azul claro para Trabajo
+  doc.circle(legendStartX + 5, 30, 3, 'F');
+  doc.setTextColor(0, 0, 0);
+  doc.text('W - Trabajo', legendStartX + 10, 30);
+  
+  doc.setFillColor(245, 245, 245); // Gris claro para Descanso
+  doc.circle(legendStartX + 5, 35, 3, 'F');
+  doc.text('D - Descanso', legendStartX + 10, 35);
+  
+  doc.setFillColor(232, 245, 233); // Verde claro para Vacaciones
+  doc.circle(legendStartX + 5, 40, 3, 'F');
+  doc.text('V - Vacaciones', legendStartX + 10, 40);
+  
+  doc.setFillColor(255, 248, 225); // Amarillo claro para Formación
+  doc.circle(legendStartX + 35, 30, 3, 'F');
+  doc.text('F - Formación', legendStartX + 40, 30);
+  
+  doc.setFillColor(255, 235, 238); // Rojo claro para Enfermedad
+  doc.circle(legendStartX + 35, 35, 3, 'F');
+  doc.text('E - Enfermedad', legendStartX + 40, 35);
   
   // Fecha de generación
   const fechaGeneracion = formatearFecha(new Date());

@@ -6,6 +6,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Extrae un valor numérico de un campo de Airtable que puede ser número o array
+ */
+export function extraerValorNumerico(campo: any): number {
+  if (Array.isArray(campo) && campo.length > 0) {
+    return typeof campo[0] === 'number' ? campo[0] : 0;
+  }
+  if (typeof campo === 'number') {
+    return campo;
+  }
+  if (typeof campo === 'string') {
+    const parsed = parseFloat(campo);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
 // Función para generar columnas de tiempo basadas en el país, hora de apertura y cierre
 export function generarColumnasTiempo(
   pais: string | undefined,
@@ -13,6 +30,48 @@ export function generarColumnasTiempo(
   horaCierre: string | undefined
 ): string[] {
   try {
+    const esFrancia = pais?.toUpperCase() === 'FRANCIA';
+    const incremento = esFrancia ? 15 : 30; // 15 o 30 minutos
+    
+    // Comprobar si estamos usando el nuevo formato con múltiples intervalos
+    if (horaApertura && horaApertura.includes('-')) {
+      const columnas: string[] = [];
+      
+      // Dividir los intervalos (formato: "09:00-14:00,16:00-21:30")
+      const intervalos = horaApertura.split(',');
+      
+      // Procesar cada intervalo
+      intervalos.forEach(intervalo => {
+        const [inicio, fin] = intervalo.split('-');
+        if (!inicio || !fin) return;
+        
+        // Convertir horas de inicio y fin a minutos
+        const [horaInicio, minInicio] = inicio.split(':').map(Number);
+        const [horaFin, minFin] = fin.split(':').map(Number);
+        
+        if (isNaN(horaInicio) || isNaN(minInicio) || isNaN(horaFin) || isNaN(minFin)) return;
+        
+        const inicioEnMinutos = horaInicio * 60 + minInicio;
+        const finEnMinutos = horaFin * 60 + minFin;
+        
+        // El fin real es -incremento porque el último incremento será cierre-incremento
+        const finRealEnMinutos = finEnMinutos - incremento;
+        
+        // Generar columnas solo para este intervalo
+        for (let minutoActual = inicioEnMinutos; minutoActual <= finRealEnMinutos; minutoActual += incremento) {
+          const hora = Math.floor(minutoActual / 60);
+          const minuto = minutoActual % 60;
+          
+          const horaStr = hora.toString().padStart(2, '0');
+          const minutoStr = minuto.toString().padStart(2, '0');
+          columnas.push(`${horaStr}:${minutoStr}`);
+        }
+      });
+      
+      return columnas;
+    }
+    
+    // Código existente para el formato antiguo (compatibilidad)
     // Valores por defecto
     let apertura = 9; // Valor por defecto: 9:00
     let aperturaMinutos = 0;
@@ -66,8 +125,6 @@ export function generarColumnasTiempo(
     }
     
     const columnas: string[] = [];
-    const esFrancia = pais?.toUpperCase() === 'FRANCIA';
-    const incremento = esFrancia ? 15 : 30; // 15 o 30 minutos
     
     // Convertir todo a minutos para facilitar el cálculo
     const aperturaEnMinutos = apertura * 60 + aperturaMinutos;
@@ -164,6 +221,84 @@ export function calcularHorasEfectivasDiarias(
   } catch (error) {
     console.error('Error al calcular horas efectivas diarias:', error);
     return 0;
+  }
+}
+
+/**
+ * Calcula las horas extra (Horas +) y horas menos (Horas -) para un empleado específico
+ * basándose en sus horarios asignados en tiempo real.
+ * 
+ * @param actividad - Actividad/empleado individual
+ * @param horasContrato - Horas de contrato del empleado
+ * @param tiendaData - Datos de la tienda con país y horarios
+ * @returns Objeto con horasPlus y horasMinus calculadas
+ */
+export function calcularHorasPlusEmpleado(
+  actividad: any,
+  horasContrato: number,
+  tiendaData: { PAIS?: string; Apertura?: string; Cierre?: string }
+): { horasPlus: number } {
+  try {
+    // Verificar datos válidos
+    if (!actividad || !actividad.fields || typeof horasContrato !== 'number') {
+      return { horasPlus: 0 };
+    }
+    
+    const esFrancia = tiendaData.PAIS?.toUpperCase() === 'FRANCIA';
+    const incrementoPorHora = esFrancia ? 0.25 : 0.5; // 15 o 30 minutos
+    
+    // Obtener todas las horas disponibles
+    const horasDisponibles = generarColumnasTiempo(
+      tiendaData.PAIS,
+      tiendaData.Apertura,
+      tiendaData.Cierre
+    );
+    
+    let horasTrabajadas = 0;
+    let horasFormacion = 0;
+    let horasBajaMedica = 0;
+    
+    // Contar horas por tipo de actividad
+    horasDisponibles.forEach(hora => {
+      const tipoActividad = actividad.fields[hora];
+      
+      if (tipoActividad === 'TRABAJO') {
+        horasTrabajadas += incrementoPorHora;
+      } else if (tipoActividad === 'FORMACIÓN') {
+        horasFormacion += incrementoPorHora;
+      } else if (tipoActividad === 'BAJA MÉDICA') {
+        horasBajaMedica += incrementoPorHora;
+      }
+    });
+    
+    // Calcular total de horas productivas (trabajo + formación)
+    const horasProductivas = horasTrabajadas + horasFormacion;
+    
+    // Calcular diferencia respecto al contrato para Horas +
+    const diferencia = horasProductivas - horasContrato;
+    
+    // Calcular Horas + (solo si hay horas extra)
+    const horasPlus = Math.max(0, diferencia) + horasBajaMedica;
+    
+    // Debug logs para entender qué está pasando
+    console.log('🔍 DEBUG Horas Plus:', {
+      empleado: actividad.fields.Empleado?.[0] || 'Sin nombre',
+      horasContrato,
+      horasTrabajadas,
+      horasFormacion,
+      horasBajaMedica,
+      horasProductivas,
+      diferencia,
+      horasPlus
+    });
+    
+    return {
+      horasPlus: Math.max(0, horasPlus)
+    };
+    
+  } catch (error) {
+    console.error('Error al calcular horas plus:', error);
+    return { horasPlus: 0 };
   }
 }
 
@@ -400,4 +535,99 @@ export function generarDatosTraficoEjemplo(horarios: string[]): DatosTraficoDia 
     fechaInicio: "27/01/2024",
     fechaFin: "02/02/2024"
   };
+}
+
+/**
+ * Calcula las horas efectivas semanales para una semana específica
+ * 
+ * @param diasIds - Array de IDs de días laborales de la semana
+ * @param storeRecordId - ID de la tienda para obtener datos
+ * @returns Promesa que resuelve con las horas efectivas totales de la semana
+ */
+export async function calcularHorasEfectivasSemanales(
+  diasIds: string[],
+  storeRecordId: string
+): Promise<number> {
+  try {
+    if (!diasIds || diasIds.length === 0 || !storeRecordId) {
+      return 0;
+    }
+
+    // Importar funciones de Airtable dinámicamente para evitar problemas de importación circular
+    const { obtenerDatosTienda, obtenerActividadesDiarias } = await import('@/lib/airtable');
+
+    // Obtener datos de la tienda para los parámetros de cálculo
+    const tiendaData = await obtenerDatosTienda(storeRecordId);
+    if (!tiendaData) {
+      console.error('No se pudieron obtener datos de la tienda');
+      return 0;
+    }
+
+    let horasEfectivasTotal = 0;
+
+    // Para cada día, obtener sus actividades y calcular horas efectivas
+    for (const diaId of diasIds) {
+      try {
+        const actividades = await obtenerActividadesDiarias(storeRecordId, diaId);
+        
+        // Calcular horas efectivas para este día
+        const horasEfectivasDia = calcularHorasEfectivasDiarias(
+          actividades,
+          {
+            PAIS: tiendaData.fields.PAIS,
+            Apertura: tiendaData.fields.Apertura,
+            Cierre: tiendaData.fields.Cierre
+          }
+        );
+
+        horasEfectivasTotal += horasEfectivasDia;
+        
+        console.log(`Día ${diaId}: ${horasEfectivasDia.toFixed(1)} horas efectivas`);
+      } catch (error) {
+        console.error(`Error al procesar día ${diaId}:`, error);
+        // Continuar con el siguiente día en caso de error
+      }
+    }
+
+    console.log(`Total horas efectivas semanales: ${horasEfectivasTotal.toFixed(1)}`);
+    return horasEfectivasTotal;
+    
+  } catch (error) {
+    console.error('Error al calcular horas efectivas semanales:', error);
+    return 0;
+  }
+}
+
+/**
+ * Obtiene las horas efectivas semanales de una semana específica mediante su ID
+ * 
+ * @param semanaId - ID de la semana en Airtable
+ * @param storeRecordId - ID de la tienda
+ * @returns Promesa que resuelve con las horas efectivas totales de la semana
+ */
+export async function obtenerHorasEfectivasSemanaPorId(
+  semanaId: string,
+  storeRecordId: string
+): Promise<number> {
+  try {
+    if (!semanaId || !storeRecordId) {
+      return 0;
+    }
+
+    // Importar función dinámicamente
+    const { obtenerSemanaPorId } = await import('@/lib/airtable');
+    
+    const semanaData = await obtenerSemanaPorId(semanaId);
+    if (!semanaData || !semanaData.fields['Dias Laborales']) {
+      console.error('No se encontraron días laborales para la semana:', semanaId);
+      return 0;
+    }
+
+    const diasIds = semanaData.fields['Dias Laborales'];
+    return await calcularHorasEfectivasSemanales(diasIds, storeRecordId);
+    
+  } catch (error) {
+    console.error('Error al obtener horas efectivas de la semana:', error);
+    return 0;
+  }
 } 

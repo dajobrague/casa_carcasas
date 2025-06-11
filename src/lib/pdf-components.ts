@@ -40,7 +40,7 @@ export function mostrarModalPreviewPDF(blob: Blob, fileName: string, semanaName:
       border-radius: 0.5rem;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
       width: 100%;
-      max-width: 900px;
+      max-width: 1280px;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
@@ -100,12 +100,73 @@ export function mostrarModalPreviewPDF(blob: Blob, fileName: string, semanaName:
         </div>
       </div>
       
-      <!-- Contenedor del iframe -->
-      <div style="flex: 1; min-height: 0; padding: 1rem; overflow: auto;">
-        <iframe 
-          src="${pdfUrl}" 
-          style="width: 100%; height: 70vh; border: none; border-radius: 0.25rem;"
-        ></iframe>
+      <!-- Contenedor de 2 columnas -->
+      <div style="display: flex; flex: 1; min-height: 0;">
+        <!-- Columna izquierda: iframe con el PDF -->
+        <div style="flex: 1; min-height: 0; padding: 1rem; overflow: auto; border-right: 1px solid #e5e7eb;">
+          <iframe 
+            src="${pdfUrl}" 
+            style="width: 100%; height: 75vh; border: none; border-radius: 0.25rem;"
+          ></iframe>
+        </div>
+        
+        <!-- Columna derecha: Panel de información -->
+        <div style="width: 300px; padding: 1rem; overflow: auto;">
+          <div style="margin-bottom: 1.5rem;">
+            <h4 style="font-size: 1rem; font-weight: 600; color: #111827; margin: 0 0 0.5rem 0;">Información de la semana</h4>
+            <p style="font-size: 0.875rem; color: #4b5563; margin: 0 0 0.25rem 0;">
+              <strong>Semana:</strong> ${semanaName}
+            </p>
+            <p style="font-size: 0.875rem; color: #4b5563; margin: 0 0 0.25rem 0;">
+              <strong>Archivo:</strong> ${fileName}
+            </p>
+          </div>
+          
+          <div style="margin-bottom: 1.5rem;">
+            <h4 style="font-size: 1rem; font-weight: 600; color: #111827; margin: 0 0 0.5rem 0;">Resumen</h4>
+            <div style="background-color: #f3f4f6; padding: 0.75rem; border-radius: 0.375rem;">
+              <p style="font-size: 0.875rem; color: #4b5563; margin: 0 0 0.5rem 0;">
+                Este informe incluye:
+              </p>
+              <ul style="font-size: 0.875rem; color: #4b5563; margin: 0; padding-left: 1.25rem;">
+                <li style="margin-bottom: 0.25rem;">Resumen semanal de tráfico</li>
+                <li style="margin-bottom: 0.25rem;">Comparativa diaria</li>
+                <li style="margin-bottom: 0.25rem;">Detalle de horarios por empleado</li>
+                <li style="margin-bottom: 0.25rem;">Recomendaciones de personal</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 1.5rem;">
+            <h4 style="font-size: 1rem; font-weight: 600; color: #111827; margin: 0 0 0.5rem 0;">Leyenda</h4>
+            <div style="display: flex; align-items: center; margin-bottom: 0.375rem;">
+              <div style="width: 1rem; height: 1rem; background-color: #60a5fa; border-radius: 0.25rem; margin-right: 0.5rem;"></div>
+              <span style="font-size: 0.875rem; color: #4b5563;">Entrada</span>
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 0.375rem;">
+              <div style="width: 1rem; height: 1rem; background-color: #10b981; border-radius: 0.25rem; margin-right: 0.5rem;"></div>
+              <span style="font-size: 0.875rem; color: #4b5563;">Trabajo</span>
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 0.375rem;">
+              <div style="width: 1rem; height: 1rem; background-color: #f59e0b; border-radius: 0.25rem; margin-right: 0.5rem;"></div>
+              <span style="font-size: 0.875rem; color: #4b5563;">Descanso</span>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <div style="width: 1rem; height: 1rem; background-color: #ef4444; border-radius: 0.25rem; margin-right: 0.5rem;"></div>
+              <span style="font-size: 0.875rem; color: #4b5563;">Salida</span>
+            </div>
+          </div>
+          
+          <div>
+            <h4 style="font-size: 1rem; font-weight: 600; color: #111827; margin: 0 0 0.5rem 0;">Ayuda</h4>
+            <p style="font-size: 0.875rem; color: #4b5563; margin: 0 0 0.5rem 0;">
+              Para descargar este informe, haga clic en el botón "Descargar PDF" en la parte superior derecha.
+            </p>
+            <p style="font-size: 0.875rem; color: #4b5563; margin: 0;">
+              Este documento se genera automáticamente con los datos disponibles en el momento de la consulta.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -196,10 +257,17 @@ export function generarTablaConSlots(
   startY: number
 ): number {
   // Obtener columnas de tiempo basadas en el país y horario de la tienda
+  // Priorizar el campo "Apertura" que es donde realmente está el horario
+  const apertura = tiendaData.fields.Apertura || tiendaData.fields['Horario Apertura'];
+  const cierre = tiendaData.fields.Cierre || tiendaData.fields['Horario Cierre'];
+  const pais = tiendaData.fields.PAIS || tiendaData.fields.Pais || tiendaData.fields.País;
+  
+  console.log(`[PDF-COMPONENTS] Datos para horario: Apertura=${apertura}, Cierre=${cierre}, PAIS=${pais}`);
+  
   const slots = generarColumnasTiempo(
-    tiendaData.fields.PAIS,
-    tiendaData.fields.Apertura,
-    tiendaData.fields.Cierre
+    pais,
+    apertura,
+    cierre
   );
   
   console.log(`[PDF-COMPONENTS] Generando tabla con ${slots.length} slots de tiempo para ${actividades.length} actividades`);
@@ -210,24 +278,31 @@ export function generarTablaConSlots(
   }
   
   // Obtener la hora de cierre de la tienda
-  const horaCierre = tiendaData.fields.Cierre 
-    ? parseInt(tiendaData.fields.Cierre.split(':')[0]) 
-    : 22; // Valor por defecto
-  
-  console.log(`[PDF-COMPONENTS] Hora de cierre de la tienda: ${horaCierre}:00`);
-  
-  // Filtrar slots para excluir la hora de cierre
-  const slotsFiltrados = slots.filter(slot => {
-    const hora = parseInt(slot.split(':')[0]);
-    return hora < horaCierre;
-  });
-  
-  console.log(`[PDF-COMPONENTS] Slots filtrados (excluyendo hora de cierre): ${slotsFiltrados.length}`);
+  // En el nuevo formato, no necesitamos filtrar los slots, ya que generarColumnasTiempo ya lo hace.
+  // Solo si no estamos usando el nuevo formato (sin '-') verificamos la hora de cierre
+  let slotsFiltrados = slots;
+  if (!apertura || !apertura.includes('-')) {
+    const horaCierre = cierre 
+      ? parseInt(cierre.split(':')[0]) 
+      : 22; // Valor por defecto
+    
+    console.log(`[PDF-COMPONENTS] Hora de cierre de la tienda: ${horaCierre}:00`);
+    
+    // Filtrar slots para excluir la hora de cierre
+    slotsFiltrados = slots.filter(slot => {
+      const hora = parseInt(slot.split(':')[0]);
+      return hora < horaCierre;
+    });
+    
+    console.log(`[PDF-COMPONENTS] Slots filtrados (excluyendo hora de cierre): ${slotsFiltrados.length}`);
+  } else {
+    console.log(`[PDF-COMPONENTS] Usando nuevo formato de horarios con múltiples intervalos`);
+  }
   
   // Optimización: Si hay demasiados slots, considerar agruparlos
   let slotsAgrupados = slotsFiltrados;
   if (slotsFiltrados.length > 20) { // Si hay más de 20 slots, agrupar cada 2 (para Francia) o cada 1 (para otros)
-    const esFrancia = tiendaData.fields.PAIS?.toUpperCase() === 'FRANCIA';
+    const esFrancia = pais?.toUpperCase() === 'FRANCIA';
     
     if (esFrancia) {
       // Para Francia, que usa intervalos de 15 min, agrupar cada 2 slots (30 min)
@@ -310,7 +385,7 @@ export function generarTablaConSlots(
     });
     
     // Calcular horas trabajadas
-    const horasTrabajadas = calcularHorasTrabajadas(actividadPorSlot, slotsFiltrados, tiendaData.fields.PAIS);
+    const horasTrabajadas = calcularHorasTrabajadas(actividadPorSlot, slotsFiltrados, pais);
     fila.push(horasTrabajadas.toFixed(1)); // Reducido a un decimal para ahorrar espacio
     
     tableData.push(fila);
@@ -402,30 +477,8 @@ export function generarTablaConSlots(
       lineWidth: 0.1, // Líneas más finas para toda la tabla
     },
     didDrawPage: (data: any) => {
-      // Agregar leyenda debajo de la tabla, pero más compacta
-      if (data.cursor.y > startY && data.pageCount === 1) { // Solo en la primera página que dibuja la tabla
-        const leyendaStartY = data.cursor.y + 3; // Reducido de 5 a 3
-        doc.setFontSize(7); // Reducido de 8 a 7
-        doc.setTextColor(100, 100, 100);
-        doc.text('Leyenda:', 5, leyendaStartY);
-        
-        const leyendaItems = [
-          { simbolo: '■', texto: 'Trabajo', color: [0, 100, 0] },
-          { simbolo: '▲', texto: 'Vacaciones', color: [0, 0, 200] },
-          { simbolo: '✕', texto: 'Libre', color: [200, 0, 0] },
-          { simbolo: '+', texto: 'Baja Médica', color: [128, 0, 128] },
-          { simbolo: '●', texto: 'Formación', color: [200, 100, 0] }
-        ];
-        
-        let leyendaOffsetX = 25; // Posición inicial más cercana
-        leyendaItems.forEach(item => {
-          doc.setTextColor(item.color[0], item.color[1], item.color[2]);
-          doc.text(item.simbolo, leyendaOffsetX, leyendaStartY);
-          doc.setTextColor(0, 0, 0);
-          doc.text(item.texto, leyendaOffsetX + 3, leyendaStartY); // Reducido de 5 a 3
-          leyendaOffsetX += 30; // Reducido de 35 a 30
-        });
-      }
+      // La leyenda de actividades ahora está incluida en el encabezado del PDF
+      // por lo que ya no es necesario incluirla aquí al final de cada día
     }
   });
   

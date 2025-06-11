@@ -1,5 +1,4 @@
 import logger from './logger';
-import getApiUrl from './api-url';
 
 // Definición de tipos
 export interface TiendaSupervisorRecord {
@@ -117,12 +116,10 @@ export const opcionesEstado = [
  * Obtiene los datos de una tienda específica
  */
 export async function obtenerDatosTienda(storeRecordId: string): Promise<TiendaSupervisorRecord> {
-  // Construir URL absoluta
-  const apiUrl = getApiUrl(`/api/airtable?action=obtenerDatosTienda&storeId=${storeRecordId}`);
-  logger.log('URL de petición para tienda:', apiUrl);
+  logger.log('URL de petición para tienda:', `/api/airtable?action=obtenerDatosTienda&storeId=${storeRecordId}`);
   
   try {
-    const response = await fetch(apiUrl);
+    const response = await fetch(`/api/airtable?action=obtenerDatosTienda&storeId=${storeRecordId}`);
     
     logger.log('Estado de la respuesta de tienda:', response.status);
     
@@ -148,10 +145,9 @@ export async function obtenerActividadesDiarias(
   diaLaboralId: string
 ): Promise<ActividadDiariaRecord[]> {
   try {
-    const apiUrl = getApiUrl(`/api/airtable?action=obtenerActividadesDiarias&storeId=${storeRecordId}&diaId=${diaLaboralId}`);
-    logger.log('URL para obtener actividades:', apiUrl);
-    
-    const response = await fetch(apiUrl);
+    // Usar la URL base para que funcione tanto en cliente como en servidor
+    const baseUrl = typeof window === 'undefined' ? (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000') : '';
+    const response = await fetch(`${baseUrl}/api/airtable?action=obtenerActividadesDiarias&storeId=${storeRecordId}&diaId=${diaLaboralId}`);
     
     if (!response.ok) {
       throw new Error(`Error al obtener las actividades diarias: ${response.status}`);
@@ -170,8 +166,7 @@ export async function obtenerActividadesDiarias(
  */
 export async function obtenerDiasLaboralesSemana(semanaLaboralId: string): Promise<DiaLaboralRecord[]> {
   try {
-    const apiUrl = getApiUrl(`/api/airtable?action=obtenerDiasLaboralesSemana&semanaId=${semanaLaboralId}`);
-    const response = await fetch(apiUrl);
+    const response = await fetch(`/api/airtable?action=obtenerDiasLaboralesSemana&semanaId=${semanaLaboralId}`);
     
     if (!response.ok) {
       throw new Error(`Error al obtener los días laborales: ${response.status}`);
@@ -190,8 +185,7 @@ export async function obtenerDiasLaboralesSemana(semanaLaboralId: string): Promi
  */
 export async function actualizarActividad(actividadId: string, campos: Record<string, any>): Promise<ActividadDiariaRecord> {
   try {
-    const apiUrl = getApiUrl('/api/airtable');
-    const response = await fetch(apiUrl, {
+    const response = await fetch('/api/airtable', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -227,8 +221,7 @@ export async function actualizarHorario(
   valor: string
 ): Promise<boolean> {
   try {
-    const apiUrl = getApiUrl('/api/airtable');
-    const response = await fetch(apiUrl, {
+    const response = await fetch('/api/airtable', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -291,10 +284,10 @@ export async function obtenerSemanasLaborales(mes: string, año: string): Promis
     }
     
     // Llamar al API route para obtener las semanas laborales
-    const apiUrl = getApiUrl(`/api/airtable?action=obtenerSemanasLaborales&mes=${encodeURIComponent(mes)}&año=${encodeURIComponent(año)}`);
-    logger.log(`URL de consulta: ${apiUrl}`);
+    const url = `/api/airtable?action=obtenerSemanasLaborales&mes=${encodeURIComponent(mes)}&año=${encodeURIComponent(año)}`;
+    logger.log(`URL de consulta: ${url}`);
     
-    const response = await fetch(apiUrl);
+    const response = await fetch(url);
     
     if (!response.ok) {
       logger.error(`Error al obtener semanas laborales: ${response.status}`);
@@ -309,8 +302,7 @@ export async function obtenerSemanasLaborales(mes: string, año: string): Promis
       logger.log(`No se encontraron semanas para ${mesCapitalizado} ${año}. Intentando obtener todas las semanas del año.`);
       
       // Llamar al API con mes='all' para obtener todas las semanas del año
-      const fallbackUrl = getApiUrl(`/api/airtable?action=obtenerSemanasLaborales&mes=all&año=${encodeURIComponent(año)}`);
-      const fallbackResponse = await fetch(fallbackUrl);
+      const fallbackResponse = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=all&año=${encodeURIComponent(año)}`);
       
       if (!fallbackResponse.ok) {
         throw new Error(`Error al obtener todas las semanas: ${fallbackResponse.status}`);
@@ -382,24 +374,16 @@ export async function obtenerSemanaPorId(semanaId: string): Promise<SemanaLabora
     logger.log(`Obteniendo semana con ID: ${semanaId}`);
     
     // Llamar al API route para obtener la semana
-    const apiUrl = getApiUrl(`/api/airtable?action=obtenerSemanaPorId&semanaId=${encodeURIComponent(semanaId)}`);
-    const response = await fetch(apiUrl);
+    const response = await fetch(`/api/airtable?action=obtenerSemanaPorId&semanaId=${encodeURIComponent(semanaId)}`);
     
     if (!response.ok) {
-      logger.error(`Error al obtener la semana por ID: ${response.status}`);
-      throw new Error(`Error al obtener la semana por ID: ${response.status}`);
+      throw new Error(`Error al obtener semana: ${response.status}`);
     }
     
     const data = await response.json();
-    
-    if (!data) {
-      logger.error('No se encontró la semana con el ID proporcionado');
-      return null;
-    }
-    
     return data;
   } catch (error) {
-    logger.error('Error al obtener la semana por ID:', error);
+    logger.error('Error al obtener semana laboral por ID:', error);
     return null;
   }
 }

@@ -354,7 +354,7 @@ export default function AsignarEmpleadoModal({
           <div className="overflow-y-auto max-h-60">
             {empleadosEncontrados.length > 0 ? (
               <div className="space-y-2">
-                {empleadosEncontrados.map((empleado) => (
+                {empleadosEncontrados.map(empleado => (
                   <div 
                     key={empleado.id}
                     className={`border rounded-lg p-3 flex items-center justify-between cursor-pointer transition-all ${
@@ -394,7 +394,7 @@ export default function AsignarEmpleadoModal({
                   </div>
                 ))}
               </div>
-            ) : searchTerm.length > 0 && !isSearching ? (
+            ) : searchTerm.length >= 2 ? (
               <div className="py-6 text-center">
                 <p className="text-gray-500">No se encontraron resultados. Intenta con otro término.</p>
               </div>

@@ -1,19 +1,55 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { obtenerDatosTienda, ActividadDiariaRecord, TiendaSupervisorRecord } from '@/lib/airtable';
 import { DatosTraficoDia } from '@/lib/utils';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 
 interface TrafficTableProps {
   datosTraficoDia: DatosTraficoDia | null;
-  isLoading: boolean;
-  error: string | null;
+  isLoading?: boolean;
+  error?: string | null;
+  // Agregamos props para calcular Atención y Estimado
+  actividades?: ActividadDiariaRecord[];
+  storeRecordId?: string;
+  fecha?: Date;
 }
 
-export function TrafficTable({ datosTraficoDia, isLoading, error }: TrafficTableProps) {
+export function TrafficTable({ 
+  datosTraficoDia, 
+  isLoading, 
+  error,
+  actividades = [],
+  storeRecordId,
+  fecha
+}: TrafficTableProps) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   
+  // Estados para datos de la tienda
+  const [atencionDeseada, setAtencionDeseada] = useState<number>(25);
+  const [factorCrecimiento, setFactorCrecimiento] = useState<number>(0.05);
+
+  // Cargar parámetros de la tienda
+  useEffect(() => {
+    async function cargarParametrosTienda() {
+      if (!storeRecordId) return;
+      
+      try {
+        const tienda = await obtenerDatosTienda(storeRecordId);
+        if (tienda) {
+          // Usar las propiedades correctas del tipo TiendaSupervisorRecord
+          setAtencionDeseada((tienda.fields['Atención Deseada'] as number) || 25);
+          setFactorCrecimiento((tienda.fields['Factor Crecimiento'] as number) || 0.05);
+        }
+      } catch (error) {
+        console.error('Error al cargar parámetros de la tienda:', error);
+      }
+    }
+    
+    cargarParametrosTienda();
+  }, [storeRecordId]);
+
   // Función para obtener las horas ordenadas
   const getHorasOrdenadas = (datos: any) => {
     if (!datos?.lunes) return [];
@@ -70,6 +106,46 @@ export function TrafficTable({ datosTraficoDia, isLoading, error }: TrafficTable
       <span className="px-2 py-0.5 bg-red-200 rounded-full shadow-sm">90+</span>
     </div>
   );
+
+  // Función para obtener la atención deseada (es un valor fijo por día, no se calcula)
+  const calcularPersonalTrabajando = (hora: string): number => {
+    // La "atención" es directamente el valor de "atención deseada" de los parámetros de la tienda
+    if (hora === getHorasOrdenadas(datosTraficoDia?.datosPorDia)?.[0]) {
+      console.log('📊 ATENCIÓN DESEADA MOBILE (valor fijo para todas las horas):', atencionDeseada);
+    }
+    
+    return atencionDeseada;
+  };
+
+  // Función para calcular personal estimado (recomendado) por hora
+  const calcularPersonalEstimado = (hora: string): number => {
+    if (!datosTraficoDia || !datosTraficoDia.datosPorDia) return 0;
+    
+    // Obtener promedio de entradas para esta hora en todos los días
+    const diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    let totalEntradas = 0;
+    let diasConDatos = 0;
+    
+    diasSemana.forEach(dia => {
+      if (datosTraficoDia.datosPorDia && 
+          datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia] && 
+          datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora]) {
+        totalEntradas += datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora];
+        diasConDatos++;
+      }
+    });
+    
+    const promedioEntradas = diasConDatos > 0 ? totalEntradas / diasConDatos : 0;
+    
+    // Aplicar fórmula: (Entradas * (1 + Crecimiento)) / (Atención Deseada / 2)
+    if (promedioEntradas === 0) return 0;
+    
+    const factor = 1 + factorCrecimiento;
+    const divisor = atencionDeseada / 2;
+    const estimado = (promedioEntradas * factor) / divisor;
+    
+    return Math.round(estimado);
+  };
 
   // Si hay error, mostrar mensaje
   if (error) {
@@ -215,7 +291,44 @@ export function TrafficTable({ datosTraficoDia, isLoading, error }: TrafficTable
         </div>
       </div>
       
-      {/* Totales */}
+      {/* Filas de Atención y Estimado */}
+      <div className="bg-white rounded-lg shadow-sm p-3">
+        <div className="space-y-2">
+          {/* Fila de Atención por hora */}
+          <div className="bg-green-50 rounded-lg p-2">
+            <div className="text-xs text-green-600 font-medium mb-2 text-center">Personal Trabajando (Atención)</div>
+            <div className="grid grid-cols-4 gap-1">
+              {horasOrdenadas.map(hora => {
+                const personalTrabajando = calcularPersonalTrabajando(hora);
+                return (
+                  <div key={`atencion-${hora}`} className="text-center">
+                    <div className="text-xs text-green-600 font-medium">{formatearHora(hora)}</div>
+                    <div className="text-sm font-bold text-green-700 bg-green-100 rounded py-1">{personalTrabajando}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Fila de Estimado por hora */}
+          <div className="bg-orange-50 rounded-lg p-2">
+            <div className="text-xs text-orange-600 font-medium mb-2 text-center">Personal Recomendado (Estimado)</div>
+            <div className="grid grid-cols-4 gap-1">
+              {horasOrdenadas.map(hora => {
+                const personalEstimado = calcularPersonalEstimado(hora);
+                return (
+                  <div key={`estimado-${hora}`} className="text-center">
+                    <div className="text-xs text-orange-600 font-medium">{formatearHora(hora)}</div>
+                    <div className="text-sm font-bold text-orange-700 bg-orange-100 rounded py-1">{personalEstimado}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Totales al final */}
       <div className="bg-white rounded-lg shadow-sm p-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="text-center p-2 bg-blue-50 rounded-lg">

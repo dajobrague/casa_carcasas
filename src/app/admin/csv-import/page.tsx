@@ -209,78 +209,164 @@ export default function CSVImportPage() {
   const confirmImport = async () => {
     setStep('importing');
     try {
-      // Obtener referencias a datos procesados desde el componente de vista previa
-      const processedData: ProcessedRecord[] = csvData.map((row, index) => {
-        // Los datos del CSV son dinámicos, convertimos a nuestro tipo personalizado
-        const csvRow = row as Record<string, any>;
-        
-        // Verificar si esta fila debe ser omitida por validación previa
+      // Paso 1: Identificar solo los registros que tienen cambios reales o son nuevos
+      const registrosParaImportar: Record<string, any>[] = [];
+      const numField = Object.keys(mappedHeaders).find(key => mappedHeaders[key] === "N°");
+      
+      if (!numField) {
+        throw new Error('Falta el campo de número de tienda en el mapeo');
+      }
+      
+      // Procesar cada fila manualmente
+      csvData.forEach((row, index) => {
+        // Omitir filas previamente marcadas para saltar
         if (skippedRows.includes(index)) {
-          return { ...csvRow, __shouldOmit: true };
+          return;
         }
         
-        // Verificar si este registro existe y si tiene cambios
-        const tiendaNumField = Object.keys(mappedHeaders).find(key => mappedHeaders[key] === "N°");
-        if (!tiendaNumField || !csvRow[tiendaNumField]) return { ...csvRow, __shouldOmit: true };
+        // Verificar que la fila tenga el número de tienda válido
+        const tiendaNum = row[numField];
+        if (!tiendaNum || tiendaNum.toString().trim() === '') {
+          return;
+        }
         
-        const tiendaNum = csvRow[tiendaNumField];
+        // Crear el registro que se enviará
+        const newRecord: Record<string, any> = {};
+        let tieneValoresValidos = false;
+        
+        // Solo incluir campos mapeados con valores definidos
+        Object.entries(mappedHeaders).forEach(([csvHeader, targetField]) => {
+          if (targetField && csvHeader in row && row[csvHeader] !== undefined && row[csvHeader] !== null && row[csvHeader] !== '') {
+            // Procesar valores numéricos para asegurar formato correcto
+            if (targetField === 'Horas Aprobadas Value' || targetField === 'Atencion Value' || targetField === 'Crecimiento Value') {
+              let numValue;
+              try {
+                // Reemplazar comas por puntos y convertir a número
+                const strValue = String(row[csvHeader]).replace(',', '.').trim();
+                numValue = parseFloat(strValue);
+                
+                // Verificar que es un número válido
+                if (!isNaN(numValue)) {
+                  newRecord[targetField] = numValue; // Enviar como número, no como string
+                  tieneValoresValidos = true;
+                } else {
+                  console.log(`Omitiendo valor no numérico para ${targetField}: "${row[csvHeader]}"`);
+                }
+              } catch (e) {
+                console.log(`Error al convertir valor para ${targetField}: "${row[csvHeader]}"`, e);
+              }
+            } else {
+              newRecord[targetField] = row[csvHeader];
+              tieneValoresValidos = true;
+            }
+          }
+        });
+        
+        // Si no tiene valores válidos aparte del número, omitir
+        if (!tieneValoresValidos) {
+          return;
+        }
+        
+        // Validar si es un registro nuevo o existente con cambios
         const existingRecord = existingRecords[tiendaNum];
-        if (!existingRecord) return { ...csvRow, __shouldOmit: false }; // Es un registro nuevo
         
-        // Verificar si hay cambios
-        const differences = Object.entries(mappedHeaders).some(([sourceField, targetField]) => {
-          if (!targetField) return false;
+        if (!existingRecord) {
+          // Es un registro nuevo, incluirlo siempre
+          console.log(`Nuevo registro para tienda #${tiendaNum}`);
+          registrosParaImportar.push(newRecord);
+          return;
+        }
+        
+        // Es un registro existente, verificar si hay cambios
+        let tieneCambios = false;
+        
+        for (const [targetField, newValue] of Object.entries(newRecord)) {
+          // Ignorar el campo N° para comparación de cambios
+          if (targetField === 'N°') continue;
           
-          let newValue = csvRow[sourceField];
-          let oldValue = existingRecord[targetField as keyof TiendaRecord];
+          const oldValue = existingRecord[targetField as keyof TiendaRecord];
           
-          // Normalizar valores
-          if (typeof newValue === 'string') newValue = newValue.trim();
-          if (typeof oldValue === 'string') oldValue = oldValue.trim();
+          // Normalizar para comparación
+          let normalizedNew = newValue;
+          let normalizedOld = oldValue;
           
           // Convertir a número para campos numéricos
           if (targetField === 'Horas Aprobadas Value' || targetField === 'Atencion Value' || targetField === 'Crecimiento Value') {
-            if (newValue !== undefined && newValue !== null && newValue !== '') {
-              newValue = parseFloat(String(newValue).replace(',', '.'));
-            }
-            if (oldValue !== undefined && oldValue !== null && oldValue !== '') {
-              oldValue = parseFloat(String(oldValue).replace(',', '.'));
+            // Para el valor nuevo, ya está normalizado como número en el paso anterior
+            
+            // Para el valor antiguo, asegurar que sea número
+            if (normalizedOld !== undefined && normalizedOld !== null && normalizedOld !== '') {
+              try {
+                if (typeof normalizedOld === 'string') {
+                  normalizedOld = parseFloat(normalizedOld.replace(',', '.'));
+                } else if (typeof normalizedOld !== 'number') {
+                  normalizedOld = parseFloat(String(normalizedOld).replace(',', '.'));
+                }
+                
+                if (isNaN(normalizedOld)) {
+                  normalizedOld = null;
+                }
+              } catch (e) {
+                console.log(`Error al normalizar valor antiguo para ${targetField}:`, e);
+                normalizedOld = null;
+              }
+            } else {
+              normalizedOld = null;
             }
             
-            // Comparar con tolerancia para números
-            if (typeof newValue === 'number' && typeof oldValue === 'number') {
-              return Math.abs(newValue - oldValue) > 0.001;
+            // Comparación entre números, manejar nulos
+            if (normalizedNew === null && normalizedOld === null) {
+              // Ambos nulos, sin cambios
+              continue;
+            } else if (normalizedNew === null || normalizedOld === null) {
+              // Uno es nulo y el otro no, hay cambio
+              console.log(`Cambio en campo ${targetField} para tienda #${tiendaNum}: ${normalizedOld} -> ${normalizedNew}`);
+              tieneCambios = true;
+              break;
+            } else if (typeof normalizedNew === 'number' && typeof normalizedOld === 'number') {
+              // Usar tolerancia de 0.001 para números
+              if (Math.abs(normalizedNew - normalizedOld) > 0.001) {
+                console.log(`Cambio en campo ${targetField} para tienda #${tiendaNum}: ${normalizedOld} -> ${normalizedNew}`);
+                tieneCambios = true;
+                break;
+              }
             }
+          } else if (String(normalizedNew) !== String(normalizedOld)) {
+            console.log(`Cambio en campo ${targetField} para tienda #${tiendaNum}: ${normalizedOld} -> ${normalizedNew}`);
+            tieneCambios = true;
+            break;
           }
-          
-          return String(newValue) !== String(oldValue);
-        });
+        }
         
-        return { ...csvRow, __shouldOmit: !differences };
+        // Solo incluir si hay cambios reales
+        if (tieneCambios) {
+          registrosParaImportar.push(newRecord);
+        }
       });
       
-      // Filtrar solo los registros que tienen cambios o son nuevos
-      const transformedData = processedData
-        .filter(row => !row.__shouldOmit)
-        .map(row => {
-          const newRecord: Record<string, any> = {};
-          Object.entries(mappedHeaders).forEach(([csvHeader, targetField]) => {
-            if (targetField && csvHeader in row && row[csvHeader] !== undefined) {
-              newRecord[targetField] = row[csvHeader];
-            }
-          });
-          return newRecord;
+      // Verificar si hay registros para importar
+      if (registrosParaImportar.length === 0) {
+        console.log('No hay registros con cambios para importar');
+        setResults({
+          created: 0,
+          updated: 0,
+          skipped: csvData.length,
+          errors: []
         });
+        setStep('results');
+        return;
+      }
       
-      console.log(`Enviando ${transformedData.length} registros con cambios para importar.`);
+      console.log(`Enviando solo ${registrosParaImportar.length} registros con cambios para importar.`);
       
+      // Realizar la petición a la API con sólo los registros necesarios
       const response = await fetch('/api/admin/import-tiendas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          records: transformedData,
+          records: registrosParaImportar,
           mapping: mappedHeaders
         }),
       });
@@ -292,13 +378,12 @@ export default function CSVImportPage() {
       const result = await response.json();
       setImportSessionId(result.sessionId || '');
       
-      // No pasamos a resultados inmediatamente - esperamos a que el componente de progreso indique que se ha completado
+      // Si no hay sessionId (caso fallback), mostrar resultados directamente
       if (!result.sessionId) {
-        // Si no hay sessionId (caso fallback), mostramos los resultados directamente
         setResults({
           created: result.created || 0,
           updated: result.updated || 0,
-          skipped: result.skipped || 0,
+          skipped: result.skipped || (csvData.length - registrosParaImportar.length),
           errors: result.errors || []
         });
         setStep('results');

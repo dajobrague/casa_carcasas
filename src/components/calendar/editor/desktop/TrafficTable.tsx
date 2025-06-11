@@ -1,16 +1,124 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { obtenerDatosTienda, ActividadDiariaRecord, TiendaSupervisorRecord } from '@/lib/airtable';
 import { DatosTraficoDia } from '@/lib/utils';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 
 interface TrafficTableProps {
   datosTraficoDia: DatosTraficoDia | null;
-  isLoading: boolean;
-  error: string | null;
+  isLoading?: boolean;
+  error?: string | null;
+  actividades?: ActividadDiariaRecord[];
+  storeRecordId?: string;
+  fecha?: Date;
 }
 
-export function TrafficTable({ datosTraficoDia, isLoading, error }: TrafficTableProps) {
+export function TrafficTable({ 
+  datosTraficoDia, 
+  isLoading, 
+  error,
+  actividades = [],
+  storeRecordId,
+  fecha
+}: TrafficTableProps) {
+  // Estados para datos de la tienda
+  const [atencionDeseada, setAtencionDeseada] = useState<number>(25);
+  const [factorCrecimiento, setFactorCrecimiento] = useState<number>(0.05);
+
+  // Debug: Log al renderizar el componente
+  console.log('🔥 TrafficTable renderizado con props:', {
+    'tiene datosTraficoDia': !!datosTraficoDia,
+    'cantidad actividades': actividades?.length || 0,
+    'storeRecordId': storeRecordId,
+    'fecha': fecha,
+    'isLoading': isLoading,
+    'atencionDeseada actual': atencionDeseada,
+    'factorCrecimiento actual': factorCrecimiento
+  });
+
+  // Cargar parámetros de la tienda
+  useEffect(() => {
+    async function cargarParametrosTienda() {
+      if (!storeRecordId) return;
+      
+      try {
+        const tienda = await obtenerDatosTienda(storeRecordId);
+        if (tienda) {
+          // Usar las propiedades correctas del tipo TiendaSupervisorRecord
+          setAtencionDeseada((tienda.fields['Atención Deseada'] as number) || 25);
+          setFactorCrecimiento((tienda.fields['Factor Crecimiento'] as number) || 0.05);
+        }
+      } catch (error) {
+        console.error('Error al cargar parámetros de la tienda:', error);
+      }
+    }
+    
+    cargarParametrosTienda();
+  }, [storeRecordId]);
+
+  // Función para obtener la atención deseada (es un valor fijo por día, no se calcula)
+  const calcularPersonalTrabajando = (hora: string): number => {
+    // La "atención" es directamente el valor de "atención deseada" de los parámetros de la tienda
+    if (hora === getHorasOrdenadas(datosTraficoDia?.datosPorDia)?.[0]) {
+      console.log('📊 ATENCIÓN DESEADA (valor fijo para todas las horas):', atencionDeseada);
+    }
+    
+    return atencionDeseada;
+  };
+
+  // Función para calcular personal estimado (recomendado) por hora
+  const calcularPersonalEstimado = (hora: string): number => {
+    console.log(`💡 === CALCULANDO ESTIMADO PARA ${hora} ===`);
+    
+    if (!datosTraficoDia || !datosTraficoDia.datosPorDia) {
+      console.log('❌ No hay datos de tráfico disponibles');
+      return 0;
+    }
+    
+    // Obtener promedio de entradas para esta hora en todos los días
+    const diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    let totalEntradas = 0;
+    let diasConDatos = 0;
+    
+    console.log(`🔍 Revisando entradas por día para hora ${hora}:`);
+    
+    diasSemana.forEach(dia => {
+      if (datosTraficoDia.datosPorDia && 
+          datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia] && 
+          datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora]) {
+        const entradas = datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora];
+        console.log(`  ${dia}: ${entradas} entradas`);
+        totalEntradas += entradas;
+        diasConDatos++;
+      } else {
+        console.log(`  ${dia}: sin datos`);
+      }
+    });
+    
+    const promedioEntradas = diasConDatos > 0 ? totalEntradas / diasConDatos : 0;
+    console.log(`📊 Total entradas: ${totalEntradas}, Días con datos: ${diasConDatos}, Promedio: ${promedioEntradas}`);
+    
+    // Aplicar fórmula: (Entradas * (1 + Crecimiento)) / (Atención Deseada / 2)
+    if (promedioEntradas === 0) {
+      console.log('⚠️ Promedio de entradas es 0, retornando 0');
+      return 0;
+    }
+    
+    const factor = 1 + factorCrecimiento;
+    const divisor = atencionDeseada / 2;
+    const estimado = (promedioEntradas * factor) / divisor;
+    
+    console.log(`🧮 FÓRMULA ESTIMADO:`);
+    console.log(`   Promedio entradas: ${promedioEntradas}`);
+    console.log(`   Factor crecimiento: ${factorCrecimiento} (${(factorCrecimiento * 100).toFixed(1)}%)`);
+    console.log(`   Atención deseada: ${atencionDeseada}`);
+    console.log(`   Cálculo: (${promedioEntradas} * ${factor}) / ${divisor} = ${estimado}`);
+    console.log(`   Resultado redondeado: ${Math.round(estimado)}`);
+    
+    return Math.round(estimado);
+  };
+
   // Función para obtener las horas ordenadas
   const getHorasOrdenadas = (datos: any) => {
     if (!datos?.lunes) return [];
@@ -122,18 +230,57 @@ export function TrafficTable({ datosTraficoDia, isLoading, error }: TrafficTable
                   );
                 })}
               </tbody>
-              <tfoot>
-                <tr className="bg-gray-100">
-                  <td className="px-3 py-2 text-sm font-semibold text-gray-700 border-t border-gray-200 whitespace-nowrap">TOTAL MAÑANAS:</td>
-                  <td colSpan={6} className="px-2 py-2 text-right text-sm font-bold text-gray-700 border-t border-gray-200">
-                    <span className="bg-blue-100 px-2 py-1 rounded-full">{datosTraficoDia.totalMañana * 7}</span>
-                  </td>
-                  <td className="px-3 py-2 text-sm font-semibold text-gray-700 border-t border-gray-200 whitespace-nowrap">TOTAL TARDES:</td>
-                  <td colSpan={5} className="px-2 py-2 text-right text-sm font-bold text-gray-700 border-t border-gray-200">
-                    <span className="bg-blue-100 px-2 py-1 rounded-full">{datosTraficoDia.totalTarde * 7}</span>
-                  </td>
-                </tr>
-              </tfoot>
+                          <tfoot>
+              {/* Fila de Atención (Personal Trabajando) */}
+              <tr className="bg-green-50">
+                <td className="px-3 py-2 text-sm font-semibold text-green-700 border-t border-gray-200 whitespace-nowrap">ATENCIÓN:</td>
+                {getHorasOrdenadas(datosTraficoDia.datosPorDia).map(hora => {
+                  const personalTrabajando = calcularPersonalTrabajando(hora);
+                  return (
+                    <td 
+                      key={`atencion-${hora}`} 
+                      className="w-14 border-t border-gray-200 border-l border-gray-200 p-1"
+                      style={{ width: '3.5rem' }}
+                    >
+                      <div className="text-center text-sm font-medium text-green-700 bg-green-100 rounded py-1 px-0 shadow-sm">
+                        {personalTrabajando}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+              
+              {/* Fila de Estimado (Personal Recomendado) */}
+              <tr className="bg-orange-50">
+                <td className="px-3 py-2 text-sm font-semibold text-orange-700 border-t border-gray-200 whitespace-nowrap">ESTIMADO:</td>
+                {getHorasOrdenadas(datosTraficoDia.datosPorDia).map(hora => {
+                  const personalEstimado = calcularPersonalEstimado(hora);
+                  return (
+                    <td 
+                      key={`estimado-${hora}`} 
+                      className="w-14 border-t border-gray-200 border-l border-gray-200 p-1"
+                      style={{ width: '3.5rem' }}
+                    >
+                      <div className="text-center text-sm font-medium text-orange-700 bg-orange-100 rounded py-1 px-0 shadow-sm">
+                        {personalEstimado}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+              
+              {/* Fila de totales al final */}
+              <tr className="bg-gray-100">
+                <td className="px-3 py-2 text-sm font-semibold text-gray-700 border-t border-gray-200 whitespace-nowrap">TOTAL MAÑANAS:</td>
+                <td colSpan={6} className="px-2 py-2 text-right text-sm font-bold text-gray-700 border-t border-gray-200">
+                  <span className="bg-blue-100 px-2 py-1 rounded-full">{datosTraficoDia.totalMañana * 7}</span>
+                </td>
+                <td className="px-3 py-2 text-sm font-semibold text-gray-700 border-t border-gray-200 whitespace-nowrap">TOTAL TARDES:</td>
+                <td colSpan={5} className="px-2 py-2 text-right text-sm font-bold text-gray-700 border-t border-gray-200">
+                  <span className="bg-blue-100 px-2 py-1 rounded-full">{datosTraficoDia.totalTarde * 7}</span>
+                </td>
+              </tr>
+            </tfoot>
             </table>
           </div>
           

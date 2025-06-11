@@ -2,19 +2,27 @@
 
 import React, { useState } from 'react';
 import { Select, Option } from '@/components/ui/Select';
-import { getBackgroundColor } from '@/lib/utils';
+import { getBackgroundColor, calcularHorasPlusEmpleado, extraerValorNumerico } from '@/lib/utils';
 import { ActividadDiariaRecord } from '@/lib/airtable';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+
+// Tipo para las opciones del dropdown
+interface DropdownOption {
+  value: string;
+  label: string;
+  color?: string;
+}
 
 interface ScheduleCardProps {
   actividades: ActividadDiariaRecord[];
   columnasTiempo: string[];
-  options: Option[];
-  optionsAsignar: Option[];
+  options: DropdownOption[];
+  optionsAsignar: DropdownOption[];
   isLoading: boolean;
   error: string | null;
   handleUpdateHorario: (actividadId: string, tiempo: string, valor: string) => Promise<void>;
   handleAsignarATodoElDia: (actividadId: string, valor: string) => Promise<void>;
+  tiendaData?: { PAIS?: string; Apertura?: string; Cierre?: string };
 }
 
 export function ScheduleCard({
@@ -25,7 +33,8 @@ export function ScheduleCard({
   isLoading,
   error,
   handleUpdateHorario,
-  handleAsignarATodoElDia
+  handleAsignarATodoElDia,
+  tiendaData
 }: ScheduleCardProps) {
   // Estado local para manejar las selecciones inmediatas
   const [seleccionesLocales, setSeleccionesLocales] = useState<Record<string, Record<string, string>>>({});
@@ -43,7 +52,8 @@ export function ScheduleCard({
 
   // Función para manejar la asignación a todo el día
   const handleAsignacionLocal = async (actividadId: string, valor: string) => {
-    if (!valor) return;
+    // Permitir valores vacíos para limpiar toda la fila
+    // if (!valor) return;
 
     // Actualizar estado local inmediatamente
     const nuevasSelecciones = { ...seleccionesLocales };
@@ -186,16 +196,64 @@ export function ScheduleCard({
               </div>
               <div className="flex items-center space-x-2">
                 <div className="flex space-x-1">
-                  {typeof actividad.fields['Horas +'] === 'number' && (
-                    <span className="px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">
-                      +{actividad.fields['Horas +'].toFixed(1)}h
-                    </span>
-                  )}
-                  {typeof actividad.fields['Horas -'] === 'number' && (
-                    <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium">
-                      -{actividad.fields['Horas -'].toFixed(1)}h
-                    </span>
-                  )}
+                  {(() => {
+                    // Calcular en tiempo real las horas plus y minus
+                    if (tiendaData) {
+                      const horasContrato = extraerValorNumerico(
+                        actividad.fields['Horas de Contrato'] || 
+                        actividad.fields['Horas Contrato']
+                      );
+                      
+                      // Crear una versión actualizada de la actividad con las selecciones locales
+                      const actividadActualizada = {
+                        ...actividad,
+                        fields: {
+                          ...actividad.fields,
+                          ...seleccionesLocales[actividad.id]
+                        }
+                      };
+                      
+                      const { horasPlus } = calcularHorasPlusEmpleado(
+                        actividadActualizada,
+                        horasContrato,
+                        tiendaData
+                      );
+                      
+                      // Leer Horas - directamente de Airtable (es un campo lookup)
+                      const horasMinus = extraerValorNumerico(actividad.fields['Horas -']);
+                      
+                      return (
+                        <>
+                          {horasPlus > 0 && (
+                            <span className="px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">
+                              +{horasPlus.toFixed(1)}h
+                            </span>
+                          )}
+                          {horasMinus > 0 && (
+                            <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium">
+                              -{horasMinus.toFixed(1)}h
+                            </span>
+                          )}
+                        </>
+                      );
+                    }
+                    
+                    // Fallback: usar valores de Airtable
+                    return (
+                      <>
+                        {typeof actividad.fields['Horas +'] === 'number' && (
+                          <span className="px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">
+                            +{actividad.fields['Horas +'].toFixed(1)}h
+                          </span>
+                        )}
+                        {typeof actividad.fields['Horas -'] === 'number' && (
+                          <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium">
+                            -{actividad.fields['Horas -'].toFixed(1)}h
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div 
                   className="bg-white rounded-full p-1.5 border border-gray-200 z-10"

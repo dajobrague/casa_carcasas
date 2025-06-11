@@ -149,7 +149,7 @@ export default function DashboardContent() {
       {/* Información de la tienda */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-xl">Información de la Tienda #{storeNumber}</CardTitle>
+          <CardTitle className="text-xl">Información de la Tienda</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -184,7 +184,25 @@ export default function DashboardContent() {
                 <Clock className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-gray-500">Horario</p>
-                  <p className="text-base">{tiendaData.horarioApertura} - {tiendaData.horarioCierre}</p>
+                  <p className="text-base">
+                    {tiendaData.horarioApertura && tiendaData.horarioApertura.includes('-') ? (
+                      // Nuevo formato con múltiples intervalos
+                      tiendaData.horarioApertura.split(',').map((intervalo, index) => {
+                        const [apertura, cierre] = intervalo.split('-');
+                        return (
+                          <span key={index} className="inline-block mr-2">
+                            {apertura} - {cierre}
+                            {index < tiendaData.horarioApertura!.split(',').length - 1 && (
+                              <span className="ml-1 mr-1 text-gray-400">|</span>
+                            )}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      // Formato antiguo: solo apertura y cierre
+                      `${tiendaData.horarioApertura || '09:00'} - ${tiendaData.horarioCierre || '21:00'}`
+                    )}
+                  </p>
                 </div>
               </div>
               

@@ -1,0 +1,13 @@
+{
+  "usuarios": {
+    "enabled": true,
+    "schedule": "daily",
+    "time": "23:00",
+    "dayOfWeek": "1"
+  },
+  "tiendas": {
+    "enabled": false,
+    "schedule": "daily",
+    "time": "03:00"
+  }
+}

@@ -84,6 +84,13 @@ const PrintableWeekViewPage: React.FC<PrintableWeekViewPageProps> = ({ storeId, 
         }
         
         const jsonData = await response.json();
+        
+        // Log adicional para debug
+        console.log(`Datos recibidos de la API trafico-semana:`);
+        jsonData.datos.diasLaborales.forEach((dia: any, index: number) => {
+          console.log(`Día ${index + 1}: ${dia.fecha} (${dia.diaSemana}), horarioApertura: ${dia.horarioApertura}, horarioCierre: ${dia.horarioCierre}`);
+        });
+        
         setData(jsonData);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Error desconocido';

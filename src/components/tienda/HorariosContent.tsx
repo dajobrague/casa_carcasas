@@ -39,12 +39,26 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
       Cierre: ''
     } as TiendaData,
     selectedRanges: [] as TimeRange[],
+    selectedTimes: [] as string[],
     loading: true,
     error: null as string | null,
     success: false
   });
 
   const [startTime, setStartTime] = useState<string | null>(null);
+
+  // Asegura que la hora se muestre siempre en formato 24 horas
+  const ensureFormat24h = (timeStr: string): string => {
+    if (!timeStr) return '';
+    
+    // Si ya tiene el formato HH:MM, lo devolvemos tal cual
+    if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+    
+    return timeStr;
+  };
 
   const addMinutesToTime = (timeStr: string, minutesToAdd: number) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -80,79 +94,50 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
     );
   };
 
+  const isTimeSelected = (time: string) => {
+    return state.selectedTimes.includes(time);
+  };
+
   const handleTimeClick = (time: string) => {
-    const intervalos = generarIntervalos(state.tiendaData.pais);
-    
-    if (!startTime) {
-      if (isInRange(time)) {
-        setState(prev => ({
+    setState(prev => {
+      const currentlySelected = prev.selectedTimes.includes(time);
+      const newSelectedTimes = currentlySelected
+        ? prev.selectedTimes.filter(t => t !== time)
+        : [...prev.selectedTimes, time].sort();
+      
+      if (newSelectedTimes.length > 0) {
+        const sortedTimes = [...newSelectedTimes].sort();
+        const apertura = sortedTimes[0];
+        const lastTime = sortedTimes[sortedTimes.length - 1];
+        
+        const incremento = prev.tiendaData.pais?.toUpperCase() === 'FRANCIA' ? 15 : 30;
+        const cierre = addMinutesToTime(lastTime, incremento);
+
+        return {
           ...prev,
-          selectedRanges: prev.selectedRanges.filter(range => {
-            if (time >= range.start && time <= range.end) {
-              const ranges = [];
-              if (time > range.start) {
-                ranges.push({ start: range.start, end: time });
-              }
-              if (time < range.end) {
-                ranges.push({ start: time, end: range.end });
-              }
-              return false;
-            }
-            return true;
-          })
-        }));
+          selectedTimes: newSelectedTimes,
+          tiendaData: {
+            ...prev.tiendaData,
+            apertura,
+            cierre,
+            Apertura: ensureFormat24h(apertura),
+            Cierre: ensureFormat24h(cierre)
+          }
+        };
       } else {
-        setStartTime(time);
-        setState(prev => ({
+        return {
           ...prev,
-          selectedRanges: [...prev.selectedRanges, { start: time, end: time }]
-        }));
+          selectedTimes: newSelectedTimes,
+          tiendaData: {
+            ...prev.tiendaData,
+            apertura: '',
+            cierre: '',
+            Apertura: '',
+            Cierre: ''
+          }
+        };
       }
-    } else {
-      if (time >= startTime) {
-        setState(prev => ({
-          ...prev,
-          selectedRanges: [
-            ...prev.selectedRanges.filter(range => 
-              !(range.start === startTime && range.end === startTime)
-            ),
-            { start: startTime, end: time }
-          ]
-        }));
-      }
-      setStartTime(null);
-    }
-
-    // Actualizar apertura y cierre
-    if (state.selectedRanges.length > 0) {
-      const allStarts = state.selectedRanges.map(range => range.start);
-      const allEnds = state.selectedRanges.map(range => range.end);
-      const apertura = allStarts.reduce((a, b) => a < b ? a : b);
-      const baseClosingTime = allEnds.reduce((a, b) => a > b ? a : b);
-      const cierre = addMinutesToTime(baseClosingTime, 30);
-
-      setState(prev => ({
-        ...prev,
-        tiendaData: {
-          ...prev.tiendaData,
-          apertura,
-          cierre,
-          Apertura: apertura,
-          Cierre: cierre
-        }
-      }));
-    } else {
-      setState(prev => ({
-        ...prev,
-        tiendaData: {
-          ...prev.tiendaData,
-          apertura: '',
-          cierre: '',
-          Apertura: '',
-          Cierre: ''
-        }
-      }));
-    }
+    });
   };
 
   const handleSave = async () => {
@@ -161,6 +146,14 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
         throw new Error('No se encontró el ID de la tienda');
       }
       
+      // Convertir los tiempos seleccionados a intervalos continuos
+      const intervalos = obtenerIntervalosDeSeleccion(state.selectedTimes, state.tiendaData.pais);
+      
+      // Convertir los intervalos a formato de texto
+      const formatoHorarios = intervalos.map(intervalo => 
+        `${intervalo.apertura}-${intervalo.cierre}`
+      ).join(',');
+      
       const response = await fetch(`/api/tienda/${recordId}`, {
         method: 'PATCH',
         headers: {
@@ -168,8 +161,8 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
         },
         body: JSON.stringify({
           fields: {
-            Apertura: state.tiendaData.Apertura,
-            Cierre: state.tiendaData.Cierre
+            Apertura: formatoHorarios, // Guardamos los intervalos en formato texto
+            Cierre: state.tiendaData.Cierre // Mantenemos la hora de cierre total para compatibilidad
           }
         })
       });
@@ -197,6 +190,75 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
     }
   };
   
+  // Nueva función: Obtener intervalos continuos a partir de los tiempos seleccionados
+  const obtenerIntervalosDeSeleccion = (tiemposSeleccionados: string[], pais: string) => {
+    // Ordenamos los tiempos seleccionados
+    const tiemposOrdenados = [...tiemposSeleccionados].sort();
+    if (tiemposOrdenados.length === 0) return [];
+    
+    const incremento = pais?.toUpperCase() === 'FRANCIA' ? 15 : 30;
+    const intervalos: {apertura: string, cierre: string}[] = [];
+    
+    let inicioIntervalo = tiemposOrdenados[0];
+    let finPrevio = tiemposOrdenados[0];
+    
+    // Iteramos sobre los tiempos seleccionados para detectar intervalos continuos
+    for (let i = 1; i < tiemposOrdenados.length; i++) {
+      const tiempoActual = tiemposOrdenados[i];
+      const tiempoEsperado = addMinutesToTime(finPrevio, incremento);
+      
+      // Si hay una discontinuidad (no es el tiempo esperado siguiente)
+      if (tiempoActual !== tiempoEsperado) {
+        // Guardamos el intervalo completado
+        intervalos.push({
+          apertura: inicioIntervalo,
+          cierre: addMinutesToTime(finPrevio, incremento)
+        });
+        // Iniciamos un nuevo intervalo
+        inicioIntervalo = tiempoActual;
+      }
+      
+      finPrevio = tiempoActual;
+    }
+    
+    // Añadimos el último intervalo
+    intervalos.push({
+      apertura: inicioIntervalo,
+      cierre: addMinutesToTime(finPrevio, incremento)
+    });
+    
+    return intervalos;
+  };
+  
+  // Nueva función: Interpretar formato de horarios y convertirlo a tiempos seleccionados
+  const interpretarFormatoHorarios = (formatoHorarios: string, pais: string): string[] => {
+    if (!formatoHorarios) return [];
+    
+    const incremento = pais?.toUpperCase() === 'FRANCIA' ? 15 : 30;
+    const intervalosDisponibles = generarIntervalos(pais);
+    const tiemposSeleccionados: string[] = [];
+    
+    // Dividimos por comas para obtener cada par apertura-cierre
+    const pares = formatoHorarios.split(',');
+    
+    pares.forEach(par => {
+      const [inicioRango, finRango] = par.split('-');
+      if (!inicioRango || !finRango) return;
+      
+      // El fin real es el tiempo anterior al cierre (porque cierre = último + incremento)
+      const finReal = addMinutesToTime(finRango, -incremento);
+      
+      // Añadimos todos los tiempos dentro del rango
+      intervalosDisponibles.forEach(tiempo => {
+        if (tiempo >= inicioRango && tiempo <= finReal && !tiemposSeleccionados.includes(tiempo)) {
+          tiemposSeleccionados.push(tiempo);
+        }
+      });
+    });
+    
+    return tiemposSeleccionados.sort();
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -236,12 +298,33 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
 
         console.log('Datos procesados:', tiendaData);
 
+        // Interpretar el formato de horarios para obtener los tiempos seleccionados
+        let selectedTimes: string[] = [];
+        
+        if (tiendaData.Apertura) {
+          // Verificamos si está en el nuevo formato (contiene '-' o ',')
+          if (tiendaData.Apertura.includes('-') || tiendaData.Apertura.includes(',')) {
+            selectedTimes = interpretarFormatoHorarios(tiendaData.Apertura, tiendaData.pais);
+          } else {
+            // Formato antiguo: un solo horario continuo
+            const intervalos = generarIntervalos(tiendaData.pais);
+            const incremento = tiendaData.pais?.toUpperCase() === 'FRANCIA' ? 15 : 30;
+            const cierreHora = tiendaData.Cierre 
+              ? addMinutesToTime(tiendaData.Cierre, -incremento)
+              : '';
+              
+            if (cierreHora) {
+              selectedTimes = intervalos.filter(time => 
+                time >= tiendaData.Apertura && time <= cierreHora
+              );
+            }
+          }
+        }
+
         setState(prev => ({
           ...prev,
           tiendaData,
-          selectedRanges: tiendaData.Apertura && tiendaData.Cierre 
-            ? [{ start: tiendaData.Apertura, end: tiendaData.Cierre }]
-            : [],
+          selectedTimes,
           loading: false
         }));
       } catch (err) {
@@ -314,29 +397,48 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
         </div>
 
         {/* Horario Display */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-xl">🌅</span>
+        <div className="mt-6">
+          <h3 className="text-md font-medium text-gray-700 mb-2">Jornadas configuradas:</h3>
+          
+          {state.selectedTimes.length > 0 ? (
+            <div className="space-y-3">
+              {obtenerIntervalosDeSeleccion(state.selectedTimes, state.tiendaData.pais).map((intervalo, index) => (
+                <div key={index} className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-xl">🌅</span>
+                      </div>
+                      <div>
+                        <div className="text-sm text-blue-600 font-medium">Apertura</div>
+                        <div className="text-lg text-blue-900 font-semibold">
+                          {ensureFormat24h(intervalo.apertura)}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-gray-400 mx-4">hasta</div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <div className="text-sm text-purple-600 font-medium">Cierre</div>
+                        <div className="text-lg text-purple-900 font-semibold">
+                          {ensureFormat24h(intervalo.cierre)}
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-xl">🌙</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <div className="text-sm text-blue-600 font-medium">Hora de Apertura</div>
-              <div className="text-lg text-blue-900 font-semibold">
-                {state.tiendaData.Apertura || 'No establecida'}
-              </div>
+          ) : (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-500">
+              No hay horarios configurados. Selecciona al menos un intervalo de tiempo.
             </div>
-          </div>
-          <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <span className="text-xl">🌙</span>
-            </div>
-            <div>
-              <div className="text-sm text-purple-600 font-medium">Hora de Cierre</div>
-              <div className="text-lg text-purple-900 font-semibold">
-                {state.tiendaData.Cierre || 'No establecido'}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -365,7 +467,7 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
               className={`
                 group relative flex justify-between items-center p-3 rounded-lg cursor-pointer
                 transition-all duration-200
-                ${isInRange(time) 
+                ${isTimeSelected(time) 
                   ? 'bg-blue-50 border-2 border-blue-500 shadow-sm' 
                   : 'border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }
@@ -374,12 +476,12 @@ export default function HorariosContent({ storeId }: HorariosContentProps) {
               <span className="text-sm font-medium">{time}</span>
               <div className={`
                 w-4 h-4 rounded-full border-2 transition-colors
-                ${isInRange(time) 
+                ${isTimeSelected(time) 
                   ? 'bg-blue-500 border-blue-500' 
                   : 'border-gray-300 group-hover:border-gray-400'
                 }
               `}>
-                {isInRange(time) && (
+                {isTimeSelected(time) && (
                   <svg className="w-full h-full text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>

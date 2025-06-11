@@ -192,6 +192,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           sameSite: 'strict'
         });
         
+        // También establecer la cookie admin_session que usa validateAdminSession
+        Cookies.set('admin_session', process.env.NEXT_PUBLIC_ADMIN_SECRET || 'Casa2025!', {
+          expires: 1,
+          path: '/',
+          sameSite: 'strict'
+        });
+        
         setIsAdminLoggedIn(true);
         return true;
       } else {

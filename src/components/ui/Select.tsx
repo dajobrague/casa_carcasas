@@ -1,89 +1,52 @@
-import React, { SelectHTMLAttributes, forwardRef } from 'react';
+import React, { forwardRef, SelectHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
+import { ChevronDown } from 'lucide-react';
 
-export interface Option {
-  value: string;
-  label: string;
-  color?: string;
-}
-
-interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  options: Option[];
-  label?: string;
-  error?: string;
-  fullWidth?: boolean;
-  estado?: string;
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
+  options: Array<{ value: string; label: string; disabled?: boolean }>;
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  className?: string;
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ 
-    className, 
-    options, 
-    label, 
-    error, 
-    fullWidth = false, 
-    estado,
-    value,
-    ...props 
-  }, ref) => {
-    // Función para obtener clases según el estado
-    const getEstadoClasses = (estado?: string) => {
-      switch (estado?.toUpperCase()) {
-        case 'TRABAJO': return 'bg-green-100 text-green-800 border-green-300';
-        case 'VACACIONES': return 'bg-blue-100 text-blue-800 border-blue-300';
-        case 'LIBRE': return 'bg-red-100 text-red-800 border-red-300';
-        case 'BAJA MÉDICA': return 'bg-purple-100 text-purple-800 border-purple-300';
-        case 'FORMACIÓN': return 'bg-orange-100 text-orange-800 border-orange-300';
-        case 'LACTANCIA': return 'bg-pink-100 text-pink-800 border-pink-300';
-        default: return 'bg-white border-gray-300 text-gray-800';
-      }
-    };
-
-    // Encontrar la opción seleccionada para mostrar su color
-    const selectedOption = options.find(opt => opt.value === value);
-
+  ({ options, value, onChange, placeholder, className, disabled, ...props }, ref) => {
     return (
-      <div className={`${fullWidth ? 'w-full' : ''}`}>
-        {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {label}
-          </label>
-        )}
+      <div className="relative">
         <select
           ref={ref}
           value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          disabled={disabled}
           className={cn(
-            'block rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-base font-medium appearance-none text-gray-800',
-            selectedOption?.value ? getEstadoClasses(selectedOption.value) : getEstadoClasses(estado),
-            error ? 'border-red-300' : 'border-gray-300',
-            fullWidth ? 'w-full' : '',
+            "w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            "appearance-none",
             className
           )}
-          style={{
-            backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")",
-            backgroundPosition: "right 0.5rem center",
-            backgroundRepeat: "no-repeat",
-            backgroundSize: "1.5em 1.5em",
-            paddingRight: "2.5rem"
-          }}
           {...props}
         >
+          {placeholder && (
+            <option value="" disabled={!value}>
+              {placeholder}
+            </option>
+          )}
           {options.map((option) => (
-            <option 
-              key={option.value} 
+            <option
+              key={option.value}
               value={option.value}
-              className={cn(
-                option.value ? getEstadoClasses(option.value) : 'text-gray-800',
-                'font-medium'
-              )}
+              disabled={option.disabled}
             >
               {option.label}
             </option>
           ))}
         </select>
-        {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
-        )}
+        <ChevronDown
+          className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none"
+          aria-hidden="true"
+        />
       </div>
     );
   }
@@ -91,4 +54,23 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
 
 Select.displayName = 'Select';
 
-export { Select }; 
+// Option component is just a simple wrapper for options
+const Option: React.FC<{ value: string; label: string; disabled?: boolean }> = ({ value, label, disabled }) => (
+  <option value={value} disabled={disabled}>{label}</option>
+);
+
+// Export components for compatibility with existing code
+export {
+  Select,
+  Option,
+  Select as SelectRoot,
+  Select as SelectGroup,
+  Select as SelectValue,
+  Select as SelectTrigger,
+  Select as SelectContent,
+  Select as SelectLabel,
+  Select as SelectItem,
+  Select as SelectScrollUpButton,
+  Select as SelectScrollDownButton,
+  Select as SelectSeparator,
+}

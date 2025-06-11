@@ -13,6 +13,7 @@ const tiendaSupervisorTableId = process.env.AIRTABLE_TIENDA_SUPERVISOR_TABLE_ID 
 const actividadDiariaTableId = process.env.AIRTABLE_ACTIVIDAD_DIARIA_TABLE_ID || '';
 const diasLaboralesTableId = process.env.AIRTABLE_DIAS_LABORALES_TABLE_ID || '';
 const empleadosTableId = process.env.AIRTABLE_EMPLEADOS_TABLE_ID || '';
+const datosSemanalesTableId = process.env.AIRTABLE_DATOS_SEMANALES_TABLE_ID || '';
 
 // Inicializar Airtable
 const airtable = new Airtable({ apiKey }).base(baseId);
@@ -26,7 +27,8 @@ console.log('Debug - Airtable API vars loaded:', {
     tiendaSupervisor: tiendaSupervisorTableId,
     actividadDiaria: actividadDiariaTableId,
     diasLaborales: diasLaboralesTableId,
-    empleados: empleadosTableId
+    empleados: empleadosTableId,
+    datosSemanales: datosSemanalesTableId
   }
 });
 
@@ -221,11 +223,19 @@ export async function GET(request: NextRequest) {
         }
         
         if (!formula) {
-          console.error('Debug - API route: Error - No se proporcionó una fórmula para obtener semanas laborales');
-          return NextResponse.json(
-            { error: 'Se requiere el parámetro "formula"' },
-            { status: 400 }
-          );
+          console.log('Debug - API route: No se proporcionó una fórmula, obteniendo todas las semanas laborales');
+          try {
+            // Obtener todas las semanas sin filtro
+            const records = await obtenerSemanasConFormula('TRUE()');
+            return NextResponse.json({ records });
+          } catch (error) {
+            console.error('Debug - Error detallado al obtener todas las semanas laborales:', error);
+            logger.error('Error al obtener todas las semanas laborales:', error);
+            return NextResponse.json(
+              { error: 'Error al obtener semanas laborales' },
+              { status: 500 }
+            );
+          }
         }
 
         console.log(`Debug - API route: Obteniendo semanas laborales con fórmula: ${formula}`);
@@ -1259,9 +1269,10 @@ async function obtenerSemanasConFormula(formula: string): Promise<any> {
     }
     
     // Construir objeto de query para Airtable
+    // Nota: No usar el campo "Semana del año" que no existe, usar "Name" en su lugar
     const queryOptions = {
       filterByFormula: formulaDecodificada,
-      sort: [{ field: 'Fecha de Inicio', direction: 'asc' as 'asc' }],
+      sort: [{ field: 'Name', direction: 'desc' as 'desc' }],
       ...(limit && { maxRecords: limit })
     };
     
@@ -1293,19 +1304,17 @@ async function obtenerSemanasConFormula(formula: string): Promise<any> {
             Object.keys(pruebaRegistros[0].fields).join(', ')
           }`);
           
-          // Verificar específicamente el campo Mes
-          const campoMesEjemplo = pruebaRegistros
-            .filter(rec => rec.fields.Mes)
-            .map(rec => `"${rec.fields.Mes}"`)
-            .slice(0, 3)
-            .join(', ');
-            
-          console.log(`Debug - API route: Ejemplos de valores en campo Mes: ${campoMesEjemplo}`);
+          // Verificar específicamente los campos disponibles para ayudar con futuros errores
+          const camposDisponibles = Object.keys(pruebaRegistros[0].fields);
+          console.log(`Debug - API route: Campos disponibles en la tabla: ${camposDisponibles.join(', ')}`);
         }
       }
     } else {
       console.log(`Debug - API route: Primera semana encontrada: ${records[0].fields.Name || 'Sin nombre'}, ID: ${records[0].id}`);
-      console.log(`Debug - API route: Valor del campo Mes: "${records[0].fields.Mes || 'No disponible'}", Name: "${records[0].fields.Name || 'No disponible'}"`);
+      
+      // Mostrar todos los campos disponibles del primer registro para referencia
+      const camposDisponibles = Object.keys(records[0].fields);
+      console.log(`Debug - API route: Campos disponibles en el registro: ${camposDisponibles.join(', ')}`);
     }
     
     // Devolver los registros como están, sin necesidad de convertirlos

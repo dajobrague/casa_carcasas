@@ -538,14 +538,27 @@ async function precargarEmpleados(): Promise<void> {
   
   try {
     cacheEmpleados.cargando = true;
-    const empleados = await obtenerEmpleados('', 'Activo');
+    
+    // Llamada directa a la API para obtener todos los empleados activos
+    console.log('Precargando empleados para búsqueda rápida...');
+    
+    const response = await fetch('/api/airtable?action=obtenerEmpleadosTienda&status=Activo');
+    
+    if (!response.ok) {
+      throw new Error(`Error al precargar empleados: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const empleados = data.records || [];
+    
+    console.log(`Precarga: Se encontraron ${empleados.length} empleados activos para indexar`);
     
     if (empleados && empleados.length > 0) {
       // Crear índices para búsqueda rápida
       const indiceNombres = new Map<string, EmpleadoRecord[]>();
       const indiceCodigos = new Map<string, EmpleadoRecord>();
       
-      empleados.forEach(emp => {
+      empleados.forEach((emp: EmpleadoRecord) => {
         // Indexar por código
         if (emp.fields.CodigoEmpleado) {
           const codigo = emp.fields.CodigoEmpleado.toLowerCase();
@@ -578,6 +591,8 @@ async function precargarEmpleados(): Promise<void> {
       cacheEmpleados.indiceNombres = indiceNombres;
       cacheEmpleados.indiceCodigos = indiceCodigos;
       cacheEmpleados.timestamp = Date.now();
+      
+      console.log('Precarga de empleados completada con éxito');
     }
   } catch (error) {
     console.error('Error en precarga de empleados:', error);
@@ -587,7 +602,7 @@ async function precargarEmpleados(): Promise<void> {
 }
 
 /**
- * Función ultrarrápida para buscar empleados por nombre completo o código
+ * Función para buscar empleados por nombre completo o código
  * @param searchTerm Término de búsqueda (nombre completo o código)
  * @returns Lista de empleados que coinciden con la búsqueda
  */
@@ -596,117 +611,38 @@ export async function buscarEmpleados(searchTerm: string): Promise<EmpleadoRecor
     return [];
   }
 
-  const termLimpio = searchTerm.trim().toLowerCase();
-  
-  // Si la caché está vacía, iniciar carga
-  if (cacheEmpleados.empleados.length === 0 && !cacheEmpleados.cargando) {
-    precargarEmpleados();
+  try {
+    console.log(`Buscando empleados con término: "${searchTerm}"`);
+    
+    // Construir la formula de búsqueda
+    const termLimpio = searchTerm.trim();
+    
+    // Creamos una fórmula para buscar en código de empleado, nombre y apellidos
+    const formula = `OR(
+      FIND("${termLimpio.toLowerCase()}", LOWER({CodigoEmpleado})),
+      FIND("${termLimpio.toLowerCase()}", LOWER({Nombre})),
+      FIND("${termLimpio.toLowerCase()}", LOWER({Apellidos})),
+      FIND("${termLimpio.toLowerCase()}", LOWER({Nombre} & " " & {Apellidos}))
+    )`;
+    
+    // Enviamos la consulta directamente a la API
+    const url = `/api/airtable?action=buscarEmpleados&formula=${encodeURIComponent(formula)}`;
+    console.log(`URL de búsqueda: ${url}`);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Error en la búsqueda: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Empleados encontrados: ${data.records?.length || 0}`);
+    
+    return data.records || [];
+  } catch (error) {
+    console.error('Error al buscar empleados:', error);
+    return [];
   }
-  
-  // Buscar primero en caché si existe
-  if (cacheEmpleados.empleados.length > 0) {
-    // 1. Buscar por código exacto (más rápido)
-    if (cacheEmpleados.indiceCodigos.has(termLimpio)) {
-      return [cacheEmpleados.indiceCodigos.get(termLimpio)!];
-    }
-    
-    // 2. Buscar códigos que contienen el término (también rápido)
-    const resultadosCodigo: EmpleadoRecord[] = [];
-    cacheEmpleados.indiceCodigos.forEach((emp, codigo) => {
-      if (codigo.includes(termLimpio)) {
-        resultadosCodigo.push(emp);
-      }
-    });
-    
-    if (resultadosCodigo.length > 0) {
-      return resultadosCodigo;
-    }
-    
-    // 3. Verificar si estamos buscando múltiples palabras
-    const palabras = termLimpio.split(/\s+/);
-    const busquedaMultiple = palabras.length > 1;
-    
-    // 4. Búsqueda directa por nombre completo - coincidencia exacta
-    if (busquedaMultiple) {
-      // Filtrar todos los empleados que contienen EXACTAMENTE la búsqueda
-      const resultadosExactos = cacheEmpleados.empleados.filter(emp => {
-        const nombreCompleto = `${(emp.fields.Nombre || '').toLowerCase()} ${(emp.fields.Apellidos || '').toLowerCase()}`.trim();
-        
-        // Debe contener la búsqueda exacta en secuencia
-        return nombreCompleto.includes(termLimpio);
-      });
-      
-      if (resultadosExactos.length > 0) {
-        return resultadosExactos;
-      }
-    }
-    
-    // 5. Si no hay coincidencias exactas y es búsqueda múltiple, verificar coincidencia parcial
-    if (busquedaMultiple) {
-      // Filtrar empleados donde cada palabra aparece en el nombre
-      const resultadosParciales = cacheEmpleados.empleados.filter(emp => {
-        const nombreCompleto = `${(emp.fields.Nombre || '').toLowerCase()} ${(emp.fields.Apellidos || '').toLowerCase()}`.trim();
-        
-        // Todas las palabras deben estar presentes
-        return palabras.every(palabra => nombreCompleto.includes(palabra));
-      });
-      
-      if (resultadosParciales.length > 0) {
-        return resultadosParciales;
-      }
-    }
-    
-    // 6. Búsqueda en el índice de nombres por palabra individual
-    // (Solo usamos esto si no encontramos coincidencias más precisas)
-    if (cacheEmpleados.indiceNombres.has(termLimpio)) {
-      return cacheEmpleados.indiceNombres.get(termLimpio)!;
-    }
-    
-    // 7. Búsqueda por coincidencias parciales en nombres
-    const candidatos = new Map<string, EmpleadoRecord>();
-    
-    // Buscar coincidencias por palabra clave
-    cacheEmpleados.indiceNombres.forEach((emps, key) => {
-      if (key.includes(termLimpio)) {
-        emps.forEach(emp => {
-          // Verificación adicional para asegurar que realmente contiene la búsqueda
-          const nombreCompleto = `${(emp.fields.Nombre || '').toLowerCase()} ${(emp.fields.Apellidos || '').toLowerCase()}`.trim();
-          
-          // Solo agregar si el nombre completo contiene el término de búsqueda
-          if (nombreCompleto.includes(termLimpio)) {
-            candidatos.set(emp.id, emp);
-          }
-        });
-      }
-    });
-    
-    if (candidatos.size > 0) {
-      return Array.from(candidatos.values());
-    }
-    
-    // 8. Si todo lo demás falla, usar búsqueda lineal (filtrando empleados)
-    return cacheEmpleados.empleados.filter(emp => {
-      const codigo = (emp.fields.CodigoEmpleado || '').toLowerCase();
-      const nombreCompleto = `${(emp.fields.Nombre || '').toLowerCase()} ${(emp.fields.Apellidos || '').toLowerCase()}`.trim();
-      
-      // Para búsquedas de una sola palabra, podemos ser más flexibles
-      if (!busquedaMultiple) {
-        return codigo.includes(termLimpio) || nombreCompleto.includes(termLimpio);
-      }
-      
-      // Para búsquedas múltiples, exigimos que sea exacta
-      return nombreCompleto.includes(termLimpio);
-    });
-  }
-  
-  // Si no hay caché, intentar cargar en segundo plano y devolver resultados vacíos inmediatamente
-  // para no bloquear la interfaz
-  if (!cacheEmpleados.cargando) {
-    precargarEmpleados();
-  }
-  
-  // Devolver array vacío si no tenemos datos en caché
-  return [];
 }
 
 /**

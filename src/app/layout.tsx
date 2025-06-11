@@ -1,18 +1,21 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { AuthProvider } from '@/context/AuthContext';
+import "./globals.css";
+import type { Metadata } from "next";
+import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "react-hot-toast";
+import dynamic from "next/dynamic";
+
+// Cargar el componente del programador dinámicamente (solo en el cliente)
+const SchedulerInit = dynamic(() => import("@/components/SchedulerInit"), {
+  ssr: false,
+});
 
 export const metadata: Metadata = {
-  title: 'LCDLC - Horarios',
-  description: 'Aplicación para gestionar los horarios de los empleados de Casa Carcasas',
+  title: "Casa Carcasas",
+  description: "La Casa de las Carcasas - Planning App",
   manifest: '/manifest.json',
   icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: '16x16', type: 'image/x-icon' },
-      { url: '/favicon.png', sizes: 'any' }
-    ],
-    apple: { url: '/images/a1f5f4d1aeb6ac161feb1b4d91bda0240020897d.png' }
-  }
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
@@ -21,12 +24,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="h-full bg-gray-50">
+    <html lang="es">
       <body className="h-full bg-gray-50">
         <AuthProvider>
+          <Toaster position="top-center" />
           <main className="min-h-screen">
             {children}
           </main>
+          <SchedulerInit />
         </AuthProvider>
       </body>
     </html>

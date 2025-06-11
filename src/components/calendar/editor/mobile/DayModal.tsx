@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Option } from '@/components/ui/Select';
+
+// Tipo para las opciones del dropdown
+interface DropdownOption {
+  value: string;
+  label: string;
+  color?: string;
+}
 import { 
   obtenerActividadesDiarias, 
   obtenerDatosTienda, 
@@ -164,9 +171,34 @@ export function DayModal({
       setHorasAprobadasSemanales(tiendaData['Horas Aprobadas'] || 0);
       
       // Usar las horas efectivas semanales iniciales si se proporcionaron
-      // De lo contrario, usar un cálculo de respaldo
-      if (!horasEfectivasSemanalesIniciales) {
-        setHorasEfectivasSemanales(horasEfectivas * 5); // Respaldo: 5 días similares
+      // De lo contrario, intentar calcular correctamente desde la semana
+      if (horasEfectivasSemanalesIniciales && horasEfectivasSemanalesIniciales > 0) {
+        console.log('Usando horas efectivas semanales proporcionadas:', horasEfectivasSemanalesIniciales);
+        setHorasEfectivasSemanales(horasEfectivasSemanalesIniciales);
+      } else {
+        // Intentar obtener la semana de localStorage
+        const semanaId = window.localStorage.getItem(`dia_semana_${diaId}`);
+        
+        if (semanaId && storeRecordId) {
+          console.log('Calculando horas efectivas semanales para semana:', semanaId);
+          try {
+            const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
+            const horasSemanalesCalculadas = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
+            setHorasEfectivasSemanales(horasSemanalesCalculadas);
+            console.log('Horas efectivas semanales calculadas:', horasSemanalesCalculadas);
+          } catch (error) {
+            console.error('Error al calcular horas efectivas semanales:', error);
+            // Usar cálculo de respaldo como último recurso
+            const fallbackHoras = horasEfectivas * 5;
+            console.log('Usando cálculo de respaldo:', fallbackHoras);
+            setHorasEfectivasSemanales(fallbackHoras);
+          }
+        } else {
+          // Solo como último respaldo si no hay información de semana
+          const fallbackHoras = horasEfectivas * 5;
+          console.log('Sin información de semana, usando cálculo de respaldo:', fallbackHoras);
+          setHorasEfectivasSemanales(fallbackHoras);
+        }
       }
 
     } catch (error) {
@@ -226,13 +258,24 @@ export function DayModal({
           // Actualizar las horas efectivas diarias
           setHorasEfectivasDiarias(horasEfectivas);
           
-          // Actualizar también las horas efectivas semanales
+          // Actualizar también las horas efectivas semanales de forma más robusta
           // Calculando la diferencia respecto al día original y sumándola al total semanal
           const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
-          setHorasEfectivasSemanales(prev => 
-            // Asegurarse de que no sea negativo
-            Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
-          );
+          
+          setHorasEfectivasSemanales(prev => {
+            // Si tenemos un valor inicial válido, usarlo como base
+            const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
+            const nuevoValor = Math.max(0, baseValue + diferenciaDiaria);
+            
+            console.log('Actualizando horas efectivas semanales (individual móvil):', {
+              valorAnterior: prev,
+              valorBase: baseValue,
+              diferenciaDiaria,
+              nuevoValor
+            });
+            
+            return nuevoValor;
+          });
         }
         
         mostrarNotificacion('Horario actualizado correctamente', 'success');
@@ -252,10 +295,11 @@ export function DayModal({
       return;
     }
     
-    if (!valor) {
-      // No hacer nada si no se seleccionó un valor
-      return;
-    }
+    // Permitir valores vacíos para limpiar toda la fila
+    // if (!valor) {
+    //   // No hacer nada si no se seleccionó un valor
+    //   return;
+    // }
     
     if (!columnasTiempo || columnasTiempo.length === 0) {
       mostrarNotificacion('No hay columnas de tiempo definidas', 'error');
@@ -328,12 +372,23 @@ export function DayModal({
         // Actualizar las horas efectivas diarias
         setHorasEfectivasDiarias(horasEfectivas);
         
-        // Actualizar también las horas efectivas semanales
+        // Actualizar también las horas efectivas semanales de forma más robusta
         const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
-        setHorasEfectivasSemanales(prev => 
-          // Asegurarse de que no sea negativo
-          Math.max(0, horasEfectivasSemanalesIniciales + diferenciaDiaria)
-        );
+        
+        setHorasEfectivasSemanales(prev => {
+          // Si tenemos un valor inicial válido, usarlo como base
+          const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
+          const nuevoValor = Math.max(0, baseValue + diferenciaDiaria);
+          
+          console.log('Actualizando horas efectivas semanales (asignar todo móvil):', {
+            valorAnterior: prev,
+            valorBase: baseValue,
+            diferenciaDiaria,
+            nuevoValor
+          });
+          
+          return nuevoValor;
+        });
       }
       
       if (allSuccess) {
@@ -379,7 +434,7 @@ export function DayModal({
   };
 
   // Opciones para los dropdowns con formato correcto
-  const options: Option[] = [
+  const options: DropdownOption[] = [
     { value: '', label: 'Seleccionar...', color: '#E5E7EB' }, // Opción vacía con etiqueta clara
     ...opcionesDropdown.map(opcion => ({
       value: opcion,
@@ -394,8 +449,11 @@ export function DayModal({
     }))
   ];
 
-  // Opciones para asignar a todo el día (sin la opción vacía)
-  const optionsAsignar: Option[] = options.filter(opt => opt.value !== '');
+  // Opciones para asignar a todo el día (incluir opción para limpiar)
+  const optionsAsignar: DropdownOption[] = [
+    { value: '', label: 'Limpiar toda la fila', color: '#F3F4F6' }, // Opción para limpiar
+    ...options.filter(opt => opt.value !== 'TRABAJO' && opt.value !== '') // Excluir TRABAJO y la opción vacía duplicada
+  ];
 
   return (
     <div className={`fixed inset-0 z-50 bg-gray-50 flex flex-col`} style={{ display: isOpen ? 'flex' : 'none' }}>
@@ -469,6 +527,11 @@ export function DayModal({
                   error={error}
                   handleUpdateHorario={handleUpdateHorario}
                   handleAsignarATodoElDia={handleAsignarATodoElDia}
+                  tiendaData={tiendaData ? {
+                    PAIS: tiendaData.fields.PAIS,
+                    Apertura: tiendaData.fields.Apertura,
+                    Cierre: tiendaData.fields.Cierre
+                  } : undefined}
                 />
               </div>
             )}
@@ -491,9 +554,13 @@ export function DayModal({
             {expandedSections.traffic && (
               <div className="p-3">
                 <TrafficTable
+                  key={`traffic-mobile-${diaId}-${actividades.length}`}
                   datosTraficoDia={datosTraficoDia}
                   isLoading={isLoading}
                   error={error}
+                  actividades={actividades}
+                  storeRecordId={storeRecordId || undefined}
+                  fecha={fecha || undefined}
                 />
               </div>
             )}

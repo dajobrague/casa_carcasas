@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
   // Redirigir si ya está autenticado
   useEffect(() => {
     if (!loading && isAdminLoggedIn) {
-      router.push('/admin/api-sync');
+      router.push('/admin');
     }
   }, [isAdminLoggedIn, loading, router]);
   
@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
     
     const success = await adminLogin(username, password);
     if (success) {
-      router.push('/admin/api-sync');
+      router.push('/admin');
     }
   };
   

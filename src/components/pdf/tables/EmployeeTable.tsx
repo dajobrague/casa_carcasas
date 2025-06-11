@@ -5,11 +5,35 @@ import { styles } from '../styles/tableStyles';
 
 // Función auxiliar para generar rangos de horas
 const getHourRangeFromStartAndEnd = (startHour: string, endHour: string): string[] => {
+  // Comprobar si estamos usando el nuevo formato con múltiples intervalos
+  if (startHour && startHour.includes('-')) {
+    const result: string[] = [];
+    const intervalos = startHour.split(',');
+    
+    // Procesar cada intervalo
+    intervalos.forEach(intervalo => {
+      const [inicio, fin] = intervalo.split('-');
+      if (!inicio || !fin) return;
+      
+      // Convertir a horas enteras para cada intervalo
+      const horaInicio = parseInt(inicio.split(':')[0]);
+      const horaFin = parseInt(fin.split(':')[0]);
+      
+      // Añadir cada hora del intervalo
+      for (let i = horaInicio; i < horaFin; i++) {
+        result.push(`${i.toString().padStart(2, '0')}:00`);
+      }
+    });
+    
+    return result;
+  }
+  
+  // Formato antiguo: un solo intervalo
   const start = parseInt(startHour.split(':')[0]);
   const end = parseInt(endHour.split(':')[0]);
   
   const hours = [];
-  for (let i = start; i <= end; i++) {
+  for (let i = start; i < end; i++) {
     hours.push(`${i.toString().padStart(2, '0')}:00`);
   }
   
@@ -24,6 +48,7 @@ interface EmployeeTableProps {
   recomendaciones?: RecomendacionHora[];
   atencionDeseada?: number;
   esFrancia?: boolean;
+  showLegend?: boolean;
 }
 
 export const EmployeeTable: React.FC<EmployeeTableProps> = ({ 
@@ -33,7 +58,8 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
   includeObservations = false,
   recomendaciones = [],
   atencionDeseada = 0,
-  esFrancia = false
+  esFrancia = false,
+  showLegend = false
 }) => {
   // El horario de trabajo (ej. ["09:00", "10:00", "11:00", ...])
   const horas = getHourRangeFromStartAndEnd(horaInicio, horaFin);
@@ -167,39 +193,41 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
         })}
       </View>
 
-      {/* Leyenda de actividades */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 5, gap: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityWork]}>
-            <Text style={{ fontSize: 8, textAlign: 'center' }}>W</Text>
+      {/* Leyenda de actividades solo si se solicita explícitamente */}
+      {showLegend && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 5, gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityWork]}>
+              <Text style={{ fontSize: 8, textAlign: 'center' }}>W</Text>
+            </View>
+            <Text style={{ fontSize: 8 }}>Trabajo</Text>
           </View>
-          <Text style={{ fontSize: 8 }}>Trabajo</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityOff]}>
-            <Text style={{ fontSize: 8, textAlign: 'center' }}>D</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityOff]}>
+              <Text style={{ fontSize: 8, textAlign: 'center' }}>D</Text>
+            </View>
+            <Text style={{ fontSize: 8 }}>Descanso</Text>
           </View>
-          <Text style={{ fontSize: 8 }}>Descanso</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityVacation]}>
-            <Text style={{ fontSize: 8, textAlign: 'center' }}>V</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityVacation]}>
+              <Text style={{ fontSize: 8, textAlign: 'center' }}>V</Text>
+            </View>
+            <Text style={{ fontSize: 8 }}>Vacaciones</Text>
           </View>
-          <Text style={{ fontSize: 8 }}>Vacaciones</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityTraining]}>
-            <Text style={{ fontSize: 8, textAlign: 'center' }}>F</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activityTraining]}>
+              <Text style={{ fontSize: 8, textAlign: 'center' }}>F</Text>
+            </View>
+            <Text style={{ fontSize: 8 }}>Formación</Text>
           </View>
-          <Text style={{ fontSize: 8 }}>Formación</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activitySick]}>
-            <Text style={{ fontSize: 8, textAlign: 'center' }}>E</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[{ width: 15, height: 15, marginRight: 5 }, styles.activitySick]}>
+              <Text style={{ fontSize: 8, textAlign: 'center' }}>E</Text>
+            </View>
+            <Text style={{ fontSize: 8 }}>Enfermedad</Text>
           </View>
-          <Text style={{ fontSize: 8 }}>Enfermedad</Text>
         </View>
-      </View>
+      )}
     </View>
   );
 }; 

@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
-import { RefreshCw, Users, Building, Check, AlertCircle, Database, Key, ArrowDownCircle, LogOut } from 'lucide-react';
+import { RefreshCw, Users, Building, Check, AlertCircle, Database, Key, ArrowDownCircle, LogOut, FileText } from 'lucide-react';
 
 enum SyncType {
   USERS = 'usuarios',
-  STORES = 'tiendas'
+  STORES = 'tiendas',
+  CSV_IMPORT = 'csv_import'
 }
 
 // Componente de carga
@@ -31,21 +32,7 @@ export default function ApiSyncPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [showDataViewer, setShowDataViewer] = useState<boolean>(false);
-  
-  // Estado para seguimiento de procesamiento por lotes
-  const [batchProgress, setBatchProgress] = useState<{
-    current: number;
-    total: number;
-    updates: number;
-    creates: number;
-    isProcessing: boolean;
-  }>({
-    current: 0,
-    total: 0,
-    updates: 0,
-    creates: 0,
-    isProcessing: false
-  });
+  const [activeTab, setActiveTab] = useState<'api' | 'csv' | 'semanal'>('api');
   
   // Protección de ruta para administradores
   useEffect(() => {
@@ -53,108 +40,6 @@ export default function ApiSyncPage() {
       router.push('/admin/login');
     }
   }, [isAdminLoggedIn, loading, router]);
-  
-  // Función para obtener los datos completos
-  const fetchData = async (type: SyncType): Promise<any> => {
-    let url = '';
-    
-    switch (type) {
-      case SyncType.USERS:
-        url = `/api/lcdc/users`;
-        break;
-      case SyncType.STORES:
-        url = `/api/lcdc/stores`;
-        break;
-    }
-    
-    const response = await fetch(url);
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Error obteniendo datos');
-    }
-    return await response.json();
-  };
-  
-  // Función para procesar un lote de datos
-  const processBatch = async (type: string, data: any[], startIndex: number, batchSize: number): Promise<any> => {
-    const endIndex = Math.min(startIndex + batchSize, data.length);
-    const currentBatch = data.slice(startIndex, endIndex);
-    
-    const response = await fetch('/api/lcdc/sync-batch', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type,
-        batchData: currentBatch
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error procesando lote');
-    }
-    
-    return await response.json();
-  };
-  
-  // Función para procesar todos los lotes secuencialmente
-  const processAllBatches = async (type: SyncType, data: any[]) => {
-    // Determinar tipo para la API
-    const apiType = type === SyncType.USERS ? 'users' : 'stores';
-    
-    // Configurar tamaño de lote basado en el tipo (usuarios suelen requerir más procesamiento)
-    const batchSize = type === SyncType.USERS ? 20 : 30;
-    
-    // Calcular número total de lotes
-    const totalBatches = Math.ceil(data.length / batchSize);
-    
-    // Inicializar contadores
-    let totalUpdates = 0;
-    let totalCreates = 0;
-    
-    // Actualizar estado inicial de progreso
-    setBatchProgress({
-      current: 0,
-      total: totalBatches,
-      updates: 0,
-      creates: 0,
-      isProcessing: true
-    });
-    
-    // Procesar cada lote secuencialmente
-    for (let i = 0; i < data.length; i += batchSize) {
-      try {
-        // Procesar lote actual
-        const batchResult = await processBatch(apiType, data, i, batchSize);
-        
-        // Actualizar contadores
-        totalUpdates += batchResult.updates || 0;
-        totalCreates += batchResult.creates || 0;
-        
-        // Actualizar progreso
-        setBatchProgress({
-          current: Math.floor(i / batchSize) + 1,
-          total: totalBatches,
-          updates: totalUpdates,
-          creates: totalCreates,
-          isProcessing: true
-        });
-        
-      } catch (batchError) {
-        // Si un lote falla, lanzar error para manejarlo en la función principal
-        throw batchError;
-      }
-    }
-    
-    // Devolver resultados agregados
-    return {
-      updates: totalUpdates,
-      creates: totalCreates,
-      data: data // Incluir los datos originales
-    };
-  };
   
   // Función para ejecutar sincronización
   const handleSync = async () => {
@@ -187,19 +72,22 @@ export default function ApiSyncPage() {
       setError((err as Error).message);
     } finally {
       setIsLoading(false);
-      setBatchProgress({
-        current: 0,
-        total: 0,
-        updates: 0,
-        creates: 0,
-        isProcessing: false
-      });
     }
   };
   
   // Gestionar el cierre de sesión de admin
   const handleLogout = () => {
     adminLogout();
+  };
+
+  // Navegar a la importación CSV
+  const navigateToCSVImport = () => {
+    router.push('/admin/csv-import');
+  };
+  
+  // Navegar a la importación semanal
+  const navigateToSemanasImport = () => {
+    router.push('/admin/semanas-csv-import');
   };
   
   if (loading) {
@@ -215,39 +103,6 @@ export default function ApiSyncPage() {
   
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo y título */}
-            <div className="flex items-center">
-              <div className="relative h-10 w-24 mr-3">
-                <Image 
-                  src="/images/a1f5f4d1aeb6ac161feb1b4d91bda0240020897d.png" 
-                  alt="Casa de las Carcasas Logo"
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  priority
-                />
-              </div>
-              <div className="border-l-2 border-gray-200 pl-3">
-                <div className="text-gray-900 text-lg font-bold">Administración</div>
-                <div className="text-sm text-blue-600 font-medium">Sincronización API</div>
-              </div>
-            </div>
-            
-            {/* Botón de cerrar sesión */}
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-      </header>
-
       {/* Contenido principal */}
       <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -330,25 +185,6 @@ export default function ApiSyncPage() {
                     <div className="flex flex-col items-center justify-center h-64">
                       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
                       <p className="text-gray-700">Sincronizando {syncType === SyncType.USERS ? 'usuarios' : 'tiendas'}...</p>
-                      
-                      {batchProgress.isProcessing && batchProgress.total > 0 && (
-                        <div className="mt-4 w-full max-w-md">
-                          <div className="flex justify-between mb-1 text-sm text-gray-600">
-                            <span>Progreso: {batchProgress.current} de {batchProgress.total} lotes</span>
-                            <span>{Math.round((batchProgress.current / batchProgress.total) * 100)}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div 
-                              className="bg-blue-600 h-2.5 rounded-full" 
-                              style={{ width: `${Math.round((batchProgress.current / batchProgress.total) * 100)}%` }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between mt-2 text-xs text-gray-500">
-                            <span>Actualizados: {batchProgress.updates}</span>
-                            <span>Creados: {batchProgress.creates}</span>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                   
@@ -421,15 +257,6 @@ export default function ApiSyncPage() {
           </div>
         </div>
       </main>
-      
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
-            &copy; {new Date().getFullYear()} Casa de las Carcasas. Todos los derechos reservados.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 } 

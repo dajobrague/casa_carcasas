@@ -361,16 +361,37 @@ export function MonthViewMobile({
     return null;
   };
 
-  const handleSelectDay = (diaId: string, fecha: Date) => {
+  const handleSelectDay = async (diaId: string, fecha: Date) => {
     const semanaId = getSemanaIdPorDia(diaId);
     let horasEfectivasSemana = 0;
     
     if (semanaId) {
-      const datosSemana = getHorasSemana(semanaId);
-      horasEfectivasSemana = datosSemana.horasEfectivas;
-      
+      // Guardar relación día-semana en localStorage
       window.localStorage.setItem(`dia_semana_${diaId}`, semanaId);
       window.localStorage.setItem('ultima_semana_seleccionada', semanaId);
+      
+      // Intentar obtener datos de la semana desde el estado local primero
+      const datosSemanaLocal = getHorasSemana(semanaId);
+      
+      if (datosSemanaLocal.horasEfectivas > 0) {
+        // Si tenemos datos locales válidos, usarlos
+        horasEfectivasSemana = datosSemanaLocal.horasEfectivas;
+        console.log(`Usando horas efectivas locales para semana ${semanaId}: ${horasEfectivasSemana}`);
+      } else if (storeRecordId) {
+        // Si no tenemos datos locales, calcular usando la función centralizada
+        console.log(`Calculando horas efectivas para semana ${semanaId}...`);
+        try {
+          const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
+          horasEfectivasSemana = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
+          console.log(`Horas efectivas calculadas para semana ${semanaId}: ${horasEfectivasSemana}`);
+        } catch (error) {
+          console.error('Error al calcular horas efectivas semanales:', error);
+          // Usar valor local como fallback
+          horasEfectivasSemana = datosSemanaLocal.horasEfectivas;
+        }
+      }
+    } else {
+      console.warn(`No se pudo identificar la semana para el día ${diaId}`);
     }
     
     onSelectDay(diaId, fecha, horasEfectivasSemana);
