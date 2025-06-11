@@ -110,7 +110,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       // Obtener los meses disponibles del nuevo endpoint para el editor
       // Esta función devuelve los meses con el formato correcto
       const meses = await obtenerMesesEditor();
-      console.log('Meses disponibles para editor:', meses);
+      
       setMesesDisponibles(meses);
       
       // Extraer años únicos de los meses disponibles

@@ -29,13 +29,13 @@ export default function EditorContent({ storeId }: EditorContentProps) {
 
   // Monitorear cambios en las horas efectivas
   useEffect(() => {
-    console.log("ScheduleEditor - horasEfectivasActualizadas cambió:", horasEfectivasActualizadas);
+
   }, [horasEfectivasActualizadas]);
 
   // Efecto para establecer el ID de la tienda
   useEffect(() => {
     if (storeId) {
-      console.log('Usando Store ID para el editor:', storeId);
+  
       setStoreRecordId(storeId);
     }
   }, [storeId, setStoreRecordId]);

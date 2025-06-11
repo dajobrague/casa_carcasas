@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
   // Verificar si la ruta está protegida
-  const isProtectedAdminRoute = path === '/admin/api-sync' || path.startsWith('/admin/api-sync/');
+  const isProtectedAdminRoute = path.startsWith('/admin/') && path !== '/admin/login';
   const isProtectedTiendaRoute = path === '/tienda' || path.startsWith('/tienda/') || 
                               path === '/gestor-mensual' || path.startsWith('/gestor-mensual/');
   
@@ -41,7 +41,7 @@ export function middleware(request: NextRequest) {
   
   // Redireccionar si el usuario admin ya está autenticado y va a la página de login
   if (isAdminLoginPage && isAdminAuthenticated) {
-    const redirectUrl = new URL('/admin/api-sync', request.url);
+    const redirectUrl = new URL('/admin', request.url);
     return NextResponse.redirect(redirectUrl);
   }
   
@@ -58,9 +58,7 @@ export function middleware(request: NextRequest) {
 // Configurar las rutas a las que se aplica el middleware
 export const config = {
   matcher: [
-    '/admin/api-sync', 
-    '/admin/api-sync/:path*', 
-    '/admin/login',
+    '/admin/:path*',
     '/tienda',
     '/tienda/:path*',
     '/gestor-mensual',

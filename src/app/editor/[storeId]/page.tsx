@@ -33,7 +33,7 @@ function ScheduleEditor() {
 
   // Monitorear cambios en las horas efectivas
   useEffect(() => {
-    console.log("ScheduleEditor - horasEfectivasActualizadas cambió:", horasEfectivasActualizadas);
+
   }, [horasEfectivasActualizadas]);
 
   // Efecto para obtener el ID de la tienda desde los parámetros de la ruta

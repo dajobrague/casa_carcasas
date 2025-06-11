@@ -18,26 +18,13 @@ const datosSemanalesTableId = process.env.AIRTABLE_DATOS_SEMANALES_TABLE_ID || '
 // Inicializar Airtable
 const airtable = new Airtable({ apiKey }).base(baseId);
 
-// Logs de depuración para variables de entorno
-console.log('Debug - Airtable API vars loaded:', {
-  apiKeyLength: apiKey?.length || 0,
-  baseId,
-  tablesIds: {
-    semanasLaborales: semanasLaboralesTableId,
-    tiendaSupervisor: tiendaSupervisorTableId,
-    actividadDiaria: actividadDiariaTableId,
-    diasLaborales: diasLaboralesTableId,
-    empleados: empleadosTableId,
-    datosSemanales: datosSemanalesTableId
-  }
-});
+
 
 /**
  * Manejador de peticiones GET para Airtable
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('Debug - API route: Recibida petición GET');
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
 
@@ -47,8 +34,6 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log(`Debug - API route: Acción solicitada: ${action}`);
 
     // Manejar diferentes acciones
     switch (action) {
@@ -61,11 +46,8 @@ export async function GET(request: NextRequest) {
           );
         }
         
-        console.log(`Debug - API route: Obteniendo tienda con ID: ${storeId}`);
-        
         try {
           const record = await airtable(tiendaSupervisorTableId).find(storeId);
-          console.log('Debug - API route: Tienda encontrada con éxito');
           return NextResponse.json(record);
         } catch (error) {
           console.error('Debug - Error detallado al obtener tienda:', error);
@@ -88,8 +70,6 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        console.log(`Debug - API route: Obteniendo actividades para tienda: ${storeId}, día: ${diaId}`);
-
         try {
           const records = await airtable(actividadDiariaTableId)
             .select({
@@ -97,7 +77,6 @@ export async function GET(request: NextRequest) {
             })
             .all();
             
-          console.log(`Debug - API route: Actividades encontradas: ${records.length}`);
           return NextResponse.json({ records });
         } catch (error) {
           console.error('Debug - Error detallado al obtener actividades:', error);
@@ -176,11 +155,8 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        console.log(`Debug - API route: Obteniendo semana con ID: ${semanaId}`);
-
         try {
           const record = await airtable(semanasLaboralesTableId).find(semanaId);
-          console.log('Debug - API route: Semana encontrada con éxito');
           return NextResponse.json(record);
         } catch (error) {
           console.error('Debug - Error detallado al obtener semana:', error);
@@ -281,8 +257,6 @@ export async function GET(request: NextRequest) {
       }
 
       case 'verificarConexion': {
-        console.log('Debug - API route: Verificando conexión a Airtable');
-        
         try {
           await airtable(semanasLaboralesTableId)
             .select({
@@ -291,7 +265,6 @@ export async function GET(request: NextRequest) {
             })
             .firstPage();
           
-          console.log('Debug - API route: Conexión a Airtable exitosa');
           return NextResponse.json({ connected: true });
         } catch (error) {
           console.error('Debug - Error detallado al verificar conexión:', error);
@@ -313,8 +286,6 @@ export async function GET(request: NextRequest) {
           );
         }
         
-        console.log(`Debug - API route: Obteniendo empleados con fórmula: ${formula}`);
-        
         try {
           // Asegurarse de que la tabla de empleados existe
           if (!empleadosTableId) {
@@ -327,7 +298,6 @@ export async function GET(request: NextRequest) {
 
           // Utilizar la tabla de tiendas/supervisores si el ID de la tabla de empleados es igual
           const tableId = empleadosTableId === tiendaSupervisorTableId ? tiendaSupervisorTableId : empleadosTableId;
-          console.log(`Debug - API route: Utilizando tabla con ID: ${tableId}`);
 
           // Usar la librería Airtable en lugar de curl
           const records = await airtable(tableId)
@@ -335,8 +305,6 @@ export async function GET(request: NextRequest) {
               filterByFormula: decodeURIComponent(formula)
             })
             .all();
-          
-          console.log(`Debug - API route: Empleados encontrados: ${records.length}`);
           
           // Transformar los registros al formato esperado por el cliente
           const formattedRecords = records.map(record => ({
@@ -1134,6 +1102,59 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      case 'actualizarCampo': {
+        const { recordId, tableName, fields } = body;
+        
+        if (!recordId || !tableName || !fields) {
+          return NextResponse.json(
+            { error: 'Se requieren los campos "recordId", "tableName" y "fields"' },
+            { status: 400 }
+          );
+        }
+
+        try {
+          // Determinar el ID de la tabla según el nombre
+          let tableId: string;
+          switch (tableName) {
+            case 'tiendaSupervisor':
+              tableId = tiendaSupervisorTableId;
+              break;
+            case 'empleados':
+              tableId = empleadosTableId;
+              break;
+            case 'actividadDiaria':
+              tableId = actividadDiariaTableId;
+              break;
+            case 'semanasLaborales':
+              tableId = semanasLaboralesTableId;
+              break;
+            case 'diasLaborales':
+              tableId = diasLaboralesTableId;
+              break;
+            default:
+              return NextResponse.json(
+                { error: `Tabla no soportada: ${tableName}` },
+                { status: 400 }
+              );
+          }
+
+          // Actualizar el registro
+          const updatedRecord = await airtable(tableId).update(recordId, fields);
+          
+          return NextResponse.json({ 
+            success: true, 
+            record: updatedRecord 
+          });
+        } catch (error) {
+          console.error('Error al actualizar campo:', error);
+          logger.error('Error al actualizar campo:', error);
+          return NextResponse.json(
+            { error: 'Error al actualizar el campo' },
+            { status: 500 }
+          );
+        }
+      }
+
       case 'generarActividades': {
         const { empleadoId, semanasIds, tiendaId } = body;
         
@@ -1255,18 +1276,13 @@ async function obtenerSemanasConFormula(formula: string): Promise<any> {
   try {
     // Usar directamente la tabla "tblY4azExiLi7dbcw" para las semanas laborales
     const tablaSemanas = 'tblY4azExiLi7dbcw';
-    console.log(`Debug - API route: Consultando tabla de semanas: ${tablaSemanas} con fórmula: ${formula}`);
     
     // Asegurarse de que la fórmula esté decodificada al construir el objeto
     // y que no haya errores de sintaxis al usarla con Airtable
     const formulaDecodificada = decodeURIComponent(formula);
-    console.log(`Debug - API route: Fórmula decodificada: ${formulaDecodificada}`);
     
     // Verificar si la fórmula es TRUE() (traer todos los registros)
     const limit = formulaDecodificada === "TRUE()" ? 100 : undefined;
-    if (limit) {
-      console.log(`Debug - API route: Limitando resultados a ${limit} registros`);
-    }
     
     // Construir objeto de query para Airtable
     // Nota: No usar el campo "Semana del año" que no existe, usar "Name" en su lugar
@@ -1276,46 +1292,9 @@ async function obtenerSemanasConFormula(formula: string): Promise<any> {
       ...(limit && { maxRecords: limit })
     };
     
-    console.log(`Debug - API route: Opciones de query:`, queryOptions);
-    
     const records = await airtable(tablaSemanas)
       .select(queryOptions)
       .all();
-    
-    console.log(`Debug - API route: Semanas laborales encontradas: ${records.length}`);
-    
-    if (records.length === 0) {
-      console.warn(`Debug - API route: No se encontraron semanas con la fórmula: ${formulaDecodificada}`);
-      
-      // Intentar un diagnóstico si no se encontraron registros
-      // Verificar si hay registros en general
-      if (formulaDecodificada !== "TRUE()") {
-        console.log(`Debug - API route: Intentando verificar si hay registros en la tabla...`);
-        
-        const pruebaRegistros = await airtable(tablaSemanas)
-          .select({ maxRecords: 5 })
-          .firstPage();
-          
-        console.log(`Debug - API route: Registros de prueba encontrados: ${pruebaRegistros.length}`);
-        
-        if (pruebaRegistros.length > 0) {
-          // Ver qué campos tienen los registros
-          console.log(`Debug - API route: Muestra de campos disponibles en la tabla: ${
-            Object.keys(pruebaRegistros[0].fields).join(', ')
-          }`);
-          
-          // Verificar específicamente los campos disponibles para ayudar con futuros errores
-          const camposDisponibles = Object.keys(pruebaRegistros[0].fields);
-          console.log(`Debug - API route: Campos disponibles en la tabla: ${camposDisponibles.join(', ')}`);
-        }
-      }
-    } else {
-      console.log(`Debug - API route: Primera semana encontrada: ${records[0].fields.Name || 'Sin nombre'}, ID: ${records[0].id}`);
-      
-      // Mostrar todos los campos disponibles del primer registro para referencia
-      const camposDisponibles = Object.keys(records[0].fields);
-      console.log(`Debug - API route: Campos disponibles en el registro: ${camposDisponibles.join(', ')}`);
-    }
     
     // Devolver los registros como están, sin necesidad de convertirlos
     return records;

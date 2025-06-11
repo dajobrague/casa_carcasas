@@ -173,30 +173,26 @@ export function DayModal({
       // Usar las horas efectivas semanales iniciales si se proporcionaron
       // De lo contrario, intentar calcular correctamente desde la semana
       if (horasEfectivasSemanalesIniciales && horasEfectivasSemanalesIniciales > 0) {
-        console.log('Usando horas efectivas semanales proporcionadas:', horasEfectivasSemanalesIniciales);
+
         setHorasEfectivasSemanales(horasEfectivasSemanalesIniciales);
       } else {
         // Intentar obtener la semana de localStorage
         const semanaId = window.localStorage.getItem(`dia_semana_${diaId}`);
         
         if (semanaId && storeRecordId) {
-          console.log('Calculando horas efectivas semanales para semana:', semanaId);
           try {
             const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
             const horasSemanalesCalculadas = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
             setHorasEfectivasSemanales(horasSemanalesCalculadas);
-            console.log('Horas efectivas semanales calculadas:', horasSemanalesCalculadas);
           } catch (error) {
             console.error('Error al calcular horas efectivas semanales:', error);
             // Usar cálculo de respaldo como último recurso
             const fallbackHoras = horasEfectivas * 5;
-            console.log('Usando cálculo de respaldo:', fallbackHoras);
             setHorasEfectivasSemanales(fallbackHoras);
           }
         } else {
           // Solo como último respaldo si no hay información de semana
           const fallbackHoras = horasEfectivas * 5;
-          console.log('Sin información de semana, usando cálculo de respaldo:', fallbackHoras);
           setHorasEfectivasSemanales(fallbackHoras);
         }
       }
@@ -246,14 +242,7 @@ export function DayModal({
             }
           );
           
-          // Log para verificar cambios en horas efectivas
-          console.log('Actualización de horario:', {
-            tipo: valor,
-            tiempo,
-            horasEfectivasAntes: horasEfectivasDiarias,
-            horasEfectivasDespues: horasEfectivas,
-            diferencia: horasEfectivas - horasEfectivasDiarias
-          });
+
           
           // Actualizar las horas efectivas diarias
           setHorasEfectivasDiarias(horasEfectivas);
@@ -267,12 +256,7 @@ export function DayModal({
             const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
             const nuevoValor = Math.max(0, baseValue + diferenciaDiaria);
             
-            console.log('Actualizando horas efectivas semanales (individual móvil):', {
-              valorAnterior: prev,
-              valorBase: baseValue,
-              diferenciaDiaria,
-              nuevoValor
-            });
+
             
             return nuevoValor;
           });
@@ -361,13 +345,7 @@ export function DayModal({
           }
         );
         
-        // Log para verificar cambios en horas efectivas
-        console.log('Actualización de horario para todo el día:', {
-          tipo: valor,
-          horasEfectivasAntes: horasEfectivasDiarias,
-          horasEfectivasDespues: horasEfectivas,
-          diferencia: horasEfectivas - horasEfectivasDiarias
-        });
+
         
         // Actualizar las horas efectivas diarias
         setHorasEfectivasDiarias(horasEfectivas);
@@ -380,12 +358,7 @@ export function DayModal({
           const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
           const nuevoValor = Math.max(0, baseValue + diferenciaDiaria);
           
-          console.log('Actualizando horas efectivas semanales (asignar todo móvil):', {
-            valorAnterior: prev,
-            valorBase: baseValue,
-            diferenciaDiaria,
-            nuevoValor
-          });
+
           
           return nuevoValor;
         });

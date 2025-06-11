@@ -175,7 +175,7 @@ export async function obtenerSemanasLaborales(mes: string, empleadoId?: string):
     }
     
     const data = await response.json();
-    console.log('API Cliente: Semanas laborales obtenidas:', data.records?.length || 0);
+
     
     // Si encontramos semanas, las guardamos en caché y las devolvemos
     if (data.records && data.records.length > 0) {

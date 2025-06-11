@@ -31,8 +31,6 @@ export default function SchedulerInit() {
       
       // Si hay al menos una tarea pendiente, ejecutamos todas las pendientes
       if (checkData.hasScheduledTask) {
-        console.log('Hay tareas programadas pendientes. Ejecutando...');
-        
         const runResponse = await fetch('/api/admin/scheduler?operation=run', {
           headers
         });
@@ -43,19 +41,6 @@ export default function SchedulerInit() {
         }
         
         const runData = await runResponse.json();
-        console.log('Resultado de las tareas programadas:', runData);
-        
-        // Mostrar resultados específicos de cada tipo
-        if (runData.results) {
-          if (runData.results.usuarios.executed) {
-            console.log('Usuarios:', runData.results.usuarios.message);
-          }
-          if (runData.results.tiendas.executed) {
-            console.log('Tiendas:', runData.results.tiendas.message);
-          }
-        }
-      } else {
-        console.log('No hay tareas programadas pendientes');
       }
     } catch (error) {
       console.error('Error en la verificación de tareas programadas:', error);
@@ -66,7 +51,6 @@ export default function SchedulerInit() {
     // Evitar inicializar más de una vez
     if (initialized) return;
     
-    console.log('Inicializando programador de tareas...');
     setInitialized(true);
     
     // Ejecutar la verificación inicial

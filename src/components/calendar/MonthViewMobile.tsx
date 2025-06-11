@@ -376,14 +376,11 @@ export function MonthViewMobile({
       if (datosSemanaLocal.horasEfectivas > 0) {
         // Si tenemos datos locales válidos, usarlos
         horasEfectivasSemana = datosSemanaLocal.horasEfectivas;
-        console.log(`Usando horas efectivas locales para semana ${semanaId}: ${horasEfectivasSemana}`);
       } else if (storeRecordId) {
         // Si no tenemos datos locales, calcular usando la función centralizada
-        console.log(`Calculando horas efectivas para semana ${semanaId}...`);
         try {
           const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
           horasEfectivasSemana = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
-          console.log(`Horas efectivas calculadas para semana ${semanaId}: ${horasEfectivasSemana}`);
         } catch (error) {
           console.error('Error al calcular horas efectivas semanales:', error);
           // Usar valor local como fallback

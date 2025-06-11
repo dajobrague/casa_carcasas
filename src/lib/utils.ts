@@ -280,17 +280,7 @@ export function calcularHorasPlusEmpleado(
     // Calcular Horas + (solo si hay horas extra)
     const horasPlus = Math.max(0, diferencia) + horasBajaMedica;
     
-    // Debug logs para entender qué está pasando
-    console.log('🔍 DEBUG Horas Plus:', {
-      empleado: actividad.fields.Empleado?.[0] || 'Sin nombre',
-      horasContrato,
-      horasTrabajadas,
-      horasFormacion,
-      horasBajaMedica,
-      horasProductivas,
-      diferencia,
-      horasPlus
-    });
+
     
     return {
       horasPlus: Math.max(0, horasPlus)
@@ -582,14 +572,14 @@ export async function calcularHorasEfectivasSemanales(
 
         horasEfectivasTotal += horasEfectivasDia;
         
-        console.log(`Día ${diaId}: ${horasEfectivasDia.toFixed(1)} horas efectivas`);
+
       } catch (error) {
         console.error(`Error al procesar día ${diaId}:`, error);
         // Continuar con el siguiente día en caso de error
       }
     }
 
-    console.log(`Total horas efectivas semanales: ${horasEfectivasTotal.toFixed(1)}`);
+
     return horasEfectivasTotal;
     
   } catch (error) {

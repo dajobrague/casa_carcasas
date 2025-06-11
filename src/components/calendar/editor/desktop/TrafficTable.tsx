@@ -26,16 +26,7 @@ export function TrafficTable({
   const [atencionDeseada, setAtencionDeseada] = useState<number>(25);
   const [factorCrecimiento, setFactorCrecimiento] = useState<number>(0.05);
 
-  // Debug: Log al renderizar el componente
-  console.log('🔥 TrafficTable renderizado con props:', {
-    'tiene datosTraficoDia': !!datosTraficoDia,
-    'cantidad actividades': actividades?.length || 0,
-    'storeRecordId': storeRecordId,
-    'fecha': fecha,
-    'isLoading': isLoading,
-    'atencionDeseada actual': atencionDeseada,
-    'factorCrecimiento actual': factorCrecimiento
-  });
+
 
   // Cargar parámetros de la tienda
   useEffect(() => {
@@ -59,20 +50,12 @@ export function TrafficTable({
 
   // Función para obtener la atención deseada (es un valor fijo por día, no se calcula)
   const calcularPersonalTrabajando = (hora: string): number => {
-    // La "atención" es directamente el valor de "atención deseada" de los parámetros de la tienda
-    if (hora === getHorasOrdenadas(datosTraficoDia?.datosPorDia)?.[0]) {
-      console.log('📊 ATENCIÓN DESEADA (valor fijo para todas las horas):', atencionDeseada);
-    }
-    
     return atencionDeseada;
   };
 
   // Función para calcular personal estimado (recomendado) por hora
   const calcularPersonalEstimado = (hora: string): number => {
-    console.log(`💡 === CALCULANDO ESTIMADO PARA ${hora} ===`);
-    
     if (!datosTraficoDia || !datosTraficoDia.datosPorDia) {
-      console.log('❌ No hay datos de tráfico disponibles');
       return 0;
     }
     
@@ -81,40 +64,26 @@ export function TrafficTable({
     let totalEntradas = 0;
     let diasConDatos = 0;
     
-    console.log(`🔍 Revisando entradas por día para hora ${hora}:`);
-    
     diasSemana.forEach(dia => {
       if (datosTraficoDia.datosPorDia && 
           datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia] && 
           datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora]) {
         const entradas = datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora];
-        console.log(`  ${dia}: ${entradas} entradas`);
         totalEntradas += entradas;
         diasConDatos++;
-      } else {
-        console.log(`  ${dia}: sin datos`);
       }
     });
     
     const promedioEntradas = diasConDatos > 0 ? totalEntradas / diasConDatos : 0;
-    console.log(`📊 Total entradas: ${totalEntradas}, Días con datos: ${diasConDatos}, Promedio: ${promedioEntradas}`);
     
     // Aplicar fórmula: (Entradas * (1 + Crecimiento)) / (Atención Deseada / 2)
     if (promedioEntradas === 0) {
-      console.log('⚠️ Promedio de entradas es 0, retornando 0');
       return 0;
     }
     
     const factor = 1 + factorCrecimiento;
     const divisor = atencionDeseada / 2;
     const estimado = (promedioEntradas * factor) / divisor;
-    
-    console.log(`🧮 FÓRMULA ESTIMADO:`);
-    console.log(`   Promedio entradas: ${promedioEntradas}`);
-    console.log(`   Factor crecimiento: ${factorCrecimiento} (${(factorCrecimiento * 100).toFixed(1)}%)`);
-    console.log(`   Atención deseada: ${atencionDeseada}`);
-    console.log(`   Cálculo: (${promedioEntradas} * ${factor}) / ${divisor} = ${estimado}`);
-    console.log(`   Resultado redondeado: ${Math.round(estimado)}`);
     
     return Math.round(estimado);
   };

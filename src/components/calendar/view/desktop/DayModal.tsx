@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Option } from '@/components/ui/Select';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { 
   obtenerActividadesDiarias, 
   obtenerDatosTienda, 
@@ -43,6 +44,13 @@ import {
 } from '@/components/ui/accordion';
 import { Card } from '@/components/ui/card';
 
+// Tipo para las opciones del dropdown
+interface DropdownOption {
+  value: string;
+  label: string;
+  color?: string;
+}
+
 interface DayViewDesktopProps {
   isOpen: boolean;
   onClose: () => void;
@@ -60,6 +68,9 @@ export function DayViewDesktop({
   storeRecordId,
   horasEfectivasSemanalesIniciales
 }: DayViewDesktopProps) {
+  // Obtener datos de la tienda para el debug
+  const { esHistorica } = useAuth();
+  
   // Estados para datos
   const [actividades, setActividades] = useState<ActividadDiariaRecord[]>([]);
   const [tiendaData, setTiendaData] = useState<TiendaSupervisorRecord | null>(null);
@@ -81,12 +92,15 @@ export function DayViewDesktop({
   const formatearFechaParaTitulo = (fecha: Date | null) => {
     if (!fecha) return 'Día seleccionado';
     
-    return fecha.toLocaleDateString('es-ES', { 
+    const fechaBase = fecha.toLocaleDateString('es-ES', { 
       weekday: 'long', 
       day: 'numeric', 
       month: 'long',
       year: 'numeric'
     });
+    const debugHistorica = esHistorica !== null ? ` | Tienda Histórica: ${esHistorica ? 'true' : 'false'}` : '';
+    
+    return `${fechaBase}${debugHistorica}`;
   };
 
   // Función para cargar datos principales (sin datos de tráfico)
@@ -197,7 +211,7 @@ export function DayViewDesktop({
   }, [isOpen, diaId, storeRecordId, cargarDatosPrincipales]);
 
   // Opciones para los dropdowns con formato correcto
-  const options: Option[] = [
+  const options: DropdownOption[] = [
     { value: '', label: 'Seleccionar...', color: '#E5E7EB' }, // Opción vacía con etiqueta clara
     ...opcionesDropdown.map(opcion => ({
       value: opcion,

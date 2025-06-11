@@ -17,6 +17,7 @@ interface AuthContextType {
   storeRecordId: string | null;
   storeNumber: number | null;
   storeName: string | null;
+  esHistorica: boolean | null;
   isAdminLoggedIn: boolean;
   login: (storeNumber: number, password: string) => Promise<boolean>;
   loginWithRecordId: (recordId: string) => Promise<boolean>;
@@ -35,9 +36,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [storeRecordId, setStoreRecordId] = useState<string | null>(null);
   const [storeNumber, setStoreNumber] = useState<number | null>(null);
   const [storeName, setStoreName] = useState<string | null>(null);
+  const [esHistorica, setEsHistorica] = useState<boolean | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Función para refrescar los datos de la tienda desde Airtable
+  const refreshStoreData = async (storeRecordId: string) => {
+    try {
+      const baseUrl = getBaseUrl();
+      const response = await fetch(`${baseUrl}/api/airtable?action=obtenerDatosTienda&storeId=${storeRecordId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const esHistoricaActualizada = Boolean(data.fields['Tienda Histórica?']);
+        
+        console.log('Debug - Datos actualizados desde Airtable:');
+        console.log('Debug - Campo "Tienda Histórica?" actualizado:', data.fields['Tienda Histórica?']);
+        console.log('Debug - esHistorica actualizada:', esHistoricaActualizada);
+        
+        // Actualizar solo si hay diferencia
+        if (esHistorica !== esHistoricaActualizada) {
+          console.log('Debug - Actualizando esHistorica de', esHistorica, 'a', esHistoricaActualizada);
+          setEsHistorica(esHistoricaActualizada);
+          
+          // Actualizar también en sessionStorage
+          const storedAuth = sessionStorage.getItem('storeAuth');
+          if (storedAuth) {
+            const authData = JSON.parse(storedAuth);
+            authData.esHistorica = esHistoricaActualizada;
+            sessionStorage.setItem('storeAuth', JSON.stringify(authData));
+            console.log('Debug - sessionStorage actualizado con nuevo valor de esHistorica');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error al refrescar datos de tienda:', error);
+    }
+  };
 
   // Verificar si hay sesión guardada al cargar
   useEffect(() => {
@@ -48,10 +84,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedAuth) {
       try {
         const authData = JSON.parse(storedAuth);
+        console.log('Debug - Datos cargados desde sessionStorage:', authData);
+        console.log('Debug - esHistorica desde sessionStorage:', authData.esHistorica);
+        
         setIsLoggedIn(true);
         setStoreRecordId(authData.storeRecordId);
         setStoreNumber(authData.storeNumber);
         setStoreName(authData.storeName);
+        setEsHistorica(authData.esHistorica);
+        
+        // Verificar y actualizar los datos de la tienda si es necesario
+        if (authData.storeRecordId) {
+          console.log('Debug - Verificando datos de tienda actualizados...');
+          refreshStoreData(authData.storeRecordId);
+        }
       } catch (err) {
         console.error('Error al cargar datos de autenticación:', err);
         sessionStorage.removeItem('storeAuth');
@@ -101,19 +147,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('El número de tienda no coincide con el record ID proporcionado');
       }
       
+      // Debug: verificar el valor del campo "Tienda Histórica?" y todos los campos disponibles
+      console.log('Debug - Todos los campos disponibles:', Object.keys(data.fields));
+      console.log('Debug - Campo "Tienda Histórica?" valor crudo:', data.fields['Tienda Histórica?']);
+      console.log('Debug - Tipo del valor:', typeof data.fields['Tienda Histórica?']);
+      
       // Guardar datos de autenticación
       const authData = {
         storeRecordId: password,
         storeNumber: storeNumber,
-        storeName: data.fields['TIENDA'] || data.fields.Name || 'Tienda'
+        storeName: data.fields['TIENDA'] || data.fields.Name || 'Tienda',
+        esHistorica: Boolean(data.fields['Tienda Histórica?'])
       };
       
+      console.log('Debug - esHistorica final:', authData.esHistorica);
       sessionStorage.setItem('storeAuth', JSON.stringify(authData));
       
       setIsLoggedIn(true);
       setStoreRecordId(password);
       setStoreNumber(storeNumber);
       setStoreName(authData.storeName);
+      setEsHistorica(authData.esHistorica);
       
       return true;
     } catch (err) {
@@ -145,19 +199,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const tiendaNumero = data.fields['N°'] || data.fields['Tienda Numero'] || 0;
       const numeroTienda = parseInt(String(tiendaNumero));
       
+      // Debug: verificar el valor del campo "Tienda Histórica?" y todos los campos disponibles en loginWithRecordId
+      console.log('Debug (loginWithRecordId) - Todos los campos disponibles:', Object.keys(data.fields));
+      console.log('Debug (loginWithRecordId) - Campo "Tienda Histórica?" valor crudo:', data.fields['Tienda Histórica?']);
+      console.log('Debug (loginWithRecordId) - Tipo del valor:', typeof data.fields['Tienda Histórica?']);
+      
       // Guardar datos de autenticación
       const authData = {
         storeRecordId: recordId,
         storeNumber: numeroTienda,
-        storeName: data.fields['TIENDA'] || data.fields.Name || 'Tienda'
+        storeName: data.fields['TIENDA'] || data.fields.Name || 'Tienda',
+        esHistorica: Boolean(data.fields['Tienda Histórica?'])
       };
       
+      console.log('Debug (loginWithRecordId) - esHistorica final:', authData.esHistorica);
       sessionStorage.setItem('storeAuth', JSON.stringify(authData));
       
       setIsLoggedIn(true);
       setStoreRecordId(recordId);
       setStoreNumber(numeroTienda);
       setStoreName(authData.storeName);
+      setEsHistorica(authData.esHistorica);
       
       return true;
     } catch (err) {
@@ -220,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStoreRecordId(null);
     setStoreNumber(null);
     setStoreName(null);
+    setEsHistorica(null);
     router.push('/login');
   };
 
@@ -236,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeRecordId,
     storeNumber,
     storeName,
+    esHistorica,
     isAdminLoggedIn,
     login,
     loginWithRecordId,

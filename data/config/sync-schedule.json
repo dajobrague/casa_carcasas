@@ -3,7 +3,8 @@
     "enabled": true,
     "schedule": "daily",
     "time": "23:00",
-    "dayOfWeek": "1"
+    "dayOfWeek": "1",
+    "lastRun": "2025-06-11T05:05:29.756Z"
   },
   "tiendas": {
     "enabled": false,

@@ -145,7 +145,7 @@ export function MonthView({
   useEffect(() => {
     if (!horasEfectivasActualizadas) return;
 
-    console.log("MonthView recibió horasEfectivasActualizadas:", horasEfectivasActualizadas);
+
 
     // Actualizar horas de días si hay cambios
     if (Object.keys(horasEfectivasActualizadas.dias).length > 0) {
@@ -161,14 +161,12 @@ export function MonthView({
               ...newHorasDias[index],
               horasEfectivas
             };
-            console.log(`Día actualizado: ${diaId}, horas: ${horasEfectivas}`);
           } else {
             // Añadir nuevo día
             newHorasDias.push({
               diaId,
               horasEfectivas
             });
-            console.log(`Nuevo día añadido: ${diaId}, horas: ${horasEfectivas}`);
           }
         });
         
@@ -206,11 +204,9 @@ export function MonthView({
               ...newHorasSemanas[index],
               horasEfectivas
             };
-            console.log(`Semana actualizada: ${semanaId}, horas: ${horasEfectivas}`);
           } else {
             // Si la semana no existe en nuestro estado, pero tenemos sus horas efectivas
             // Podríamos añadirla con valores por defecto para los otros campos
-            console.log(`No se encontró la semana ${semanaId} en el estado actual`);
           }
         });
         
@@ -289,7 +285,7 @@ export function MonthView({
       // Obtener horas aprobadas de la tienda
       const horasAprobadas = tiendaData.fields['Horas Aprobadas'] || 0;
       
-      console.log(`Procesando semana ${semanaId}, con ${diasIds.length} días y HA=${horasAprobadas}`);
+
       
       // Para cada día, obtener sus actividades y calcular horas
       for (const diaId of diasIds) {
@@ -324,7 +320,7 @@ export function MonthView({
           horasContratadas += horasTrabajo * intervaloPais;
         });
         
-        console.log(`Día ${diaId}: HE=${horasEfectivas.toFixed(1)}, HC=${horasContratadas.toFixed(1)}`);
+
         
         // Sumar al total semanal
         horasContratadasTotal += horasContratadas;
@@ -337,7 +333,7 @@ export function MonthView({
         });
       }
       
-      console.log(`Semana ${semanaId} - Totales: HA=${horasAprobadas.toFixed(1)}, HC=${horasContratadasTotal.toFixed(1)}, HE=${horasEfectivasTotal.toFixed(1)}`);
+
       
       // Actualizar los datos de horas para los días
       setHorasDias(prev => [...prev.filter(d => !diasIds.includes(d.diaId)), ...nuevosDatosHorasDias]);
@@ -462,7 +458,7 @@ export function MonthView({
             newSet.add(diaId);
             return newSet;
           });
-          console.log('Datos de tráfico precargados para día:', diaId);
+
         }
       }).catch(err => {
         console.warn('Error al precargar datos de tráfico:', err);
@@ -522,14 +518,11 @@ export function MonthView({
       if (datosSemanaLocal.horasEfectivas > 0) {
         // Si tenemos datos locales válidos, usarlos
         horasEfectivasSemanales = datosSemanaLocal.horasEfectivas;
-        console.log(`Usando horas efectivas locales para semana ${semanaId}: ${horasEfectivasSemanales}`);
       } else if (storeRecordId) {
         // Si no tenemos datos locales, calcular usando la función centralizada
-        console.log(`Calculando horas efectivas para semana ${semanaId}...`);
         try {
           const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
           horasEfectivasSemanales = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
-          console.log(`Horas efectivas calculadas para semana ${semanaId}: ${horasEfectivasSemanales}`);
         } catch (error) {
           console.error('Error al calcular horas efectivas semanales:', error);
           // Usar valor local como fallback

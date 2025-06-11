@@ -295,11 +295,11 @@ export async function obtenerSemanasLaborales(mes: string, año: string): Promis
     }
     
     const data = await response.json();
-    logger.log(`Semanas laborales obtenidas: ${data.records?.length || 0}`);
+
     
     // Si no encontramos semanas para el mes específico, intentamos obtener todas las semanas del año
     if (!data.records || data.records.length === 0) {
-      logger.log(`No se encontraron semanas para ${mesCapitalizado} ${año}. Intentando obtener todas las semanas del año.`);
+
       
       // Llamar al API con mes='all' para obtener todas las semanas del año
       const fallbackResponse = await fetch(`/api/airtable?action=obtenerSemanasLaborales&mes=all&año=${encodeURIComponent(año)}`);
@@ -309,7 +309,7 @@ export async function obtenerSemanasLaborales(mes: string, año: string): Promis
       }
       
       const fallbackData = await fallbackResponse.json();
-      logger.log(`Semanas totales obtenidas como fallback: ${fallbackData.records?.length || 0}`);
+
       
       // Filtrar manualmente por mes si es posible (esto es un fallback)
       if (fallbackData.records && fallbackData.records.length > 0) {
@@ -512,13 +512,13 @@ export async function obtenerDatosSemanasLaborales(): Promise<SemanaLaboralRecor
       }
       
       const data = await fallbackResponse.json();
-      logger.log(`Semanas laborales obtenidas (solo año actual): ${data.records?.length || 0}`);
+      
       
       return data.records || [];
     }
     
     const data = await response.json();
-    logger.log(`Semanas laborales obtenidas (todos los años): ${data.records?.length || 0}`);
+    
     
     return data.records || [];
   } catch (error) {
@@ -539,7 +539,7 @@ export async function obtenerMesesEditor(): Promise<string[]> {
     }
     
     const data = await response.json();
-    logger.log(`Meses para editor obtenidos: ${data.meses?.length || 0}`);
+
     
     return data.meses || [];
   } catch (error) {

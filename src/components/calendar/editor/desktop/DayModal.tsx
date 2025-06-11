@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Option } from '@/components/ui/Select';
+import { useAuth } from '@/context/AuthContext';
 
 // Tipo para las opciones del dropdown
 interface DropdownOption {
@@ -53,6 +54,9 @@ export function DayModal({
   horasEfectivasSemanalesIniciales = 0,
   onCloseWithUpdatedHours
 }: DayModalProps) {
+  // Obtener datos de la tienda para el debug
+  const { esHistorica } = useAuth();
+  
   const [actividades, setActividades] = useState<ActividadDiariaRecord[]>([]);
   const [tiendaData, setTiendaData] = useState<TiendaSupervisorRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -158,30 +162,26 @@ export function DayModal({
       // Usar las horas efectivas semanales iniciales si se proporcionaron
       // De lo contrario, intentar calcular correctamente desde la semana
       if (horasEfectivasSemanalesIniciales && horasEfectivasSemanalesIniciales > 0) {
-        console.log('Usando horas efectivas semanales proporcionadas:', horasEfectivasSemanalesIniciales);
+
         setHorasEfectivasSemanales(horasEfectivasSemanalesIniciales);
       } else {
         // Intentar obtener la semana de localStorage
         const semanaId = window.localStorage.getItem(`dia_semana_${diaId}`);
         
         if (semanaId && storeRecordId) {
-          console.log('Calculando horas efectivas semanales para semana:', semanaId);
           try {
             const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
             const horasSemanalesCalculadas = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
             setHorasEfectivasSemanales(horasSemanalesCalculadas);
-            console.log('Horas efectivas semanales calculadas:', horasSemanalesCalculadas);
           } catch (error) {
             console.error('Error al calcular horas efectivas semanales:', error);
             // Usar cálculo de respaldo como último recurso
             const fallbackHoras = horasEfectivas * 5;
-            console.log('Usando cálculo de respaldo:', fallbackHoras);
             setHorasEfectivasSemanales(fallbackHoras);
           }
         } else {
           // Solo como último respaldo si no hay información de semana
           const fallbackHoras = horasEfectivas * 5;
-          console.log('Sin información de semana, usando cálculo de respaldo:', fallbackHoras);
           setHorasEfectivasSemanales(fallbackHoras);
         }
       }
@@ -245,12 +245,7 @@ export function DayModal({
                   const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
                   const nuevoValor = Math.max(0, baseValue + diferenciaDiaria);
                   
-                  console.log('Actualizando horas efectivas semanales (individual):', {
-                    valorAnterior: prev,
-                    valorBase: baseValue,
-                    diferenciaDiaria,
-                    nuevoValor
-                  });
+
                   
                   return nuevoValor;
                 });
@@ -373,19 +368,7 @@ export function DayModal({
                 const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
                 const nuevoValor = Math.max(0, baseValue + diferenciaDiaria);
                 
-                console.log('Actualizando horas efectivas semanales (asignar todo):', {
-                  valorAnterior: prev,
-                  valorBase: baseValue,
-                  diferenciaDiaria,
-                  nuevoValor
-                });
-                
                 return nuevoValor;
-              });
-              
-              console.log('Asignación a todo el día completada, datos actualizados:', {
-                tipo: valor,
-                horasEfectivasActualizadas: horasEfectivas
               });
             }
           }
@@ -463,7 +446,10 @@ export function DayModal({
     const dia = fecha.getDate();
     const mes = fecha.toLocaleDateString('es-ES', { month: 'long' });
     
-    return `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)} - ${dia} de ${mes}`;
+    const fechaBase = `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)} - ${dia} de ${mes}`;
+    const debugHistorica = esHistorica !== null ? ` | Tienda Histórica: ${esHistorica ? 'true' : 'false'}` : '';
+    
+    return `${fechaBase}${debugHistorica}`;
   };
 
   // Manejar el cierre del modal y actualizar las horas efectivas
@@ -473,19 +459,10 @@ export function DayModal({
       // en lugar de recalcularlas
       const horasEfectivasSemanalesActualizadas = horasEfectivasSemanales;
       
-      console.log('Cerrando modal con datos actualizados:', {
-        diaId,
-        horasEfectivasDiariasIniciales,
-        horasEfectivasDiarias,
-        diferenciaDia: horasEfectivasDiarias - horasEfectivasDiariasIniciales,
-        horasEfectivasSemanalesIniciales,
-        horasEfectivasSemanalesActualizadas
-      });
+
       
       // Llamamos al callback con los valores actualizados
       onCloseWithUpdatedHours(diaId, horasEfectivasDiarias, horasEfectivasSemanalesActualizadas);
-    } else {
-      console.log('Cerrando modal sin actualizar horas (callback no disponible o diaId null)');
     }
     
     // Llamamos al callback original de cierre
