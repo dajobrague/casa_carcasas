@@ -35,149 +35,129 @@ export default async function handler(
     const TRAFICO_API_BASE_URL = process.env.TRAFICO_API_BASE_URL;
     
     if (!TRAFICO_API_TOKEN || !TRAFICO_API_BASE_URL) {
-      return res.status(500).json({ 
-        error: 'No se ha configurado la API de tráfico correctamente',
-        missingTokens: !TRAFICO_API_TOKEN,
-        missingUrl: !TRAFICO_API_BASE_URL
-      });
+      // Ir directamente a datos simulados si no hay configuración
+      return generarDatosSimulados(tiendaId as string, fechaInicio as string, fechaFin as string, res);
     }
     
-    console.log('Consultando tráfico para tienda:', tiendaId);
-    console.log('Rango de fechas:', fechaInicio, 'a', fechaFin);
-    
-    // Intentar usar la API real, con la nueva ruta y parámetros correctos
+    // Intentar usar la API real
     try {
-      // Construir URL para la API externa con la ruta correcta
       const apiBaseUrl = TRAFICO_API_BASE_URL as string;
       const apiUrl = new URL(`${apiBaseUrl}/api/v1/rrhh/get_stores_access`);
       
-      // Usar los parámetros correctos
       apiUrl.searchParams.append('store_code', tiendaId as string);
-      apiUrl.searchParams.append('date', fechaInicio as string); // Usamos fechaInicio como date
+      apiUrl.searchParams.append('date', fechaInicio as string);
       
-      console.log('Intentando conectar con URL:', apiUrl.toString());
+      // Timeout para la llamada externa
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos
       
-      // Realizar solicitud a la API externa
       const response = await fetch(apiUrl.toString(), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${TRAFICO_API_TOKEN}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal
       });
       
-      // Verificar respuesta
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        console.error('Error en la API de tráfico:', response.status, response.statusText);
-        const errorData = await response.text();
-        console.error('Detalle del error:', errorData);
-        
-        // Si hay error, caer en la generación de datos simulados
-        throw new Error(`Error al conectar con la API: ${response.status} ${response.statusText}`);
+        throw new Error(`API Error: ${response.status}`);
       }
       
-      // Procesar respuesta
       const data = await response.json();
-      console.log('Datos recibidos de la API:', JSON.stringify(data).substring(0, 200) + '...');
       
-      // Convertir datos al formato esperado por el frontend
-      const entradasPorHora: Record<string, number> = {};
+      // Convertir datos al formato esperado con entradas, tickets y euros
+      const datosPorHora: Record<string, { entradas: number; tickets: number; euros: number }> = {};
       
-      // La API devuelve un array de objetos con la estructura:
-      // {"tienda":"1", "fecha":"2024-09-28", "hora":"7", "entradas":0, ...}
       if (data && data.data && Array.isArray(data.data)) {
         data.data.forEach((registro: any) => {
-          if (registro.hora && registro.entradas !== undefined) {
-            // Convertir el formato de hora (de "7" a "07:00")
+          if (registro.hora !== undefined) {
             const hora = parseInt(registro.hora);
             const horaFormateada = `${hora.toString().padStart(2, '0')}:00`;
             
-            // Sumar las entradas para esta hora
-            if (entradasPorHora[horaFormateada] === undefined) {
-              entradasPorHora[horaFormateada] = 0;
+            if (!datosPorHora[horaFormateada]) {
+              datosPorHora[horaFormateada] = { entradas: 0, tickets: 0, euros: 0 };
             }
-            entradasPorHora[horaFormateada] += Number(registro.entradas);
+            
+            datosPorHora[horaFormateada].entradas += Number(registro.entradas || 0);
+            datosPorHora[horaFormateada].tickets += Number(registro.tickets || 0);
+            datosPorHora[horaFormateada].euros += Number(registro.euros || 0);
           }
         });
       }
       
-      console.log('Entradas procesadas por hora:', entradasPorHora);
-      
-      // Devolver datos procesados
       return res.status(200).json({
         tiendaId: tiendaId,
         fechaInicio: fechaInicio,
         fechaFin: fechaFin,
-        entradasPorHora,
-        // Metadatos para debug
+        entradasPorHora: datosPorHora,  // ✅ Corregir el nombre del campo
         timestamp: new Date().toISOString(),
         simulado: false
       });
       
     } catch (apiError) {
-      // Si hay error al conectar con la API, generar datos simulados
-      console.error('Error al conectar con API, generando datos simulados:', apiError);
-      console.log('Generando datos de ejemplo para el tráfico');
-      
-      // Generar datos de prueba para entradas por hora
-      const entradasPorHora: Record<string, number> = {};
-      
-      // Fechas de inicio y fin
-      const inicio = new Date(fechaInicio as string);
-      const fin = new Date(fechaFin as string);
-      
-      // Número de días entre fechas
-      const diasDiferencia = Math.ceil((fin.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
-      
-      // Patrón de tráfico diario (promedio)
-      const patronHorario: Record<number, number> = {
-        9: 15,  // 9:00 AM - 15 entradas por hora
-        10: 25, // 10:00 AM - 25 entradas por hora
-        11: 35, // 11:00 AM - 35 entradas por hora
-        12: 45, // 12:00 PM - 45 entradas por hora
-        13: 50, // 1:00 PM - 50 entradas por hora
-        14: 40, // 2:00 PM - 40 entradas por hora
-        15: 30, // 3:00 PM - 30 entradas por hora
-        16: 35, // 4:00 PM - 35 entradas por hora
-        17: 45, // 5:00 PM - 45 entradas por hora
-        18: 50, // 6:00 PM - 50 entradas por hora
-        19: 40, // 7:00 PM - 40 entradas por hora
-        20: 25  // 8:00 PM - 25 entradas por hora
-      };
-      
-      // Para cada hora del día, generar un valor de tráfico
-      for (const hora in patronHorario) {
-        const valorBase = patronHorario[parseInt(hora)];
-        
-        // Agregar alguna variación aleatoria (±20%)
-        const variacion = (Math.random() - 0.5) * 0.4; // Entre -0.2 y 0.2
-        const valorConVariacion = Math.round(valorBase * (1 + variacion));
-        
-        // Guardar el valor para esta hora (formato "HH:00")
-        const horaFormateada = `${hora.padStart(2, '0')}:00`;
-        entradasPorHora[horaFormateada] = valorConVariacion;
-      }
-      
-      // Devolver datos simulados
-      return res.status(200).json({
-        tiendaId: tiendaId,
-        fechaInicio: fechaInicio,
-        fechaFin: fechaFin,
-        diasConsultados: diasDiferencia,
-        entradasPorHora,
-        // Metadatos para debug
-        simulado: true,
-        timestamp: new Date().toISOString()
-      });
+      // Si hay error con la API externa, usar datos simulados sin log detallado
+      return generarDatosSimulados(tiendaId as string, fechaInicio as string, fechaFin as string, res);
     }
     
   } catch (error: any) {
-    console.error('Error en el endpoint de tráfico:', error);
-    
+    // Error simplificado sin stack trace largo
     return res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: 'Error al procesar solicitud de tráfico'
     });
   }
+}
+
+/**
+ * Función para generar datos simulados de tráfico
+ */
+function generarDatosSimulados(
+  tiendaId: string, 
+  fechaInicio: string, 
+  fechaFin: string, 
+  res: NextApiResponse
+) {
+  const datosPorHora: Record<string, { entradas: number; tickets: number; euros: number }> = {};
+  
+  // Patrón de tráfico diario simplificado
+  const patronHorario: Record<number, { entradas: number; tickets: number; euros: number }> = {
+    9: { entradas: 15, tickets: 3, euros: 85.50 },
+    10: { entradas: 25, tickets: 8, euros: 220.75 },
+    11: { entradas: 35, tickets: 12, euros: 315.80 },
+    12: { entradas: 45, tickets: 15, euros: 425.25 },
+    13: { entradas: 50, tickets: 18, euros: 510.40 },
+    14: { entradas: 40, tickets: 14, euros: 380.60 },
+    15: { entradas: 30, tickets: 10, euros: 285.30 },
+    16: { entradas: 35, tickets: 12, euros: 340.90 },
+    17: { entradas: 45, tickets: 16, euros: 450.75 },
+    18: { entradas: 50, tickets: 20, euros: 580.25 },
+    19: { entradas: 40, tickets: 15, euros: 420.80 },
+    20: { entradas: 25, tickets: 8, euros: 245.60 },
+    21: { entradas: 15, tickets: 5, euros: 135.40 }
+  };
+  
+  // Generar datos con variación aleatoria
+  for (const hora in patronHorario) {
+    const valorBase = patronHorario[parseInt(hora)];
+    const variacion = (Math.random() - 0.5) * 0.4;
+    
+    const horaFormateada = `${hora.padStart(2, '0')}:00`;
+    datosPorHora[horaFormateada] = {
+      entradas: Math.round(valorBase.entradas * (1 + variacion)),
+      tickets: Math.round(valorBase.tickets * (1 + variacion)),
+      euros: Math.round(valorBase.euros * (1 + variacion) * 100) / 100 // Redondear a 2 decimales
+    };
+  }
+  
+  return res.status(200).json({
+    tiendaId: tiendaId,
+    fechaInicio: fechaInicio,
+    fechaFin: fechaFin,
+    entradasPorHora: datosPorHora,  // ✅ Corregir el nombre del campo aquí también
+    simulado: true,
+    timestamp: new Date().toISOString()
+  });
 } 

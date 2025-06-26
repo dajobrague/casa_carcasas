@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { obtenerDatosTienda, ActividadDiariaRecord, TiendaSupervisorRecord } from '@/lib/airtable';
 import { DatosTraficoDia } from '@/lib/utils';
+import { Users, Ticket, Euro, BarChart3 } from 'lucide-react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
+
+type TabType = 'entradas' | 'tickets' | 'euros';
 
 interface TrafficTableProps {
   datosTraficoDia: DatosTraficoDia | null;
@@ -25,6 +28,9 @@ export function TrafficTable({
   fecha
 }: TrafficTableProps) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  
+  // Estado para el tab activo
+  const [tabActivo, setTabActivo] = useState<TabType>('entradas');
   
   // Estados para datos de la tienda
   const [atencionDeseada, setAtencionDeseada] = useState<number>(25);
@@ -65,6 +71,53 @@ export function TrafficTable({
     const horaNum = parseInt(hora.split(':')[0]);
     return `${horaNum.toString().padStart(2, '0')}:00`;
   };
+
+  // Función para obtener el valor según el tab activo
+  const obtenerValorPorTab = (datosHora: any): number => {
+    if (typeof datosHora === 'number') {
+      // Formato legacy: solo entradas
+      return tabActivo === 'entradas' ? datosHora : 0;
+    } else if (typeof datosHora === 'object' && datosHora !== null) {
+      // Formato nuevo: objeto con entradas, tickets, euros
+      return datosHora[tabActivo] || 0;
+    }
+    return 0;
+  };
+
+  // Función para obtener el color de fondo basado en el valor y el tipo de tab
+  const obtenerColorFondo = (valor: number, tabType: TabType): string => {
+    if (tabType === 'entradas') {
+      if (valor >= 0 && valor < 10) return 'bg-blue-50';
+      else if (valor >= 10 && valor < 20) return 'bg-blue-100';
+      else if (valor >= 20 && valor < 30) return 'bg-green-100';
+      else if (valor >= 30 && valor < 40) return 'bg-green-200';
+      else if (valor >= 40 && valor < 50) return 'bg-yellow-100';
+      else if (valor >= 50 && valor < 60) return 'bg-yellow-200';
+      else if (valor >= 60 && valor < 70) return 'bg-orange-100';
+      else if (valor >= 70 && valor < 80) return 'bg-orange-200';
+      else return 'bg-red-100';
+    } else if (tabType === 'tickets') {
+      if (valor >= 0 && valor < 5) return 'bg-purple-50';
+      else if (valor >= 5 && valor < 10) return 'bg-purple-100';
+      else if (valor >= 10 && valor < 15) return 'bg-purple-200';
+      else if (valor >= 15 && valor < 20) return 'bg-purple-300';
+      else return 'bg-purple-400';
+    } else { // euros
+      if (valor >= 0 && valor < 100) return 'bg-emerald-50';
+      else if (valor >= 100 && valor < 200) return 'bg-emerald-100';
+      else if (valor >= 200 && valor < 300) return 'bg-emerald-200';
+      else if (valor >= 300 && valor < 400) return 'bg-emerald-300';
+      else return 'bg-emerald-400';
+    }
+  };
+
+  // Función para formatear el valor según el tipo
+  const formatearValor = (valor: number, tabType: TabType): string => {
+    if (tabType === 'euros') {
+      return `€${valor.toFixed(2)}`;
+    }
+    return valor.toString();
+  };
   
   // Nombres de días en español
   const diasSemana = {
@@ -91,19 +144,38 @@ export function TrafficTable({
     return 'bg-red-200';
   };
 
-  // Componente para mostrar información de intensidad de tráfico
+  // Componente para mostrar información de intensidad de tráfico dinámica
   const IntensityLegend = () => (
     <div className="flex flex-wrap gap-1 justify-center p-2 bg-gray-50 rounded-lg text-xs">
-      <span className="px-2 py-0.5 bg-blue-50 rounded-full shadow-sm">0-10</span>
-      <span className="px-2 py-0.5 bg-blue-100 rounded-full shadow-sm">10-20</span>
-      <span className="px-2 py-0.5 bg-green-100 rounded-full shadow-sm">20-30</span>
-      <span className="px-2 py-0.5 bg-green-200 rounded-full shadow-sm">30-40</span>
-      <span className="px-2 py-0.5 bg-yellow-100 rounded-full shadow-sm">40-50</span>
-      <span className="px-2 py-0.5 bg-yellow-200 rounded-full shadow-sm">50-60</span>
-      <span className="px-2 py-0.5 bg-orange-100 rounded-full shadow-sm">60-70</span>
-      <span className="px-2 py-0.5 bg-orange-200 rounded-full shadow-sm">70-80</span>
-      <span className="px-2 py-0.5 bg-red-100 rounded-full shadow-sm">80-90</span>
-      <span className="px-2 py-0.5 bg-red-200 rounded-full shadow-sm">90+</span>
+      {tabActivo === 'entradas' ? (
+        <>
+          <span className="px-2 py-0.5 bg-blue-50 rounded-full shadow-sm">0-10</span>
+          <span className="px-2 py-0.5 bg-blue-100 rounded-full shadow-sm">10-20</span>
+          <span className="px-2 py-0.5 bg-green-100 rounded-full shadow-sm">20-30</span>
+          <span className="px-2 py-0.5 bg-green-200 rounded-full shadow-sm">30-40</span>
+          <span className="px-2 py-0.5 bg-yellow-100 rounded-full shadow-sm">40-50</span>
+          <span className="px-2 py-0.5 bg-yellow-200 rounded-full shadow-sm">50-60</span>
+          <span className="px-2 py-0.5 bg-orange-100 rounded-full shadow-sm">60-70</span>
+          <span className="px-2 py-0.5 bg-orange-200 rounded-full shadow-sm">70-80</span>
+          <span className="px-2 py-0.5 bg-red-100 rounded-full shadow-sm">80+</span>
+        </>
+      ) : tabActivo === 'tickets' ? (
+        <>
+          <span className="px-2 py-0.5 bg-purple-50 rounded-full shadow-sm">0-5</span>
+          <span className="px-2 py-0.5 bg-purple-100 rounded-full shadow-sm">5-10</span>
+          <span className="px-2 py-0.5 bg-purple-200 rounded-full shadow-sm">10-15</span>
+          <span className="px-2 py-0.5 bg-purple-300 rounded-full shadow-sm">15-20</span>
+          <span className="px-2 py-0.5 bg-purple-400 text-white rounded-full shadow-sm">20+</span>
+        </>
+      ) : (
+        <>
+          <span className="px-2 py-0.5 bg-emerald-50 rounded-full shadow-sm">€0-100</span>
+          <span className="px-2 py-0.5 bg-emerald-100 rounded-full shadow-sm">€100-200</span>
+          <span className="px-2 py-0.5 bg-emerald-200 rounded-full shadow-sm">€200-300</span>
+          <span className="px-2 py-0.5 bg-emerald-300 rounded-full shadow-sm">€300-400</span>
+          <span className="px-2 py-0.5 bg-emerald-400 text-white rounded-full shadow-sm">€400+</span>
+        </>
+      )}
     </div>
   );
 
@@ -130,7 +202,10 @@ export function TrafficTable({
       if (datosTraficoDia.datosPorDia && 
           datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia] && 
           datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora]) {
-        totalEntradas += datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora];
+        const datosHora = datosTraficoDia.datosPorDia[dia as keyof typeof datosTraficoDia.datosPorDia][hora];
+        // Manejar tanto formato nuevo como legacy
+        const entradas = typeof datosHora === 'number' ? datosHora : datosHora.entradas;
+        totalEntradas += entradas;
         diasConDatos++;
       }
     });
@@ -225,9 +300,27 @@ export function TrafficTable({
 
   return (
     <div className="space-y-3">
-      {/* Fechas del período */}
-      {datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin && (
+      {/* Fechas del período o información histórica */}
+      {datosTraficoDia && (
         <div className="flex flex-wrap items-center gap-2 p-3 bg-white rounded-lg shadow-sm">
+          {datosTraficoDia.esDatoHistorico && datosTraficoDia.semanasReferencia ? (
+            <>
+              <div className="flex items-center">
+                                  <div className="flex items-center gap-1">
+                    <BarChart3 className="w-3 h-3 text-orange-600" />
+                    <span className="text-xs font-medium">Promedio Histórico:</span>
+                  </div>
+                <span className="text-xs bg-orange-50 px-2 py-0.5 rounded-full ml-1 text-orange-700 font-medium">
+                  {datosTraficoDia.semanasReferencia}
+                </span>
+              </div>
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-medium">
+                Año anterior
+              </span>
+            </>
+          ) : (
+            datosTraficoDia.fechaInicio && datosTraficoDia.fechaFin && (
+              <>
           <div className="flex items-center">
             <span className="text-xs font-medium uppercase text-gray-600">Inicio:</span>
             <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaInicio}</span>
@@ -236,8 +329,56 @@ export function TrafficTable({
             <span className="text-xs font-medium uppercase text-gray-600">Fin:</span>
             <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaFin}</span>
           </div>
+              </>
+            )
+          )}
         </div>
       )}
+
+      {/* Tabs para seleccionar tipo de datos */}
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setTabActivo('entradas')}
+            className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+              tabActivo === 'entradas'
+                ? 'bg-blue-500 text-white border-b-2 border-blue-500'
+                : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-1">
+              <Users className="w-3 h-3" />
+              <span>Entradas</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setTabActivo('tickets')}
+            className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+              tabActivo === 'tickets'
+                ? 'bg-purple-500 text-white border-b-2 border-purple-500'
+                : 'text-gray-600 hover:text-purple-600 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-1">
+              <Ticket className="w-3 h-3" />
+              <span>Tickets</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setTabActivo('euros')}
+            className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+              tabActivo === 'euros'
+                ? 'bg-emerald-500 text-white border-b-2 border-emerald-500'
+                : 'text-gray-600 hover:text-emerald-600 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-1">
+              <Euro className="w-3 h-3" />
+              <span>Euros</span>
+            </div>
+          </button>
+        </div>
+      </div>
       
       {/* Selector de día */}
       <div className="bg-white rounded-lg shadow-sm p-3">
@@ -269,14 +410,18 @@ export function TrafficTable({
             Tráfico para {diasSemana[diaActual as keyof typeof diasSemana] || diaActual}:
           </h4>
           <div className="text-xs bg-blue-100 px-2 py-0.5 rounded-full">
-            Total: {Object.values(datosDia).reduce((sum: number, valor: any) => sum + (valor || 0), 0)}
+            Total: {Object.values(datosDia).reduce((sum: number, datosHora: any) => {
+              const valor = obtenerValorPorTab(datosHora);
+              return sum + valor;
+            }, 0)}
           </div>
         </div>
         
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {horasOrdenadas.map(hora => {
-            const valor = datosDia[hora] || 0;
-            const intensityColor = getIntensityColor(valor);
+            const datosHora = datosDia[hora];
+            const valor = obtenerValorPorTab(datosHora);
+            const intensityColor = obtenerColorFondo(valor, tabActivo);
             
             return (
               <div 
@@ -284,60 +429,108 @@ export function TrafficTable({
                 className={`${intensityColor} rounded-lg shadow-sm p-2 text-center`}
               >
                 <div className="text-xs font-medium text-gray-600">{formatearHora(hora)}</div>
-                <div className="text-base font-bold text-gray-800">{valor}</div>
+                <div className="text-base font-bold text-gray-800">{formatearValor(valor, tabActivo)}</div>
               </div>
             );
           })}
         </div>
       </div>
       
-      {/* Filas de Atención y Estimado */}
-      <div className="bg-white rounded-lg shadow-sm p-3">
-        <div className="space-y-2">
-          {/* Fila de Atención por hora */}
-          <div className="bg-green-50 rounded-lg p-2">
-            <div className="text-xs text-green-600 font-medium mb-2 text-center">Personal Trabajando (Atención)</div>
-            <div className="grid grid-cols-4 gap-1">
-              {horasOrdenadas.map(hora => {
-                const personalTrabajando = calcularPersonalTrabajando(hora);
-                return (
-                  <div key={`atencion-${hora}`} className="text-center">
-                    <div className="text-xs text-green-600 font-medium">{formatearHora(hora)}</div>
-                    <div className="text-sm font-bold text-green-700 bg-green-100 rounded py-1">{personalTrabajando}</div>
-                  </div>
-                );
-              })}
+      {/* Filas de Atención y Estimado - Solo para entradas */}
+      {tabActivo === 'entradas' && (
+        <div className="bg-white rounded-lg shadow-sm p-3">
+          <div className="space-y-2">
+            {/* Fila de Atención por hora */}
+            <div className="bg-green-50 rounded-lg p-2">
+              <div className="text-xs text-green-600 font-medium mb-2 text-center">Personal Trabajando (Atención)</div>
+              <div className="grid grid-cols-4 gap-1">
+                {horasOrdenadas.map(hora => {
+                  const personalTrabajando = calcularPersonalTrabajando(hora);
+                  return (
+                    <div key={`atencion-${hora}`} className="text-center">
+                      <div className="text-xs text-green-600 font-medium">{formatearHora(hora)}</div>
+                      <div className="text-sm font-bold text-green-700 bg-green-100 rounded py-1">{personalTrabajando}</div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-          
-          {/* Fila de Estimado por hora */}
-          <div className="bg-orange-50 rounded-lg p-2">
-            <div className="text-xs text-orange-600 font-medium mb-2 text-center">Personal Recomendado (Estimado)</div>
-            <div className="grid grid-cols-4 gap-1">
-              {horasOrdenadas.map(hora => {
-                const personalEstimado = calcularPersonalEstimado(hora);
-                return (
-                  <div key={`estimado-${hora}`} className="text-center">
-                    <div className="text-xs text-orange-600 font-medium">{formatearHora(hora)}</div>
-                    <div className="text-sm font-bold text-orange-700 bg-orange-100 rounded py-1">{personalEstimado}</div>
-                  </div>
-                );
-              })}
+            
+            {/* Fila de Estimado por hora */}
+            <div className="bg-orange-50 rounded-lg p-2">
+              <div className="text-xs text-orange-600 font-medium mb-2 text-center">Personal Recomendado (Estimado)</div>
+              <div className="grid grid-cols-4 gap-1">
+                {horasOrdenadas.map(hora => {
+                  const personalEstimado = calcularPersonalEstimado(hora);
+                  return (
+                    <div key={`estimado-${hora}`} className="text-center">
+                      <div className="text-xs text-orange-600 font-medium">{formatearHora(hora)}</div>
+                      <div className="text-sm font-bold text-orange-700 bg-orange-100 rounded py-1">{personalEstimado}</div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Totales al final */}
       <div className="bg-white rounded-lg shadow-sm p-3">
         <div className="grid grid-cols-2 gap-3">
-          <div className="text-center p-2 bg-blue-50 rounded-lg">
-            <div className="text-xs text-blue-600 font-medium">Total Mañanas</div>
-            <div className="text-lg font-bold text-blue-700">{datosTraficoDia.totalMañana * 7}</div>
+          <div className={`text-center p-2 rounded-lg ${
+            tabActivo === 'entradas' ? 'bg-blue-50' :
+            tabActivo === 'tickets' ? 'bg-purple-50' :
+            'bg-emerald-50'
+          }`}>
+            <div className={`text-xs font-medium ${
+              tabActivo === 'entradas' ? 'text-blue-600' :
+              tabActivo === 'tickets' ? 'text-purple-600' :
+              'text-emerald-600'
+            }`}>Total Mañanas</div>
+            <div className={`text-lg font-bold ${
+              tabActivo === 'entradas' ? 'text-blue-700' :
+              tabActivo === 'tickets' ? 'text-purple-700' :
+              'text-emerald-700'
+            }`}>
+              {(() => {
+                if (typeof datosTraficoDia.totalMañana === 'number') {
+                  // Formato legacy
+                  return tabActivo === 'entradas' ? (datosTraficoDia.totalMañana * 7) : 0;
+                } else {
+                  // Formato nuevo
+                  const valor = datosTraficoDia.totalMañana[tabActivo] * 7;
+                  return tabActivo === 'euros' ? `€${valor.toFixed(2)}` : valor;
+                }
+              })()}
+            </div>
           </div>
-          <div className="text-center p-2 bg-blue-50 rounded-lg">
-            <div className="text-xs text-blue-600 font-medium">Total Tardes</div>
-            <div className="text-lg font-bold text-blue-700">{datosTraficoDia.totalTarde * 7}</div>
+          <div className={`text-center p-2 rounded-lg ${
+            tabActivo === 'entradas' ? 'bg-blue-50' :
+            tabActivo === 'tickets' ? 'bg-purple-50' :
+            'bg-emerald-50'
+          }`}>
+            <div className={`text-xs font-medium ${
+              tabActivo === 'entradas' ? 'text-blue-600' :
+              tabActivo === 'tickets' ? 'text-purple-600' :
+              'text-emerald-600'
+            }`}>Total Tardes</div>
+            <div className={`text-lg font-bold ${
+              tabActivo === 'entradas' ? 'text-blue-700' :
+              tabActivo === 'tickets' ? 'text-purple-700' :
+              'text-emerald-700'
+            }`}>
+              {(() => {
+                if (typeof datosTraficoDia.totalTarde === 'number') {
+                  // Formato legacy
+                  return tabActivo === 'entradas' ? (datosTraficoDia.totalTarde * 7) : 0;
+                } else {
+                  // Formato nuevo
+                  const valor = datosTraficoDia.totalTarde[tabActivo] * 7;
+                  return tabActivo === 'euros' ? `€${valor.toFixed(2)}` : valor;
+                }
+              })()}
+            </div>
           </div>
         </div>
       </div>

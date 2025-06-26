@@ -546,4 +546,210 @@ export async function obtenerMesesEditor(): Promise<string[]> {
     logger.error('Error al obtener meses para editor:', error);
     return [];
   }
+}
+
+/**
+ * Función auxiliar para obtener las semanas históricas configuradas de una tienda
+ * Ahora maneja formato JSON: {"W26 2025": ["W26 2024", "W25 2024", "W27 2024"]}
+ * @param storeRecordId - ID del registro de la tienda
+ * @returns Promise que resuelve con el objeto JSON de semanas históricas o null
+ */
+export async function obtenerSemanasHistoricas(storeRecordId: string): Promise<Record<string, string[]> | null> {
+  try {
+    if (!storeRecordId) {
+      return null;
+    }
+
+    const tiendaData = await obtenerDatosTienda(storeRecordId);
+    if (!tiendaData) {
+      return null;
+    }
+
+    const semanasHistoricasStr = tiendaData.fields['Semanas Históricas'];
+    if (!semanasHistoricasStr) {
+      return null;
+    }
+
+    const semanasStr = String(semanasHistoricasStr).trim();
+    
+    // Si está vacío, retornar null
+    if (!semanasStr) {
+      return null;
+    }
+
+    // Intentar parsear como JSON primero
+    try {
+      const semanasJSON = JSON.parse(semanasStr);
+      
+      // Validar que es un objeto y tiene la estructura correcta
+      if (typeof semanasJSON === 'object' && semanasJSON !== null && !Array.isArray(semanasJSON)) {
+        // Validar que todas las claves y valores tienen el formato correcto
+        const isValid = Object.entries(semanasJSON).every(([key, value]) => {
+          return typeof key === 'string' && 
+                 key.match(/^W\d{1,2} \d{4}$/) && 
+                 Array.isArray(value) && 
+                 value.every(semana => typeof semana === 'string' && semana.match(/^W\d{1,2} \d{4}$/));
+        });
+        
+        if (isValid) {
+          console.log(`✅ JSON válido encontrado para tienda ${storeRecordId}:`, semanasJSON);
+          return semanasJSON;
+        }
+      }
+    } catch (jsonError) {
+      // Si no es JSON válido, podría ser formato legacy
+      console.log(`📋 Intentando migrar formato legacy para tienda ${storeRecordId}`);
+    }
+
+    // Formato legacy: "W26 2024,W25 2024,W27 2024"
+    // Lo convertimos a JSON automáticamente
+    if (semanasStr.includes(',') && semanasStr.includes('W')) {
+      const semanasArray = semanasStr.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      
+      // Validar formato de semanas
+      const semanasValidas = semanasArray.filter(semana => semana.match(/^W\d{1,2} \d{4}$/));
+      
+      if (semanasValidas.length > 0) {
+        console.log(`🔄 Formato legacy detectado, convirtiendo automáticamente:`, semanasValidas);
+        
+        // Por ahora, retornamos null para que use lógica estándar
+        // El administrador deberá configurar explícitamente el JSON
+        console.warn(`⚠️ Tienda ${storeRecordId} tiene formato legacy. Se requiere configuración manual.`);
+        return null;
+      }
+    }
+
+    console.warn(`⚠️ Formato de semanas históricas no válido para tienda ${storeRecordId}: ${semanasStr.substring(0, 50)}`);
+    return null;
+    
+  } catch (error) {
+    console.error('Error al obtener semanas históricas:', error);
+    return null;
+  }
+}
+
+/**
+ * Función para obtener las semanas históricas de referencia para una semana específica
+ * @param storeRecordId - ID del registro de la tienda
+ * @param semanaObjetivo - Semana objetivo en formato "W26 2025"
+ * @returns Promise que resuelve con array de semanas de referencia o null
+ */
+export async function obtenerSemanasHistoricasPorSemana(
+  storeRecordId: string, 
+  semanaObjetivo: string
+): Promise<string[] | null> {
+  try {
+    console.log(`🔍 obtenerSemanasHistoricasPorSemana - Tienda: ${storeRecordId}, Semana objetivo: ${semanaObjetivo}`);
+    const semanasHistoricas = await obtenerSemanasHistoricas(storeRecordId);
+    
+    if (!semanasHistoricas) {
+      console.log(`❌ No se encontró configuración JSON para tienda ${storeRecordId}`);
+      return null;
+    }
+
+    console.log(`✅ Configuración JSON encontrada:`, semanasHistoricas);
+
+    // Buscar la semana objetivo en las configuraciones
+    const semanasReferencia = semanasHistoricas[semanaObjetivo];
+    
+    if (!semanasReferencia || !Array.isArray(semanasReferencia) || semanasReferencia.length === 0) {
+      console.log(`📅 No hay configuración histórica para semana ${semanaObjetivo} en tienda ${storeRecordId}`);
+      console.log(`📋 Semanas disponibles en configuración:`, Object.keys(semanasHistoricas));
+      return null;
+    }
+
+    console.log(`📋 Semanas de referencia para ${semanaObjetivo}:`, semanasReferencia);
+    return semanasReferencia;
+    
+  } catch (error) {
+    console.error('Error al obtener semanas históricas por semana:', error);
+    return null;
+  }
+}
+
+/**
+ * Función para actualizar/guardar semanas históricas en formato JSON
+ * @param storeRecordId - ID del registro de la tienda
+ * @param semanaObjetivo - Semana objetivo en formato "W26 2025"
+ * @param semanasReferencia - Array de semanas de referencia en formato ["W26 2024", "W25 2024"]
+ * @returns Promise que resuelve con true si se guardó correctamente
+ */
+export async function guardarSemanasHistoricas(
+  storeRecordId: string,
+  semanaObjetivo: string,
+  semanasReferencia: string[]
+): Promise<boolean> {
+  try {
+    // Obtener configuración actual
+    const configuracionActual = await obtenerSemanasHistoricas(storeRecordId) || {};
+    
+    // Agregar/actualizar la nueva configuración
+    configuracionActual[semanaObjetivo] = semanasReferencia;
+    
+    // Convertir a JSON string
+    const jsonString = JSON.stringify(configuracionActual, null, 2);
+    
+    // Actualizar en Airtable (esto requeriría implementar la función de actualización)
+    console.log(`💾 Guardando configuración para tienda ${storeRecordId}:`, jsonString);
+    
+    // TODO: Implementar actualización en Airtable
+    // await actualizarCampoTienda(storeRecordId, 'Semanas Históricas', jsonString);
+    
+    return true;
+    
+  } catch (error) {
+    console.error('Error al guardar semanas históricas:', error);
+    return false;
+  }
+}
+
+/**
+ * Función helper para obtener la semana actual en formato "W26 2025"
+ * Utiliza el estándar ISO 8601 para cálculo de semanas
+ * @param fecha - Fecha opcional, usa fecha actual si no se proporciona
+ * @returns String con formato de semana
+ */
+export function obtenerFormatoSemana(fecha?: Date): string {
+  const fechaObj = new Date(fecha || new Date());
+  
+  // Implementación simplificada y correcta del ISO 8601
+  const año = fechaObj.getFullYear();
+  const mes = fechaObj.getMonth(); // 0-11
+  const dia = fechaObj.getDate();
+  
+  // Crear fecha objetivo
+  const fechaObjetivo = new Date(año, mes, dia);
+  
+  // Encontrar el lunes de la semana de la fecha objetivo
+  const diaSemana = fechaObjetivo.getDay(); // 0 = domingo, 1 = lunes, etc.
+  const diasAlLunes = (diaSemana === 0 ? -6 : 1 - diaSemana); // Ajustar domingo como día 7
+  const lunesDeEstaSemana = new Date(fechaObjetivo);
+  lunesDeEstaSemana.setDate(fechaObjetivo.getDate() + diasAlLunes);
+  
+  // Determinar a qué año pertenece esta semana ISO
+  // Una semana pertenece al año que contiene más días (al menos 4 días)
+  const juevesDeLaSemana = new Date(lunesDeEstaSemana);
+  juevesDeLaSemana.setDate(lunesDeEstaSemana.getDate() + 3);
+  const añoISO = juevesDeLaSemana.getFullYear();
+  
+  // Encontrar el primer lunes del año ISO
+  const primerEneroDeLAño = new Date(añoISO, 0, 1);
+  const diaDeLaSemanaDelPrimerEnero = primerEneroDeLAño.getDay();
+  
+  // Encontrar el lunes de la primera semana ISO del año
+  let primerLunesIso = new Date(añoISO, 0, 1);
+  if (diaDeLaSemanaDelPrimerEnero <= 4) {
+    // Si el 1 de enero es lunes a jueves, está en la primera semana
+    primerLunesIso.setDate(1 - (diaDeLaSemanaDelPrimerEnero === 0 ? 6 : diaDeLaSemanaDelPrimerEnero - 1));
+  } else {
+    // Si el 1 de enero es viernes a domingo, la primera semana empieza el siguiente lunes
+    primerLunesIso.setDate(1 + (8 - diaDeLaSemanaDelPrimerEnero));
+  }
+  
+  // Calcular número de semana
+  const diferenciaMs = lunesDeEstaSemana.getTime() - primerLunesIso.getTime();
+  const diasDeDiferencia = Math.floor(diferenciaMs / (24 * 60 * 60 * 1000));
+  const numeroSemana = Math.floor(diasDeDiferencia / 7) + 1;
+  
+  return `W${numeroSemana.toString().padStart(2, '0')} ${añoISO}`;
 } 

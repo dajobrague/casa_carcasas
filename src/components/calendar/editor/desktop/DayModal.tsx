@@ -29,6 +29,11 @@ import {
   generarDatosTraficoEjemplo
 } from '@/lib/utils';
 import { obtenerDatosTrafico } from '@/lib/api';
+import { 
+  obtenerTraficoHistorico, 
+  obtenerTraficoNoHistorico, 
+  obtenerDiaSemana 
+} from '@/lib/historical-traffic';
 import { HoursIndicators } from './HoursIndicators';
 import { ScheduleTable } from './ScheduleTable';
 import { TrafficTable } from './TrafficTable';
@@ -59,7 +64,7 @@ export function DayModal({
   
   const [actividades, setActividades] = useState<ActividadDiariaRecord[]>([]);
   const [tiendaData, setTiendaData] = useState<TiendaSupervisorRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Modal se abre inmediatamente
   const [error, setError] = useState<string | null>(null);
   const [horasEfectivasDiarias, setHorasEfectivasDiarias] = useState(0);
   const [horasEfectivasDiariasIniciales, setHorasEfectivasDiariasIniciales] = useState(0);
@@ -68,6 +73,8 @@ export function DayModal({
   const [columnasTiempo, setColumnasTiempo] = useState<string[]>([]);
   const [datosTraficoDia, setDatosTraficoDia] = useState<DatosTraficoDia | null>(null);
   const [personalEstimado, setPersonalEstimado] = useState<number[]>([]);
+  const [datosYaCargados, setDatosYaCargados] = useState(false);
+  const [cargandoTrafico, setCargandoTrafico] = useState(false);
 
   // Detectar si es dispositivo móvil
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -81,10 +88,11 @@ export function DayModal({
 
   // Cargar datos del día
   useEffect(() => {
-    if (isOpen && diaId && storeRecordId) {
+    if (isOpen && diaId && storeRecordId && !datosYaCargados) {
+      // El modal se abre inmediatamente, datos se cargan en paralelo
       cargarDatosDelDia();
     }
-  }, [isOpen, diaId, storeRecordId]);
+  }, [isOpen, diaId, storeRecordId, datosYaCargados]);
 
   // Función para cargar datos del día
   const cargarDatosDelDia = async () => {
@@ -95,22 +103,53 @@ export function DayModal({
     }
 
     try {
-      setIsLoading(true);
+      // NO cambiar setIsLoading(true) aquí - el modal ya debe estar visible
+      // setIsLoading(true);
       setError(null);
 
-      // Obtener datos de la tienda
-      const tiendaResponse = await obtenerDatosTienda(storeRecordId);
+      // CARGAR TODOS LOS DATOS EN PARALELO PARA MÁXIMA VELOCIDAD
+      console.log(`🚀 Iniciando carga totalmente paralela de datos...`);
+      const parallelStartTime = Date.now();
+      
+      const [tiendaResponse, actividadesResponse, diaResponse] = await Promise.all([
+        obtenerDatosTienda(storeRecordId),
+        obtenerActividadesDiarias(storeRecordId, diaId),
+        fetch(`/api/airtable?action=obtenerDiaLaboralPorId&diaId=${diaId}`).then(res => res.json())
+      ]);
+      
+      console.log(`⚡ TODOS los datos base obtenidos en ${Date.now() - parallelStartTime}ms`);
+      
       if (!tiendaResponse) {
         throw new Error('No se pudo obtener información de la tienda');
       }
       setTiendaData(tiendaResponse);
       const tiendaData = tiendaResponse.fields;
 
-      // Obtener actividades diarias
-      const actividadesResponse = await obtenerActividadesDiarias(storeRecordId, diaId);
       if (!actividadesResponse) {
         throw new Error('No se pudieron obtener las actividades diarias');
       }
+      
+      if (!diaResponse) {
+        throw new Error('No se pudo obtener información del día laboral');
+      }
+      
+      // Obtener fecha del día desde la respuesta o usar la prop como fallback
+      const fechaFromDiaResponse = diaResponse.fields?.Fecha;
+      let fechaDelDia = fechaFromDiaResponse ? new Date(fechaFromDiaResponse) : null;
+      
+      // Fallback: usar la fecha prop si no se pudo obtener de la respuesta
+      if (!fechaDelDia && fecha) {
+        console.log(`⚠️ FALLBACK: Usando fecha prop como respaldo`);
+        fechaDelDia = fecha;
+      }
+      
+      console.log(`🔍 DEBUG - Respuesta del día:`, {
+        diaResponseFields: diaResponse.fields,
+        fechaFromDiaResponse,
+        fechaProp: fecha,
+        fechaDelDiaFinal: fechaDelDia,
+        fechaDelDiaString: fechaDelDia ? fechaDelDia.toISOString().split('T')[0] : 'null'
+      });
       
       // Ordenar actividades por nombre (con VACANTE al final)
       const actividadesOrdenadas = [...actividadesResponse].sort((a, b) => {
@@ -133,12 +172,128 @@ export function DayModal({
       );
       setColumnasTiempo(columnas);
 
-      // Obtener datos de tráfico reales desde la API
-      const datosTraficoDiaAPI = await obtenerDatosTrafico(diaId, storeRecordId);
+      // OBTENER DATOS DE TRÁFICO CON LÓGICA HISTÓRICA ACTUALIZADA
+      let datosTraficoDiaFinal: DatosTraficoDia | null = null;
       
-      // Si no se pudieron obtener datos de la API, usar datos de ejemplo como fallback
-      const datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnas);
+      console.log(`🔍 Estado de tienda histórica:`, {
+        esHistorica,
+        tiendaId: storeRecordId,
+        diaId,
+        fecha: fechaDelDia ? fechaDelDia.toISOString().split('T')[0] : 'null',
+        tiendaData: tiendaResponse?.fields ? {
+          Name: tiendaResponse.fields.Name,
+          'Tienda Histórica?': tiendaResponse.fields['Tienda Histórica?'],
+          'Semanas Históricas': tiendaResponse.fields['Semanas Históricas']
+        } : 'null'
+      });
+      
+      console.log(`🔍 DECISIÓN: ¿Usar lógica histórica?`, {
+        esHistorica,
+        tieneFecha: !!fechaDelDia,
+        condicion: esHistorica && fechaDelDia,
+        siguientePaso: esHistorica && fechaDelDia ? 'HISTÓRICA' : 'ESTÁNDAR'
+      });
+      
+      // Verificación adicional: si la tienda no está marcada como histórica pero tiene configuración JSON
+      let esHistoricaReal = esHistorica;
+      if (!esHistorica && tiendaResponse?.fields['Semanas Históricas']) {
+        console.log(`⚠️ OVERRIDE: Tienda ${storeRecordId} no está marcada como histórica pero tiene configuración de semanas históricas`);
+        console.log(`📋 Configuración encontrada:`, tiendaResponse.fields['Semanas Históricas']);
+        console.log(`🔧 FORZANDO esHistorica = true para usar configuración JSON`);
+        esHistoricaReal = true;
+      }
+      
+      try {
+        // Mostrar estado de carga para datos históricos
+        const startTime = Date.now();
+        if (esHistoricaReal && fechaDelDia) {
+          console.log(`⏳ Iniciando carga de datos históricos...`);
+        }
+        
+        // Si es una tienda histórica, usar la lógica histórica con formato JSON
+        if (esHistoricaReal && fechaDelDia) {
+          setCargandoTrafico(true);
+          const fechaStr = fechaDelDia.toISOString().split('T')[0];
+          const { obtenerFormatoSemana } = await import('@/lib/airtable');
+          const semanaObjetivo = obtenerFormatoSemana(fechaDelDia);
+          
+          console.log(`🏛️ Tienda histórica detectada, procesando semana: ${semanaObjetivo}`);
+                    console.log(`📅 Detalles - Fecha: ${fechaStr}, Día de semana: ${fechaDelDia.toLocaleDateString('es-ES', { weekday: 'long' })}`);          
+          
+          // Usar la función actualizada con lógica histórica JSON
+          const { obtenerDatosTraficoConLogicaHistorica } = await import('@/lib/api');
+          console.log(`🔄 Llamando a obtenerDatosTraficoConLogicaHistorica con:`, {
+            diaId,
+            storeRecordId,
+            esHistorica: true,
+            fechaStr,
+            semanaObjetivo
+          });
+          
+          const resultado = await obtenerDatosTraficoConLogicaHistorica(
+            diaId,
+            storeRecordId,
+            true, // esHistorica
+            fechaStr,
+            semanaObjetivo
+          );
+          
+          // Convertir TraficoHistoricoAggregado a DatosTraficoDia si es necesario
+          if (resultado && 'esDatoHistorico' in resultado && resultado.esDatoHistorico) {
+            // Es TraficoHistoricoAggregado, convertir a DatosTraficoDia
+            const historicoData = resultado as import('@/lib/historical-traffic').TraficoHistoricoAggregado;
+            
+            // Convertir la estructura de datosPorDia para que sea compatible
+            const datosPorDiaConvertidos = {
+              lunes: historicoData.datosPorDia['lunes'] || {},
+              martes: historicoData.datosPorDia['martes'] || {},
+              miercoles: historicoData.datosPorDia['miercoles'] || {},
+              jueves: historicoData.datosPorDia['jueves'] || {},
+              viernes: historicoData.datosPorDia['viernes'] || {},
+              sabado: historicoData.datosPorDia['sabado'] || {},
+              domingo: historicoData.datosPorDia['domingo'] || {}
+            };
+            
+            datosTraficoDiaFinal = {
+              horas: historicoData.horas,
+              totalMañana: historicoData.totalMañana,
+              totalTarde: historicoData.totalTarde,
+              datosPorDia: datosPorDiaConvertidos,
+              fechaInicio: historicoData.fechaInicio,
+              fechaFin: historicoData.fechaFin,
+              esDatoHistorico: true,
+              semanasReferencia: historicoData.semanasReferencia.join(', ')
+            };
+            
+            console.log(`✅ Datos históricos obtenidos para semana ${semanaObjetivo} en ${Date.now() - startTime}ms:`, {
+              semanasReferencia: historicoData.semanasReferencia,
+              fechaInicio: historicoData.fechaInicio,
+              fechaFin: historicoData.fechaFin
+            });
+          } else if (resultado) {
+            // Es DatosTraficoDia normal, asegurarse de que es el tipo correcto
+            datosTraficoDiaFinal = resultado as DatosTraficoDia;
+            console.log(`📊 Datos estándar obtenidos para semana ${semanaObjetivo}`);
+          } else {
+            console.log(`📊 No se encontró configuración histórica específica para semana ${semanaObjetivo}`);
+            datosTraficoDiaFinal = null;
+          }
+        }
+        
+        // Si no se obtuvieron datos históricos, usar la lógica normal
+        if (!datosTraficoDiaFinal) {
+          console.log('📊 Usando lógica estándar de tráfico');
+      const datosTraficoDiaAPI = await obtenerDatosTrafico(diaId, storeRecordId);
+          datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnas);
+        }
+        
+      } catch (error) {
+        console.error('Error al procesar datos de tráfico:', error);
+        datosTraficoDiaFinal = generarDatosTraficoEjemplo(columnas);
+      }
+      
       setDatosTraficoDia(datosTraficoDiaFinal);
+      setCargandoTrafico(false);
       
       // Calcular personal estimado
       const { estimado } = calcularPersonalEstimado(datosTraficoDiaFinal, columnas);
@@ -186,9 +341,13 @@ export function DayModal({
         }
       }
 
+      // Marcar datos como cargados exitosamente
+      setDatosYaCargados(true);
+
     } catch (error) {
       console.error('Error al cargar datos del día:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');
+      setDatosYaCargados(false); // Permitir reintento en caso de error
     } finally {
       setIsLoading(false);
     }
@@ -290,51 +449,94 @@ export function DayModal({
       return;
     }
     
-    // Permitir valores vacíos para limpiar toda la fila
-    // if (!valor) {
-    //   // No hacer nada si no se seleccionó un valor
-    //   return;
-    // }
-    
     if (!columnasTiempo || columnasTiempo.length === 0) {
       mostrarNotificacion('No hay columnas de tiempo definidas', 'error');
       return;
     }
     
     try {
-      let allSuccess = true;
-      let errores = 0;
+      // 🚀 OPTIMIZACIÓN: Actualizar UI inmediatamente para feedback instantáneo
       
-      // Actualizar cada columna de tiempo
-      for (const tiempo of columnasTiempo) {
-        try {
-          const success = await actualizarHorario(actividadId, tiempo, valor);
-          if (!success) {
-            allSuccess = false;
-            errores++;
-            // Si hay demasiados errores, detener el proceso
-            if (errores > 3) {
-              break;
-            }
-          }
-        } catch (error) {
-          allSuccess = false;
-          errores++;
-          console.error(`Error al actualizar horario para ${tiempo}:`, error);
-          // Si hay demasiados errores, detener el proceso
-          if (errores > 3) {
-            break;
-          }
+      // Actualizar estado local inmediatamente
+      const actividadesActualizadasLocal = actividades.map(actividad => {
+        if (actividad.id === actividadId) {
+          const updatedFields = { ...actividad.fields };
+          columnasTiempo.forEach(tiempo => {
+            updatedFields[tiempo] = valor;
+          });
+          return { ...actividad, fields: updatedFields };
         }
+        return actividad;
+      });
+      
+      // Actualizar las actividades inmediatamente
+      setActividades(actividadesActualizadasLocal);
+      
+      // Recalcular horas efectivas inmediatamente con los datos locales
+      if (tiendaData) {
+        const horasEfectivasInmediatas = calcularHorasEfectivasDiarias(
+          actividadesActualizadasLocal,
+          {
+            PAIS: tiendaData.fields.PAIS,
+            Apertura: tiendaData.fields.Apertura,
+            Cierre: tiendaData.fields.Cierre
+          }
+        );
+        
+        // Log solo en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⚡ Horas efectivas actualizadas:', horasEfectivasInmediatas);
+        }
+        
+        // Actualizar las horas efectivas diarias inmediatamente
+        setHorasEfectivasDiarias(horasEfectivasInmediatas);
+        
+        // Actualizar las horas efectivas semanales inmediatamente
+        const diferenciaDiariaInmediata = horasEfectivasInmediatas - horasEfectivasDiariasIniciales;
+        
+        setHorasEfectivasSemanales(prev => {
+          const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
+          const nuevoValor = Math.max(0, baseValue + diferenciaDiariaInmediata);
+          
+          // Log solo en desarrollo
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`⚡ Horas semanales: ${baseValue} + ${diferenciaDiariaInmediata} = ${nuevoValor}`);
+          }
+          
+          return nuevoValor;
+        });
       }
       
-      // Recargar los datos completos después de la actualización
+      // 🔄 Hacer las actualizaciones API en background (sin bloquear UI)
+      
+      // Crear todas las promesas de actualización
+      const updatePromises = columnasTiempo.map(tiempo => 
+        actualizarHorario(actividadId, tiempo, valor).catch(error => {
+          console.error(`Error al actualizar horario para ${tiempo}:`, error);
+          return false;
+        })
+      );
+      
+      // Ejecutar todas las actualizaciones en paralelo (no secuencial)
+      Promise.all(updatePromises).then(results => {
+        const errores = results.filter(result => !result).length;
+        const allSuccess = errores === 0;
+        
+        if (allSuccess) {
+          mostrarNotificacion('Horarios actualizados correctamente', 'success');
+        } else if (errores > 3) {
+          mostrarNotificacion(`Se completaron las actualizaciones con ${errores} errores`, 'error');
+        } else {
+          mostrarNotificacion('Error al actualizar algunos horarios', 'error');
+        }
+        
+        // Opcional: Recargar datos desde servidor para confirmar sincronización
+        // (pero no bloquear la UI para esto)
       if (allSuccess && diaId && storeRecordId) {
-        try {
-          const actividadesActualizadas = await obtenerActividadesDiarias(storeRecordId, diaId);
-          if (actividadesActualizadas) {
-            // Ordenar actividades por nombre (con VACANTE al final)
-            const actividadesOrdenadas = [...actividadesActualizadas].sort((a, b) => {
+          obtenerActividadesDiarias(storeRecordId, diaId).then(actividadesServidor => {
+            if (actividadesServidor) {
+              // Solo actualizar si hay diferencias significativas
+              const actividadesOrdenadas = [...actividadesServidor].sort((a, b) => {
               const nombreA = (a.fields.Nombre || '').toString().toUpperCase();
               const nombreB = (b.fields.Nombre || '').toString().toUpperCase();
               
@@ -344,73 +546,18 @@ export function DayModal({
               return nombreA.localeCompare(nombreB);
             });
             
+              // Solo actualizar si realmente cambió algo (sincronización final)
+              const hayDiferencias = JSON.stringify(actividades) !== JSON.stringify(actividadesOrdenadas);
+              if (hayDiferencias) {
             setActividades(actividadesOrdenadas);
-            
-            // Recalcular horas efectivas con los datos actualizados
-            if (tiendaData) {
-              const horasEfectivas = calcularHorasEfectivasDiarias(
-                actividadesOrdenadas,
-                {
-                  PAIS: tiendaData.fields.PAIS,
-                  Apertura: tiendaData.fields.Apertura,
-                  Cierre: tiendaData.fields.Cierre
-                }
-              );
-              
-              // Actualizar las horas efectivas diarias
-              setHorasEfectivasDiarias(horasEfectivas);
-              
-              // Actualizar también las horas efectivas semanales de forma más robusta
-              const diferenciaDiaria = horasEfectivas - horasEfectivasDiariasIniciales;
-              
-              setHorasEfectivasSemanales(prev => {
-                // Si tenemos un valor inicial válido, usarlo como base
-                const baseValue = horasEfectivasSemanalesIniciales > 0 ? horasEfectivasSemanalesIniciales : prev;
-                const nuevoValor = Math.max(0, baseValue + diferenciaDiaria);
-                
-                return nuevoValor;
-              });
-            }
-          }
-        } catch (reloadError) {
-          console.error('Error al recargar actividades después de asignar a todo el día:', reloadError);
-          // Continuar con la actualización local como fallback
-          setActividades(prev => 
-            prev.map(actividad => {
-              if (actividad.id === actividadId) {
-                const updatedFields = { ...actividad.fields };
-                columnasTiempo.forEach(tiempo => {
-                  updatedFields[tiempo] = valor;
-                });
-                return { ...actividad, fields: updatedFields };
               }
-              return actividad;
-            })
-          );
-        }
-      } else {
-        // Actualizar el estado local como fallback si hay errores o no podemos recargar
-        setActividades(prev => 
-          prev.map(actividad => {
-            if (actividad.id === actividadId) {
-              const updatedFields = { ...actividad.fields };
-              columnasTiempo.forEach(tiempo => {
-                updatedFields[tiempo] = valor;
-              });
-              return { ...actividad, fields: updatedFields };
             }
-            return actividad;
-          })
-        );
-      }
+          }).catch(error => {
+            console.error('Error al sincronizar con servidor:', error);
+          });
+        }
+      });
       
-      if (allSuccess) {
-        mostrarNotificacion('Horarios actualizados correctamente', 'success');
-      } else if (errores > 3) {
-        mostrarNotificacion(`Se detuvieron las actualizaciones después de ${errores} errores`, 'error');
-      } else {
-        mostrarNotificacion('Error al actualizar algunos horarios', 'error');
-      }
     } catch (err) {
       console.error('Error general al actualizar los horarios:', err);
       mostrarNotificacion('Error al actualizar los horarios', 'error');
@@ -459,11 +606,12 @@ export function DayModal({
       // en lugar de recalcularlas
       const horasEfectivasSemanalesActualizadas = horasEfectivasSemanales;
       
-
-      
       // Llamamos al callback con los valores actualizados
       onCloseWithUpdatedHours(diaId, horasEfectivasDiarias, horasEfectivasSemanalesActualizadas);
     }
+    
+    // Limpiar estado para evitar conflictos en próximas aperturas
+    setDatosYaCargados(false);
     
     // Llamamos al callback original de cierre
     onClose();
@@ -521,12 +669,22 @@ export function DayModal({
         <TrafficTable 
           key={`traffic-${diaId}-${actividades.length}`}
           datosTraficoDia={datosTraficoDia}
-          isLoading={isLoading}
+          isLoading={cargandoTrafico}
           error={error}
           actividades={actividades}
           storeRecordId={storeRecordId || undefined}
           fecha={fecha || undefined}
         />
+        
+        {/* Debug temporal - solo durante desarrollo */}
+        {datosTraficoDia && process.env.NODE_ENV === 'development' && (() => {
+          console.log('📊 TrafficTable datos:', {
+            hasHoras: !!datosTraficoDia.horas,
+            hasDatosPorDia: !!datosTraficoDia.datosPorDia,
+            fechas: `${datosTraficoDia.fechaInicio} - ${datosTraficoDia.fechaFin}`
+          });
+          return null;
+        })()}
       </div>
     </Modal>
   );

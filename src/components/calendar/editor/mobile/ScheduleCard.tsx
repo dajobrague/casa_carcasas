@@ -53,7 +53,7 @@ export function ScheduleCard({
   // Función para manejar la asignación a todo el día
   const handleAsignacionLocal = async (actividadId: string, valor: string) => {
     // Permitir valores vacíos para limpiar toda la fila
-    // if (!valor) return;
+    console.log(`🧹 LIMPIEZA MASIVA MÓVIL: Empleado ${actividadId}, Valor: "${valor}"`);
 
     // Actualizar estado local inmediatamente
     const nuevasSelecciones = { ...seleccionesLocales };
@@ -66,13 +66,26 @@ export function ScheduleCard({
     setSeleccionesLocales(nuevasSelecciones);
     
     // Actualizar el estado de asignación pendiente
-    setAsignacionesPendientes(prev => ({
-      ...prev,
-      [actividadId]: valor
-    }));
+    setAsignacionesPendientes(prev => {
+      const updated = { ...prev };
+      if (valor === '') {
+        // Si es limpieza masiva, remover de pendientes
+        delete updated[actividadId];
+      } else {
+        updated[actividadId] = valor;
+      }
+      return updated;
+    });
+
+    console.log(`📊 Estado local móvil actualizado para ${actividadId}:`, nuevasSelecciones[actividadId]);
 
     // Llamar a la función original
     await handleAsignarATodoElDia(actividadId, valor);
+    
+    // Forzar un re-render después de la limpieza para asegurar que los cálculos se actualicen
+    if (valor === '') {
+      console.log(`🔄 Forzando re-render móvil después de limpieza masiva para ${actividadId}`);
+    }
   };
 
   // Función para manejar la actualización de horario individual
@@ -197,58 +210,20 @@ export function ScheduleCard({
               <div className="flex items-center space-x-2">
                 <div className="flex space-x-1">
                   {(() => {
-                    // Calcular en tiempo real las horas plus y minus
-                    if (tiendaData) {
-                      const horasContrato = extraerValorNumerico(
-                        actividad.fields['Horas de Contrato'] || 
-                        actividad.fields['Horas Contrato']
-                      );
-                      
-                      // Crear una versión actualizada de la actividad con las selecciones locales
-                      const actividadActualizada = {
-                        ...actividad,
-                        fields: {
-                          ...actividad.fields,
-                          ...seleccionesLocales[actividad.id]
-                        }
-                      };
-                      
-                      const { horasPlus } = calcularHorasPlusEmpleado(
-                        actividadActualizada,
-                        horasContrato,
-                        tiendaData
-                      );
-                      
-                      // Leer Horas - directamente de Airtable (es un campo lookup)
-                      const horasMinus = extraerValorNumerico(actividad.fields['Horas -']);
-                      
-                      return (
-                        <>
-                          {horasPlus > 0 && (
-                            <span className="px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">
-                              +{horasPlus.toFixed(1)}h
-                            </span>
-                          )}
-                          {horasMinus > 0 && (
-                            <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium">
-                              -{horasMinus.toFixed(1)}h
-                            </span>
-                          )}
-                        </>
-                      );
-                    }
+                    // Leer H+ y H- directamente de Airtable
+                    const horasPlus = extraerValorNumerico(actividad.fields['Horas +']);
+                    const horasMinus = extraerValorNumerico(actividad.fields['Horas -']);
                     
-                    // Fallback: usar valores de Airtable
                     return (
                       <>
-                        {typeof actividad.fields['Horas +'] === 'number' && (
+                        {horasPlus > 0 && (
                           <span className="px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-medium">
-                            +{actividad.fields['Horas +'].toFixed(1)}h
+                            +{horasPlus.toFixed(1)}h
                           </span>
                         )}
-                        {typeof actividad.fields['Horas -'] === 'number' && (
+                        {horasMinus > 0 && (
                           <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-medium">
-                            -{actividad.fields['Horas -'].toFixed(1)}h
+                            -{horasMinus.toFixed(1)}h
                           </span>
                         )}
                       </>
@@ -293,12 +268,10 @@ export function ScheduleCard({
                       ...optionsAsignar
                     ]}
                     value={asignacionesPendientes[actividad.id] || ''}
-                    onChange={(e) => {
-                      e.stopPropagation(); // Evitar que el evento se propague
-                      handleAsignacionLocal(actividad.id, e.target.value);
+                    onChange={(valor) => {
+                      handleAsignacionLocal(actividad.id, valor);
                     }}
-                    fullWidth
-                    className="shadow-sm text-sm h-10 font-medium bg-white border-blue-200"
+                    className="w-full shadow-sm text-sm h-10 font-medium bg-white border-blue-200"
                   />
                 </div>
                 
@@ -329,17 +302,10 @@ export function ScheduleCard({
                               ? seleccionesLocales[actividad.id][tiempo]
                               : actividad.fields[tiempo] || ''
                           }
-                          onChange={(e) => {
-                            e.stopPropagation(); // Evitar que el evento se propague
-                            handleUpdateHorarioLocal(actividad.id, tiempo, e.target.value);
+                          onChange={(valor) => {
+                            handleUpdateHorarioLocal(actividad.id, tiempo, valor);
                           }}
-                          estado={
-                            seleccionesLocales[actividad.id]?.[tiempo] !== undefined
-                              ? seleccionesLocales[actividad.id][tiempo]
-                              : actividad.fields[tiempo]
-                          }
-                          fullWidth
-                          className="shadow-sm text-sm h-9 text-gray-800 font-medium"
+                          className="w-full shadow-sm text-sm h-9 text-gray-800 font-medium"
                         />
                       </div>
                     </div>

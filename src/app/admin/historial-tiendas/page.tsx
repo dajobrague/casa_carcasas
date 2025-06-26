@@ -95,7 +95,10 @@ export default function HistorialTiendasPage() {
       setTiendas(data.tiendas || []);
       
       // Extraer países únicos para el filtro
-      const paises = [...new Set((data.tiendas || []).map((t: TiendaHistorial) => t.pais).filter(Boolean) as string[])].sort();
+      const paises = [...new Set((data.tiendas || [])
+        .map((t: TiendaHistorial) => t.pais || '')
+        .filter((pais: string) => pais.trim() !== '') as string[])]
+        .sort();
       setPaisesUnicos(paises);
     } catch (err) {
       console.error('Error cargando tiendas:', err);
@@ -118,11 +121,16 @@ export default function HistorialTiendasPage() {
     
     // Filtrar por término de búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(tienda => 
-        tienda.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tienda.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tienda.pais.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const searchTermLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(tienda => {
+        const numero = (tienda.numero || '').toString().toLowerCase();
+        const nombre = (tienda.nombre || '').toString().toLowerCase();
+        const pais = (tienda.pais || '').toString().toLowerCase();
+        
+        return numero.includes(searchTermLower) ||
+               nombre.includes(searchTermLower) ||
+               pais.includes(searchTermLower);
+      });
     }
     
     // Filtrar por estado histórico
@@ -134,7 +142,7 @@ export default function HistorialTiendasPage() {
     
     // Filtrar por país
     if (filterPais !== 'all') {
-      filtered = filtered.filter(tienda => tienda.pais === filterPais);
+      filtered = filtered.filter(tienda => (tienda.pais || '') === filterPais);
     }
     
     setFilteredTiendas(filtered);

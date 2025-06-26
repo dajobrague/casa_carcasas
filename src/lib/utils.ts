@@ -201,20 +201,32 @@ export function calcularHorasEfectivasDiarias(
       // Verificar que la actividad tenga campos
       if (!actividad || !actividad.fields) return;
       
-      // Para cada hora disponible
-      horasDisponibles.forEach(hora => {
-        // Tipos de actividades que cuentan como horas efectivas:
-        // - TRABAJO: suma horas
-        // - FORMACIÓN: suma horas
-        // - BAJA MÉDICA: resta horas
-        if (actividad.fields[hora] === 'TRABAJO' || actividad.fields[hora] === 'FORMACIÓN') {
-          horasTotales += incrementoPorHora;
-        } else if (actividad.fields[hora] === 'BAJA MÉDICA') {
-          horasTotales -= incrementoPorHora;
-        }
-        // El resto de actividades (VACACIONES, LIBRE, LACTANCIA) no afectan al cálculo
-      });
+              // Para cada hora disponible
+        horasDisponibles.forEach(hora => {
+          const tipoActividad = actividad.fields[hora];
+          // Tipos de actividades que cuentan como horas efectivas:
+          // - TRABAJO: suma horas
+          // - FORMACIÓN: suma horas
+          // - BAJA MÉDICA: resta horas
+          if (tipoActividad === 'TRABAJO' || tipoActividad === 'FORMACIÓN') {
+            horasTotales += incrementoPorHora;
+          } else if (tipoActividad === 'BAJA MÉDICA') {
+            horasTotales -= incrementoPorHora;
+          }
+          // El resto de actividades (VACACIONES, LIBRE, LACTANCIA, '') no afectan al cálculo
+        });
     });
+    
+    // Debug log para limpieza masiva
+    const todasLasActividades = actividades.reduce((total, actividad) => {
+      if (!actividad?.fields) return total;
+      const actividadesConValor = horasDisponibles.filter(hora => actividad.fields[hora] && actividad.fields[hora] !== '').length;
+      return total + actividadesConValor;
+    }, 0);
+    
+    if (todasLasActividades === 0) {
+      console.log(`🧹 HORAS EFECTIVAS: Sin actividades asignadas después de limpieza. Total calculado: ${horasTotales}`);
+    }
     
     // Asegurarnos de que el valor no sea negativo
     return Math.max(0, horasTotales);
@@ -240,8 +252,46 @@ export function calcularHorasPlusEmpleado(
 ): { horasPlus: number } {
   try {
     // Verificar datos válidos
-    if (!actividad || !actividad.fields || typeof horasContrato !== 'number') {
+    if (!actividad || !actividad.fields) {
+      console.log(`❌ calcularHorasPlusEmpleado: Datos inválidos para ID: ${actividad?.id}`);
       return { horasPlus: 0 };
+    }
+
+    // Debug: Mostrar información del empleado/vacante
+    const esVacante = actividad.fields.DNI === 'VACANTE' || actividad.fields.Nombre === 'VACANTE';
+    console.log(`🔍 Calculando H+ para ${esVacante ? 'VACANTE' : 'EMPLEADO'}: ${actividad.fields.Nombre} (ID: ${actividad.id})`);
+    console.log(`📊 Horas contrato recibidas: ${horasContrato} (tipo: ${typeof horasContrato})`);
+    
+    // Debug: Mostrar todos los campos relacionados con horas
+    console.log(`📋 Campos de horas disponibles:`, {
+      'Horas de Contrato': actividad.fields['Horas de Contrato'],
+      'Horas Contrato': actividad.fields['Horas Contrato'],
+      'Horas Semanales': actividad.fields['Horas Semanales'],
+      'HorasContrato': actividad.fields['HorasContrato'],
+      'horasContrato': actividad.fields['horasContrato']
+    });
+
+    // Para VACANTES, intentar obtener las horas de contrato de diferentes campos
+    let horasContratoValidas = horasContrato;
+    if (typeof horasContrato !== 'number' || horasContrato === 0) {
+      console.log(`🔄 Buscando horas de contrato en campos alternativos...`);
+      
+      // Buscar horas de contrato en diferentes campos posibles
+      horasContratoValidas = 
+        extraerValorNumerico(actividad.fields['Horas Semanales']) ||
+        extraerValorNumerico(actividad.fields['HorasContrato']) ||
+        extraerValorNumerico(actividad.fields['Horas Contrato']) ||
+        extraerValorNumerico(actividad.fields['horasContrato']) ||
+        0;
+      
+      console.log(`✅ Horas contrato encontradas: ${horasContratoValidas}`);
+      
+      // Si aún no tenemos horas válidas, usar 0 como valor por defecto
+      if (horasContratoValidas === 0) {
+        console.log(`⚠️ ${esVacante ? 'VACANTE' : 'EMPLEADO'} sin horas de contrato definidas. ID: ${actividad.id}`);
+        // Para vacantes sin horas definidas, usamos 0 como base para el cálculo
+        horasContratoValidas = 0;
+      }
     }
     
     const esFrancia = tiendaData.PAIS?.toUpperCase() === 'FRANCIA';
@@ -269,17 +319,39 @@ export function calcularHorasPlusEmpleado(
       } else if (tipoActividad === 'BAJA MÉDICA') {
         horasBajaMedica += incrementoPorHora;
       }
+      // Para valores vacíos, no sumamos nada (lo cual es correcto)
     });
+    
+    // Debug log para limpieza masiva
+    const activasCount = horasDisponibles.filter(hora => actividad.fields[hora] && actividad.fields[hora] !== '').length;
+    console.log(`⏰ Análisis de horarios:`, {
+      horasTrabajadas,
+      horasFormacion, 
+      horasBajaMedica,
+      activasCount,
+      horasContratoValidas
+    });
+    
+    if (activasCount === 0) {
+      console.log(`🧹 HORAS PLUS: ${esVacante ? 'VACANTE' : 'EMPLEADO'} sin actividades asignadas. Trabajo: ${horasTrabajadas}, Formación: ${horasFormacion}, Baja: ${horasBajaMedica}`);
+    }
     
     // Calcular total de horas productivas (trabajo + formación)
     const horasProductivas = horasTrabajadas + horasFormacion;
     
     // Calcular diferencia respecto al contrato para Horas +
-    const diferencia = horasProductivas - horasContrato;
+    const diferencia = horasProductivas - horasContratoValidas;
     
     // Calcular Horas + (solo si hay horas extra)
     const horasPlus = Math.max(0, diferencia) + horasBajaMedica;
     
+    console.log(`🧮 Cálculo final H+:`, {
+      horasProductivas: `${horasTrabajadas} + ${horasFormacion} = ${horasProductivas}`,
+      diferencia: `${horasProductivas} - ${horasContratoValidas} = ${diferencia}`,
+      horasPlusBase: Math.max(0, diferencia),
+      horasBajaMedica,
+      horasPlusFinal: horasPlus
+    });
 
     
     return {
@@ -373,20 +445,35 @@ export function mostrarNotificacion(
 
 // Interfaz para datos de tráfico
 export interface DatosTraficoDia {
-  horas: Record<string, number>;
-  totalMañana: number;
-  totalTarde: number;
+  horas: Record<string, {
+    entradas: number;
+    tickets: number;
+    euros: number;
+  }>;
+  totalMañana: {
+    entradas: number;
+    tickets: number;
+    euros: number;
+  };
+  totalTarde: {
+    entradas: number;
+    tickets: number;
+    euros: number;
+  };
   datosPorDia?: {
-    lunes: Record<string, number>;
-    martes: Record<string, number>;
-    miercoles: Record<string, number>;
-    jueves: Record<string, number>;
-    viernes: Record<string, number>;
-    sabado: Record<string, number>;
-    domingo: Record<string, number>;
+    lunes: Record<string, { entradas: number; tickets: number; euros: number }>;
+    martes: Record<string, { entradas: number; tickets: number; euros: number }>;
+    miercoles: Record<string, { entradas: number; tickets: number; euros: number }>;
+    jueves: Record<string, { entradas: number; tickets: number; euros: number }>;
+    viernes: Record<string, { entradas: number; tickets: number; euros: number }>;
+    sabado: Record<string, { entradas: number; tickets: number; euros: number }>;
+    domingo: Record<string, { entradas: number; tickets: number; euros: number }>;
   };
   fechaInicio?: string;
   fechaFin?: string;
+  // Propiedades para datos históricos
+  esDatoHistorico?: boolean;
+  semanasReferencia?: string;
 }
 
 // Función para obtener color según intensidad de tráfico
@@ -441,43 +528,47 @@ export function calcularPersonalEstimado(
 
 // Función para generar datos de tráfico de ejemplo (para demostración)
 export function generarDatosTraficoEjemplo(horarios: string[]): DatosTraficoDia {
-  const horas: Record<string, number> = {};
-  let totalMañana = 0;
-  let totalTarde = 0;
+  const horas: Record<string, {
+    entradas: number;
+    tickets: number;
+    euros: number;
+  }> = {};
+  let totalMañana = { entradas: 0, tickets: 0, euros: 0 };
+  let totalTarde = { entradas: 0, tickets: 0, euros: 0 };
   
   if (!horarios || !Array.isArray(horarios) || horarios.length === 0) {
     return {
       horas: {},
-      totalMañana: 0,
-      totalTarde: 0
+      totalMañana: { entradas: 0, tickets: 0, euros: 0 },
+      totalTarde: { entradas: 0, tickets: 0, euros: 0 }
     };
   }
   
   // Crear estructura para datos por día
   const datosPorDia = {
-    lunes: {} as Record<string, number>,
-    martes: {} as Record<string, number>,
-    miercoles: {} as Record<string, number>,
-    jueves: {} as Record<string, number>,
-    viernes: {} as Record<string, number>,
-    sabado: {} as Record<string, number>,
-    domingo: {} as Record<string, number>
+    lunes: {} as Record<string, { entradas: number; tickets: number; euros: number }>,
+    martes: {} as Record<string, { entradas: number; tickets: number; euros: number }>,
+    miercoles: {} as Record<string, { entradas: number; tickets: number; euros: number }>,
+    jueves: {} as Record<string, { entradas: number; tickets: number; euros: number }>,
+    viernes: {} as Record<string, { entradas: number; tickets: number; euros: number }>,
+    sabado: {} as Record<string, { entradas: number; tickets: number; euros: number }>,
+    domingo: {} as Record<string, { entradas: number; tickets: number; euros: number }>
   };
   
   // Datos de ejemplo basados en la imagen
-  const datosEjemplo: Record<string, Record<string, number>> = {
-    "10:00": { lunes: 8, martes: 4, miercoles: 11, jueves: 4, viernes: 16, sabado: 19, domingo: 6 },
-    "11:00": { lunes: 12, martes: 34, miercoles: 11, jueves: 5, viernes: 28, sabado: 26, domingo: 15 },
-    "12:00": { lunes: 26, martes: 13, miercoles: 16, jueves: 16, viernes: 15, sabado: 45, domingo: 14 },
-    "13:00": { lunes: 32, martes: 15, miercoles: 15, jueves: 16, viernes: 16, sabado: 29, domingo: 21 },
-    "14:00": { lunes: 22, martes: 7, miercoles: 7, jueves: 11, viernes: 15, sabado: 25, domingo: 31 },
-    "15:00": { lunes: 12, martes: 24, miercoles: 8, jueves: 19, viernes: 37, sabado: 42, domingo: 25 },
-    "16:00": { lunes: 12, martes: 23, miercoles: 9, jueves: 28, viernes: 24, sabado: 47, domingo: 48 },
-    "17:00": { lunes: 33, martes: 12, miercoles: 24, jueves: 13, viernes: 37, sabado: 29, domingo: 21 },
-    "18:00": { lunes: 17, martes: 27, miercoles: 15, jueves: 21, viernes: 29, sabado: 50, domingo: 45 },
-    "19:00": { lunes: 11, martes: 18, miercoles: 11, jueves: 24, viernes: 18, sabado: 61, domingo: 34 },
-    "20:00": { lunes: 10, martes: 13, miercoles: 16, jueves: 24, viernes: 18, sabado: 35, domingo: 21 },
-    "21:00": { lunes: 9, martes: 2, miercoles: 9, jueves: 6, viernes: 27, sabado: 20, domingo: 23 }
+  const datosEjemplo: Record<string, Record<string, { entradas: number; tickets: number; euros: number }>> = {
+    "10:00": { lunes: { entradas: 8, tickets: 0, euros: 0 }, martes: { entradas: 4, tickets: 0, euros: 0 }, miercoles: { entradas: 11, tickets: 0, euros: 0 }, jueves: { entradas: 4, tickets: 0, euros: 0 }, viernes: { entradas: 16, tickets: 0, euros: 0 }, sabado: { entradas: 19, tickets: 0, euros: 0 }, domingo: { entradas: 6, tickets: 0, euros: 0 } },
+    "11:00": { lunes: { entradas: 12, tickets: 0, euros: 0 }, martes: { entradas: 34, tickets: 0, euros: 0 }, miercoles: { entradas: 11, tickets: 0, euros: 0 }, jueves: { entradas: 5, tickets: 0, euros: 0 }, viernes: { entradas: 28, tickets: 0, euros: 0 }, sabado: { entradas: 26, tickets: 0, euros: 0 }, domingo: { entradas: 15, tickets: 0, euros: 0 } },
+    "12:00": { lunes: { entradas: 26, tickets: 0, euros: 0 }, martes: { entradas: 13, tickets: 0, euros: 0 }, miercoles: { entradas: 16, tickets: 0, euros: 0 }, jueves: { entradas: 16, tickets: 0, euros: 0 }, viernes: { entradas: 15, tickets: 0, euros: 0 }, sabado: { entradas: 45, tickets: 0, euros: 0 }, domingo: { entradas: 14, tickets: 0, euros: 0 } },
+    "13:00": { lunes: { entradas: 32, tickets: 0, euros: 0 }, martes: { entradas: 15, tickets: 0, euros: 0 }, miercoles: { entradas: 15, tickets: 0, euros: 0 }, jueves: { entradas: 16, tickets: 0, euros: 0 }, viernes: { entradas: 16, tickets: 0, euros: 0 }, sabado: { entradas: 29, tickets: 0, euros: 0 }, domingo: { entradas: 21, tickets: 0, euros: 0 } },
+    "14:00": { lunes: { entradas: 22, tickets: 0, euros: 0 }, martes: { entradas: 7, tickets: 0, euros: 0 }, miercoles: { entradas: 7, tickets: 0, euros: 0 }, jueves: { entradas: 11, tickets: 0, euros: 0 }, viernes: { entradas: 15, tickets: 0, euros: 0 }, sabado: { entradas: 25, tickets: 0, euros: 0 }, domingo: { entradas: 31, tickets: 0, euros: 0 } },
+    "15:00": { lunes: { entradas: 12, tickets: 0, euros: 0 }, martes: { entradas: 24, tickets: 0, euros: 0 }, miercoles: { entradas: 8, tickets: 0, euros: 0 }, jueves: { entradas: 19, tickets: 0, euros: 0 }, viernes: { entradas: 37, tickets: 0, euros: 0 }, sabado: { entradas: 42, tickets: 0, euros: 0 }, domingo: { entradas: 25, tickets: 0, euros: 0 } },
+    "16:00": { lunes: { entradas: 12, tickets: 0, euros: 0 }, martes: { entradas: 23, tickets: 0, euros: 0 }, miercoles: { entradas: 9, tickets: 0, euros: 0 }, jueves: { entradas: 28, tickets: 0, euros: 0 }, viernes: { entradas: 24, tickets: 0, euros: 0 }, sabado: { entradas: 47, tickets: 0, euros: 0 }, domingo: { entradas: 48, tickets: 0, euros: 0 } },
+    "17:00": { lunes: { entradas: 33, tickets: 0, euros: 0 }, martes: { entradas: 12, tickets: 0, euros: 0 }, miercoles: { entradas: 24, tickets: 0, euros: 0 }, jueves: { entradas: 13, tickets: 0, euros: 0 }, viernes: { entradas: 37, tickets: 0, euros: 0 }, sabado: { entradas: 29, tickets: 0, euros: 0 }, domingo: { entradas: 21, tickets: 0, euros: 0 } },
+    "18:00": { lunes: { entradas: 17, tickets: 0, euros: 0 }, martes: { entradas: 27, tickets: 0, euros: 0 }, miercoles: { entradas: 15, tickets: 0, euros: 0 }, jueves: { entradas: 21, tickets: 0, euros: 0 }, viernes: { entradas: 29, tickets: 0, euros: 0 }, sabado: { entradas: 50, tickets: 0, euros: 0 }, domingo: { entradas: 45, tickets: 0, euros: 0 } },
+    "19:00": { lunes: { entradas: 11, tickets: 0, euros: 0 }, martes: { entradas: 18, tickets: 0, euros: 0 }, miercoles: { entradas: 11, tickets: 0, euros: 0 }, jueves: { entradas: 24, tickets: 0, euros: 0 }, viernes: { entradas: 18, tickets: 0, euros: 0 }, sabado: { entradas: 61, tickets: 0, euros: 0 }, domingo: { entradas: 34, tickets: 0, euros: 0 } },
+    "20:00": { lunes: { entradas: 10, tickets: 0, euros: 0 }, martes: { entradas: 13, tickets: 0, euros: 0 }, miercoles: { entradas: 16, tickets: 0, euros: 0 }, jueves: { entradas: 24, tickets: 0, euros: 0 }, viernes: { entradas: 18, tickets: 0, euros: 0 }, sabado: { entradas: 35, tickets: 0, euros: 0 }, domingo: { entradas: 21, tickets: 0, euros: 0 } },
+    "21:00": { lunes: { entradas: 9, tickets: 0, euros: 0 }, martes: { entradas: 2, tickets: 0, euros: 0 }, miercoles: { entradas: 9, tickets: 0, euros: 0 }, jueves: { entradas: 6, tickets: 0, euros: 0 }, viernes: { entradas: 27, tickets: 0, euros: 0 }, sabado: { entradas: 20, tickets: 0, euros: 0 }, domingo: { entradas: 23, tickets: 0, euros: 0 } }
   };
   
   // Filtrar solo las horas que están en nuestros horarios
@@ -495,27 +586,41 @@ export function generarDatosTraficoEjemplo(horarios: string[]): DatosTraficoDia 
           datosPorDia[dia as keyof typeof datosPorDia][hora] = valor;
           
           // Acumular en horas (promedio de todos los días)
-          horas[hora] = horas[hora] || 0;
-          horas[hora] += valor;
+          horas[hora] = horas[hora] || { entradas: 0, tickets: 0, euros: 0 };
+          horas[hora].entradas += valor.entradas;
+          horas[hora].tickets += valor.tickets;
+          horas[hora].euros += valor.euros;
           
           // Acumular totales
           const horaNum = parseInt(hora.split(':')[0], 10);
           if (horaNum < 14) {
-            totalMañana += valor;
+            totalMañana.entradas += valor.entradas;
+            totalMañana.tickets += valor.tickets;
+            totalMañana.euros += valor.euros;
           } else {
-            totalTarde += valor;
+            totalTarde.entradas += valor.entradas;
+            totalTarde.tickets += valor.tickets;
+            totalTarde.euros += valor.euros;
           }
         }
       });
       
       // Calcular promedio para las horas
-      horas[hora] = Math.round(horas[hora] / 7);
+      horas[hora] = {
+        entradas: Math.round(horas[hora].entradas / 7),
+        tickets: Math.round(horas[hora].tickets / 7),
+        euros: Math.round(horas[hora].euros / 7)
+      };
     }
   });
   
   // Calcular totales reales
-  totalMañana = Math.round(totalMañana / 7);
-  totalTarde = Math.round(totalTarde / 7);
+  totalMañana.entradas = Math.round(totalMañana.entradas / 7);
+  totalMañana.tickets = Math.round(totalMañana.tickets / 7);
+  totalMañana.euros = Math.round(totalMañana.euros / 7);
+  totalTarde.entradas = Math.round(totalTarde.entradas / 7);
+  totalTarde.tickets = Math.round(totalTarde.tickets / 7);
+  totalTarde.euros = Math.round(totalTarde.euros / 7);
   
   return {
     horas,

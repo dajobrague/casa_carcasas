@@ -76,7 +76,7 @@ export function ScheduleTable({
   // Función para manejar la asignación a todo el día
   const handleAsignacionLocal = async (actividadId: string, valor: string) => {
     // Permitir valores vacíos para limpiar toda la fila
-    // if (!valor) return;
+    console.log(`🧹 LIMPIEZA MASIVA: Empleado ${actividadId}, Valor: "${valor}"`);
 
     // Actualizar estado local inmediatamente
     const nuevasSelecciones = { ...seleccionesLocales };
@@ -92,13 +92,27 @@ export function ScheduleTable({
     setSeleccionesLocales(nuevasSelecciones);
     
     // Actualizar el estado de asignación pendiente
-    setAsignacionesPendientes(prev => ({
-      ...prev,
-      [actividadId]: valor
-    }));
+    setAsignacionesPendientes(prev => {
+      const updated = { ...prev };
+      if (valor === '') {
+        // Si es limpieza masiva, remover de pendientes
+        delete updated[actividadId];
+      } else {
+        updated[actividadId] = valor;
+      }
+      return updated;
+    });
+
+    console.log(`📊 Estado local actualizado para ${actividadId}:`, nuevasSelecciones[actividadId]);
 
     // Llamar a la función original que se conecta con el API
     await handleAsignarATodoElDia(actividadId, valor);
+    
+    // Forzar un re-render después de la limpieza para asegurar que los cálculos se actualicen
+    if (valor === '') {
+      console.log(`🔄 Forzando re-render después de limpieza masiva para ${actividadId}`);
+      // El re-render se produce automáticamente al actualizar el estado
+    }
   };
 
   // Función para manejar la actualización de horario individual
@@ -293,52 +307,9 @@ export function ScheduleTable({
                         }} className="px-4 py-3 border-b border-gray-100 align-middle">
                           <span className="px-2 py-1 rounded-md bg-green-50 text-green-700 text-sm font-medium">
                             {(() => {
-                              // Calcular en tiempo real las horas plus basándose en los horarios asignados
-                              if (tiendaData) {
-                                const horasContrato = extraerValorNumerico(
-                                  actividad.fields['Horas de Contrato'] || 
-                                  actividad.fields['Horas Contrato']
-                                );
-                                
-                                // Crear una versión actualizada de la actividad con las selecciones locales
-                                const actividadActualizada = {
-                                  ...actividad,
-                                  fields: {
-                                    ...actividad.fields,
-                                    ...seleccionesLocales[actividad.id]
-                                  }
-                                };
-                                
-                                const { horasPlus } = calcularHorasPlusEmpleado(
-                                  actividadActualizada,
-                                  horasContrato,
-                                  tiendaData
-                                );
-                                
-                                return horasPlus.toFixed(1);
-                              }
-                              
-                              // Fallback: leer directamente del campo si no hay datos de tienda
-                              let horasPlus = null;
-                              if (typeof actividad.fields['Horas +'] === 'number') {
-                                horasPlus = actividad.fields['Horas +'];
-                              } else if (typeof actividad.fields['Horas+'] === 'number') {
-                                horasPlus = actividad.fields['Horas+'];
-                              } else if (typeof actividad.fields['Horas Plus'] === 'number') {
-                                horasPlus = actividad.fields['Horas Plus'];
-                              } else {
-                                const strValue = 
-                                  actividad.fields['Horas +'] || 
-                                  actividad.fields['Horas+'] || 
-                                  actividad.fields['Horas Plus'];
-                                if (strValue) {
-                                  horasPlus = parseFloat(String(strValue));
-                                }
-                              }
-                              
-                              return (horasPlus != null && !isNaN(horasPlus)) 
-                                ? horasPlus.toFixed(1) 
-                                : '0.0';
+                              // Leer Horas + directamente de Airtable (igual que H-)
+                              const horasPlus = extraerValorNumerico(actividad.fields['Horas +']);
+                              return horasPlus.toFixed(1);
                             })()}
                           </span>
                         </td>

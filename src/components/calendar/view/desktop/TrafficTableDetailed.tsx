@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { DatosTraficoDia } from '@/lib/utils';
+import { BarChart3 } from 'lucide-react';
 
 interface TrafficTableDetailedViewProps {
   datosTraficoDia: DatosTraficoDia | null;
@@ -187,11 +188,19 @@ export function TrafficTableDetailedView({
               <tr className="bg-gray-100">
                 <td className="px-3 py-2 text-sm font-semibold text-gray-700 border-t border-gray-200 whitespace-nowrap">TOTAL MAÑANAS:</td>
                 <td colSpan={6} className="px-2 py-2 text-right text-sm font-bold text-gray-700 border-t border-gray-200">
-                  <span className="bg-blue-100 px-2 py-1 rounded-full">{datosTraficoDia.totalMañana * 7}</span>
+                  <span className="bg-blue-100 px-2 py-1 rounded-full">
+                    {typeof datosTraficoDia.totalMañana === 'number' 
+                      ? datosTraficoDia.totalMañana * 7 
+                      : datosTraficoDia.totalMañana.entradas * 7}
+                  </span>
                 </td>
                 <td className="px-3 py-2 text-sm font-semibold text-gray-700 border-t border-gray-200 whitespace-nowrap">TOTAL TARDES:</td>
                 <td colSpan={5} className="px-2 py-2 text-right text-sm font-bold text-gray-700 border-t border-gray-200">
-                  <span className="bg-blue-100 px-2 py-1 rounded-full">{datosTraficoDia.totalTarde * 7}</span>
+                  <span className="bg-blue-100 px-2 py-1 rounded-full">
+                    {typeof datosTraficoDia.totalTarde === 'number' 
+                      ? datosTraficoDia.totalTarde * 7 
+                      : datosTraficoDia.totalTarde.entradas * 7}
+                  </span>
                 </td>
               </tr>
             </tfoot>
@@ -225,8 +234,28 @@ export function TrafficTableDetailedView({
   return (
     <div className="bg-white rounded-xl shadow-sm">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-gray-100">
-        {datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin && (
+        {datosTraficoDia && (
           <div className="flex flex-wrap items-center gap-2 text-gray-600">
+            {/* Mostrar información histórica si aplica */}
+            {datosTraficoDia.esDatoHistorico && datosTraficoDia.semanasReferencia ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <BarChart3 className="w-4 h-4 text-orange-600" />
+                    <span className="text-sm font-medium uppercase text-orange-600">Promedio Histórico:</span>
+                  </div>
+                  <span className="text-sm bg-orange-50 px-2 py-1 rounded-full border border-orange-200 text-orange-700">
+                    {datosTraficoDia.semanasReferencia}
+                  </span>
+                </div>
+                <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+                  Año anterior
+                </div>
+              </div>
+            ) : (
+              /* Mostrar fechas normales si no es histórico */
+              datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin && (
+                <>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium uppercase">Inicio:</span>
               <span className="text-sm bg-blue-50 px-2 py-1 rounded-full">{datosTraficoDia.fechaInicio}</span>
@@ -235,6 +264,9 @@ export function TrafficTableDetailedView({
               <span className="text-sm font-medium uppercase">Fin:</span>
               <span className="text-sm bg-blue-50 px-2 py-1 rounded-full">{datosTraficoDia.fechaFin}</span>
             </div>
+                </>
+              )
+            )}
           </div>
         )}
       </div>

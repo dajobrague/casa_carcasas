@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Cookies from 'js-cookie';
 
 interface Tienda {
@@ -16,6 +16,15 @@ interface SemanaOption {
   label: string;
 }
 
+interface ConfiguracionHistorica {
+  [semanaObjetivo: string]: string[];
+}
+
+interface ConfiguracionSemana {
+  semanaObjetivo: string;
+  semanasReferencia: string[];
+}
+
 export default function SemanasHistoricasPage() {
   const [tiendas, setTiendas] = useState<Tienda[]>([]);
   const [filteredTiendas, setFilteredTiendas] = useState<Tienda[]>([]);
@@ -28,6 +37,9 @@ export default function SemanasHistoricasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPais, setFilterPais] = useState<string>('all');
   const [paisesUnicos, setPaisesUnicos] = useState<string[]>([]);
+  
+  // Estados para aplicación masiva
+  const [showBulkModal, setShowBulkModal] = useState(false);
 
   // Función para obtener la semana actual
   const obtenerSemanaActual = () => {
@@ -55,6 +67,47 @@ export default function SemanasHistoricasPage() {
     }
 
     return semanas;
+  };
+
+  // Función para generar semanas del año actual (para semanas objetivo)
+  const generarSemanasAñoActual = () => {
+    const añoActual = new Date().getFullYear();
+    const semanas: SemanaOption[] = [];
+
+    // Generar 52-53 semanas del año actual
+    for (let i = 1; i <= 53; i++) {
+      const numeroSemana = i.toString().padStart(2, '0');
+      const valor = `W${numeroSemana} ${añoActual}`;
+      semanas.push({
+        value: valor,
+        label: valor
+      });
+    }
+
+    return semanas;
+  };
+
+  // Función para parsear configuración histórica desde JSON
+  const parsearConfiguracionHistorica = (jsonString: string): ConfiguracionHistorica => {
+    if (!jsonString || jsonString.trim() === '') {
+      return {};
+    }
+
+    try {
+      const config = JSON.parse(jsonString);
+      if (typeof config === 'object' && config !== null && !Array.isArray(config)) {
+        return config;
+      }
+    } catch (error) {
+      console.warn('Error parseando configuración histórica:', error);
+    }
+
+    return {};
+  };
+
+  // Función para convertir configuración a JSON string
+  const configuracionAJSON = (config: ConfiguracionHistorica): string => {
+    return JSON.stringify(config, null, 2);
   };
 
   // Verificar autenticación y cargar datos
@@ -107,7 +160,6 @@ export default function SemanasHistoricasPage() {
       setLoading(true);
       setError(null);
 
-      // Usar la misma estrategia que historial-tiendas: API dedicada
       const response = await fetch('/api/admin/semanas-historicas');
 
       if (!response.ok) {
@@ -116,7 +168,6 @@ export default function SemanasHistoricasPage() {
 
       const data = await response.json();
       
-      // Los datos ya vienen procesados desde la API dedicada
       setTiendas(data.tiendas || []);
       
       // Extraer países únicos para el filtro
@@ -129,12 +180,10 @@ export default function SemanasHistoricasPage() {
     }
   };
 
-  // Función para actualizar semanas históricas de una tienda
-  const actualizarSemanasHistoricas = async (tiendaId: string, semanasSeleccionadas: string[]) => {
+  // Función para actualizar configuración histórica de una tienda
+  const actualizarConfiguracionHistorica = async (tiendaId: string, configuracion: ConfiguracionHistorica) => {
     try {
-      const valorFinal = semanasSeleccionadas.length === 1 
-        ? semanasSeleccionadas[0] 
-        : semanasSeleccionadas.join(',');
+      const jsonString = configuracionAJSON(configuracion);
 
       const response = await fetch('/api/admin/semanas-historicas', {
         method: 'PUT',
@@ -143,24 +192,26 @@ export default function SemanasHistoricasPage() {
         },
         body: JSON.stringify({
           tiendaId: tiendaId,
-          semanasHistoricas: valorFinal
+          semanasHistoricas: jsonString
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Error al actualizar semanas históricas');
+        throw new Error('Error al actualizar configuración histórica');
       }
 
       // Actualizar estado local
       setTiendas(prev => prev.map(tienda => 
         tienda.id === tiendaId 
-          ? { ...tienda, semanasHistoricas: valorFinal }
+          ? { ...tienda, semanasHistoricas: jsonString }
           : tienda
       ));
 
+      console.log('✅ Configuración actualizada exitosamente');
+
     } catch (error) {
-      console.error('Error al actualizar semanas históricas:', error);
-      setError('Error al actualizar las semanas históricas');
+      console.error('Error al actualizar configuración histórica:', error);
+      setError('Error al actualizar la configuración histórica');
     }
   };
 
@@ -187,85 +238,99 @@ export default function SemanasHistoricasPage() {
                   Configuración de Semanas Históricas
                 </h1>
                 <p className="mt-1 text-sm text-gray-500">
-                  Configurar semanas de referencia del año anterior para tiendas históricas
+                  Configurar semanas de referencia del año anterior para semanas específicas
                 </p>
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    <strong>📋 Nuevo formato JSON:</strong> Configura semanas históricas específicas para cada semana objetivo.
+                    Ejemplo: W26 2025 → semanas W25, W26, W27 del 2024
+                  </p>
+                </div>
               </div>
-              <div className="bg-blue-50 px-4 py-2 rounded-lg">
-                <p className="text-sm font-medium text-blue-900">Semana Actual</p>
-                <p className="text-lg font-bold text-blue-600">{semanaActual}</p>
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setShowBulkModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors duration-200 flex items-center space-x-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <span>Aplicar a Múltiples Tiendas</span>
+                </button>
+                <div className="bg-blue-50 px-4 py-2 rounded-lg">
+                  <p className="text-sm font-medium text-blue-900">Semana Actual</p>
+                  <p className="text-lg font-bold text-blue-600">{semanaActual}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Contenido principal */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+      {/* Mensaje de error */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
             <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-red-800">Error</h3>
-                <div className="mt-2 text-sm text-red-700">{error}</div>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      {/* Contenido principal */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Filtros */}
-        <div className="bg-white shadow sm:rounded-lg mb-6">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Filtros</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Búsqueda general */}
-              <div>
-                <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-                  Buscar por N°, Nombre o País
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id="search"
-                    placeholder="Buscar tienda..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Filtro por país */}
-              <div>
-                <label htmlFor="pais" className="block text-sm font-medium text-gray-700 mb-2">
-                  Filtrar por País
-                </label>
-                <select
-                  id="pais"
-                  value={filterPais}
-                  onChange={(e) => setFilterPais(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">Todos los países</option>
-                  {paisesUnicos.map((pais) => (
-                    <option key={pais} value={pais}>
-                      {pais}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <div className="mb-6 bg-white p-6 rounded-lg shadow">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+                Buscar tienda
+              </label>
+              <input
+                type="text"
+                id="search"
+                placeholder="Buscar por número, nombre o país..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
-
-            {/* Estadísticas de filtros */}
-            <div className="mt-4 text-sm text-gray-500">
-              Mostrando {filteredTiendas.length} de {tiendas.length} tiendas
-              {searchTerm && ` · Búsqueda: "${searchTerm}"`}
-              {filterPais !== 'all' && ` · País: ${filterPais}`}
+            <div>
+              <label htmlFor="pais" className="block text-sm font-medium text-gray-700 mb-2">
+                Filtrar por país
+              </label>
+              <select
+                id="pais"
+                value={filterPais}
+                onChange={(e) => setFilterPais(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Todos los países</option>
+                {paisesUnicos.map((pais) => (
+                  <option key={pais} value={pais}>
+                    {pais}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          {/* Estadísticas de filtros */}
+          <div className="mt-4 text-sm text-gray-500">
+            Mostrando {filteredTiendas.length} de {tiendas.length} tiendas
+            {searchTerm && ` · Búsqueda: "${searchTerm}"`}
+            {filterPais !== 'all' && ` · País: ${filterPais}`}
           </div>
         </div>
 
@@ -273,11 +338,12 @@ export default function SemanasHistoricasPage() {
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
             {filteredTiendas.map((tienda) => (
-              <TiendaItem
+              <TiendaItemJSON
                 key={tienda.id}
                 tienda={tienda}
                 semanasDisponibles={semanasDisponibles}
-                onUpdate={actualizarSemanasHistoricas}
+                semanasObjetivo={generarSemanasAñoActual()}
+                onUpdate={actualizarConfiguracionHistorica}
               />
             ))}
           </ul>
@@ -309,34 +375,72 @@ export default function SemanasHistoricasPage() {
   );
 }
 
-// Componente para cada tienda individual
-interface TiendaItemProps {
+// Componente para cada tienda individual con formato JSON
+interface TiendaItemJSONProps {
   tienda: Tienda;
   semanasDisponibles: SemanaOption[];
-  onUpdate: (tiendaId: string, semanas: string[]) => void;
+  semanasObjetivo: SemanaOption[];
+  onUpdate: (tiendaId: string, configuracion: ConfiguracionHistorica) => void;
 }
 
-function TiendaItem({ tienda, semanasDisponibles, onUpdate }: TiendaItemProps) {
-  const [semanasSeleccionadas, setSemanasSeleccionadas] = useState<string[]>(
-    tienda.semanasHistoricas ? tienda.semanasHistoricas.split(',').map(s => s.trim()) : []
-  );
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Filtrar semanas según búsqueda
-  const semanasFiltradas = semanasDisponibles.filter(semana =>
-    semana.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Manejar selección de semana
-  const handleToggleSemana = (semanaValue: string) => {
-    const nuevasSelecciones = semanasSeleccionadas.includes(semanaValue)
-      ? semanasSeleccionadas.filter(s => s !== semanaValue)
-      : [...semanasSeleccionadas, semanaValue];
+function TiendaItemJSON({ tienda, semanasDisponibles, semanasObjetivo, onUpdate }: TiendaItemJSONProps) {
+  const [configuracion, setConfiguracion] = useState<ConfiguracionHistorica>(() => {
+    if (!tienda.semanasHistoricas || tienda.semanasHistoricas.trim() === '') {
+      return {};
+    }
     
-    setSemanasSeleccionadas(nuevasSelecciones);
-    onUpdate(tienda.id, nuevasSelecciones);
+    try {
+      const parsed = JSON.parse(tienda.semanasHistoricas);
+      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+  
+  const [isOpen, setIsOpen] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState<string | null>(null);
+  const [semanaObjetivoTemp, setSemanaObjetivoTemp] = useState('');
+  const [semanasReferenciaTemp, setSemanasReferenciaTemp] = useState<string[]>([]);
+
+  const configuraciones = Object.entries(configuracion);
+
+  const iniciarEdicion = (semanaObj?: string) => {
+    if (semanaObj && configuracion[semanaObj]) {
+      setSemanaObjetivoTemp(semanaObj);
+      setSemanasReferenciaTemp([...configuracion[semanaObj]]);
+    } else {
+      setSemanaObjetivoTemp('');
+      setSemanasReferenciaTemp([]);
+    }
+    setModoEdicion(semanaObj || 'nueva');
   };
+
+  const guardarConfiguracion = () => {
+    if (!semanaObjetivoTemp || semanasReferenciaTemp.length === 0) {
+      alert('Debe seleccionar una semana objetivo y al menos una semana de referencia');
+      return;
+    }
+
+    const nuevaConfiguracion = { ...configuracion };
+    nuevaConfiguracion[semanaObjetivoTemp] = [...semanasReferenciaTemp];
+    
+    setConfiguracion(nuevaConfiguracion);
+    onUpdate(tienda.id, nuevaConfiguracion);
+    
+    setModoEdicion(null);
+    setSemanaObjetivoTemp('');
+    setSemanasReferenciaTemp([]);
+  };
+
+  const eliminarConfiguracion = (semanaObj: string) => {
+    const nuevaConfiguracion = { ...configuracion };
+    delete nuevaConfiguracion[semanaObj];
+    
+    setConfiguracion(nuevaConfiguracion);
+    onUpdate(tienda.id, nuevaConfiguracion);
+  };
+
+
 
   return (
     <li className="px-6 py-4">
@@ -344,12 +448,12 @@ function TiendaItem({ tienda, semanasDisponibles, onUpdate }: TiendaItemProps) {
         <div className="flex items-center">
           <div className="flex-shrink-0">
             <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-              semanasSeleccionadas.length > 0 
+              configuraciones.length > 0 
                 ? 'bg-green-100' 
                 : 'bg-blue-100'
             }`}>
               <span className={`text-sm font-medium ${
-                semanasSeleccionadas.length > 0 
+                configuraciones.length > 0 
                   ? 'text-green-600' 
                   : 'text-blue-600'
               }`}>
@@ -364,75 +468,156 @@ function TiendaItem({ tienda, semanasDisponibles, onUpdate }: TiendaItemProps) {
             <p className="text-xs text-gray-400 mb-1">
               {tienda.pais}
             </p>
-            <p className="text-sm text-gray-500">
-              {semanasSeleccionadas.length > 0 
-                ? `${semanasSeleccionadas.length} semana(s) seleccionada(s): ${semanasSeleccionadas.join(', ')}`
-                : 'Sin semanas configuradas'
-              }
-            </p>
+            <div className="text-sm text-gray-500">
+              {configuraciones.length > 0 ? (
+                <div className="space-y-1">
+                  {configuraciones.slice(0, 2).map(([semanaObj, referencias]) => (
+                    <div key={semanaObj} className="text-xs">
+                      <span className="font-medium text-blue-600">{semanaObj}</span> 
+                      → {referencias.join(', ')}
+                    </div>
+                  ))}
+                  {configuraciones.length > 2 && (
+                    <div className="text-xs text-gray-400">
+                      +{configuraciones.length - 2} configuración(es) más...
+                    </div>
+                  )}
+                </div>
+              ) : (
+                'Sin configuraciones históricas'
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Dropdown personalizado */}
+        {/* Botón de configuración */}
         <div className="relative">
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            {semanasSeleccionadas.length > 0 ? 'Semanas configuradas' : 'Configurar'}
+            {configuraciones.length > 0 ? `${configuraciones.length} configuración(es)` : 'Configurar'}
             <svg className="ml-2 -mr-1 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+            <div className="absolute right-0 mt-2 w-96 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10">
               <div className="p-4">
-                {/* Barra de búsqueda */}
-                <input
-                  type="text"
-                  placeholder="Buscar semana (ej: W20)"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-
-                {/* Lista de semanas */}
-                <div className="mt-3 max-h-60 overflow-y-auto">
-                  <div className="space-y-1">
-                    {semanasFiltradas.map((semana) => (
-                      <label
-                        key={semana.value}
-                        className="flex items-center p-2 rounded hover:bg-gray-50 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={semanasSeleccionadas.includes(semana.value)}
-                          onChange={() => handleToggleSemana(semana.value)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-900">
-                          {semana.label}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium">Configuraciones Históricas</h3>
+                  <button
+                    onClick={() => iniciarEdicion()}
+                    className="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
+                  >
+                    + Agregar
+                  </button>
                 </div>
 
-                {/* Botones de acción */}
-                <div className="mt-4 flex justify-between">
-                  <button
-                    onClick={() => {
-                      setSemanasSeleccionadas([]);
-                      onUpdate(tienda.id, []);
-                    }}
-                    className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800"
-                  >
-                    Limpiar Todo
-                  </button>
+                {/* Modo edición */}
+                {modoEdicion && (
+                  <div className="mb-4 p-3 border-2 border-blue-200 rounded-lg bg-blue-50">
+                    <h4 className="font-medium text-blue-900 mb-3">
+                      {modoEdicion === 'nueva' ? 'Nueva Configuración' : 'Editar Configuración'}
+                    </h4>
+                    
+                    {/* Selector de semana objetivo */}
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Semana Objetivo
+                      </label>
+                      <SearchableDropdown
+                        value={semanaObjetivoTemp}
+                        onChange={setSemanaObjetivoTemp}
+                        options={semanasObjetivo}
+                        placeholder="Seleccionar semana..."
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Selector de semanas de referencia */}
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Semanas de Referencia ({semanasReferenciaTemp.length} seleccionadas)
+                      </label>
+                      <MultiSelectDropdown
+                        values={semanasReferenciaTemp}
+                        onChange={setSemanasReferenciaTemp}
+                        options={semanasDisponibles}
+                        placeholder="Seleccionar semanas..."
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        onClick={() => setModoEdicion(null)}
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={guardarConfiguracion}
+                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de configuraciones existentes */}
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {configuraciones.map(([semanaObj, referencias]) => (
+                    <div
+                      key={semanaObj}
+                      className="flex items-center justify-between p-2 border border-gray-200 rounded-md bg-gray-50"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">
+                          {semanaObj}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          → {referencias.join(', ')}
+                        </div>
+                      </div>
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => iniciarEdicion(semanaObj)}
+                          className="p-1 text-blue-600 hover:text-blue-800"
+                          title="Editar"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => eliminarConfiguracion(semanaObj)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                          title="Eliminar"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {configuraciones.length === 0 && !modoEdicion && (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    No hay configuraciones históricas.
+                    <br />
+                    Haz clic en "Agregar" para crear una.
+                  </div>
+                )}
+
+                <div className="mt-4 pt-3 border-t border-gray-200 flex justify-end">
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700"
                   >
                     Cerrar
                   </button>
@@ -443,5 +628,344 @@ function TiendaItem({ tienda, semanasDisponibles, onUpdate }: TiendaItemProps) {
         </div>
       </div>
     </li>
+  );
+}
+
+// Componente de dropdown personalizado con búsqueda
+interface SearchableDropdownProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: SemanaOption[];
+  placeholder: string;
+  className?: string;
+}
+
+function SearchableDropdown({ value, onChange, options, placeholder, className = "" }: SearchableDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filtrar opciones basado en el término de búsqueda
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Encontrar la opción seleccionada para mostrar su label
+  const selectedOption = options.find(opt => opt.value === value);
+
+  // Cerrar dropdown cuando se hace clic fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm('');
+        setHighlightedIndex(-1);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Manejar navegación con teclado
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'Escape':
+        setIsOpen(false);
+        setSearchTerm('');
+        setHighlightedIndex(-1);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev < filteredOptions.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => 
+          prev > 0 ? prev - 1 : filteredOptions.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
+          onChange(filteredOptions[highlightedIndex].value);
+          setIsOpen(false);
+          setSearchTerm('');
+          setHighlightedIndex(-1);
+        }
+        break;
+    }
+  };
+
+  const selectOption = (optionValue: string) => {
+    onChange(optionValue);
+    setIsOpen(false);
+    setSearchTerm('');
+    setHighlightedIndex(-1);
+  };
+
+  return (
+    <div ref={dropdownRef} className={`relative ${className}`}>
+      {/* Botón principal */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={handleKeyDown}
+        className="w-full px-3 py-2 text-left border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+      >
+        <div className="flex items-center justify-between">
+          <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          <svg 
+            className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+          {/* Barra de búsqueda */}
+          <div className="p-2 border-b border-gray-200">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setHighlightedIndex(-1);
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Buscar semana (ej: W26, 2024)..."
+                className="w-full px-3 py-1 pl-8 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+              <svg 
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Lista de opciones */}
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, index) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => selectOption(option.value)}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 focus:outline-none focus:bg-blue-50 transition-colors ${
+                    highlightedIndex === index ? 'bg-blue-50' : ''
+                  } ${
+                    value === option.value ? 'bg-blue-100 text-blue-900 font-medium' : 'text-gray-900'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                No se encontraron semanas que coincidan con "{searchTerm}"
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente multi-select personalizado para semanas de referencia
+interface MultiSelectDropdownProps {
+  values: string[];
+  onChange: (values: string[]) => void;
+  options: SemanaOption[];
+  placeholder: string;
+  className?: string;
+}
+
+function MultiSelectDropdown({ values, onChange, options, placeholder, className = "" }: MultiSelectDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filtrar opciones basado en el término de búsqueda
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Obtener labels de valores seleccionados
+  const selectedLabels = values.map(value => {
+    const option = options.find(opt => opt.value === value);
+    return option ? option.label : value;
+  });
+
+  // Cerrar dropdown cuando se hace clic fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleOption = (optionValue: string) => {
+    if (values.includes(optionValue)) {
+      onChange(values.filter(v => v !== optionValue));
+    } else {
+      onChange([...values, optionValue]);
+    }
+  };
+
+  const removeValue = (valueToRemove: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange(values.filter(v => v !== valueToRemove));
+  };
+
+  return (
+    <div ref={dropdownRef} className={`relative ${className}`}>
+      {/* Botón principal */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 text-left border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors min-h-[2.5rem]"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            {values.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {selectedLabels.map((label, index) => (
+                  <span
+                    key={values[index]}
+                    className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                  >
+                    {label}
+                    <button
+                      type="button"
+                      onClick={(e) => removeValue(values[index], e)}
+                      className="ml-1 hover:text-blue-600"
+                    >
+                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-gray-500">{placeholder}</span>
+            )}
+          </div>
+          <svg 
+            className={`h-4 w-4 text-gray-400 transition-transform flex-shrink-0 ml-2 ${isOpen ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+          {/* Barra de búsqueda */}
+          <div className="p-2 border-b border-gray-200">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar semanas (ej: W26, 2024)..."
+                className="w-full px-3 py-1 pl-8 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+              <svg 
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Lista de opciones */}
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              <>
+                {/* Botones de acción rápida */}
+                <div className="p-2 border-b border-gray-100 bg-gray-50">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onChange([])}
+                      className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded"
+                    >
+                      Limpiar todo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onChange(filteredOptions.map(opt => opt.value))}
+                      className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded"
+                    >
+                      Seleccionar todos los filtrados
+                    </button>
+                  </div>
+                </div>
+
+                {/* Opciones */}
+                {filteredOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={values.includes(option.value)}
+                      onChange={() => toggleOption(option.value)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-3"
+                    />
+                    <span className="text-sm text-gray-900">{option.label}</span>
+                  </label>
+                ))}
+              </>
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                No se encontraron semanas que coincidan con "{searchTerm}"
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 } 

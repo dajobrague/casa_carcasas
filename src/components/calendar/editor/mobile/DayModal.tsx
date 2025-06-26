@@ -28,6 +28,12 @@ import {
   generarDatosTraficoEjemplo
 } from '@/lib/utils';
 import { obtenerDatosTrafico } from '@/lib/api';
+import { 
+  obtenerTraficoHistorico, 
+  obtenerTraficoNoHistorico, 
+  obtenerDiaSemana 
+} from '@/lib/historical-traffic';
+import { useAuth } from '@/context/AuthContext';
 import { HoursIndicators } from './HoursIndicators';
 import { ScheduleCard } from './ScheduleCard';
 import { TrafficTable } from './TrafficTable';
@@ -52,9 +58,13 @@ export function DayModal({
   horasEfectivasSemanalesIniciales = 0,
   onCloseWithUpdatedHours
 }: DayModalProps) {
+  // Obtener datos de autenticación para verificar si es tienda histórica
+  const { esHistorica } = useAuth();
+  
   const [actividades, setActividades] = useState<ActividadDiariaRecord[]>([]);
   const [tiendaData, setTiendaData] = useState<TiendaSupervisorRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Modal se abre inmediatamente
+  const [cargandoTrafico, setCargandoTrafico] = useState(false); // Estado específico para tabla de tráfico
   const [error, setError] = useState<string | null>(null);
   const [horasEfectivasDiarias, setHorasEfectivasDiarias] = useState(0);
   const [horasEfectivasDiariasIniciales, setHorasEfectivasDiariasIniciales] = useState(0);
@@ -64,6 +74,7 @@ export function DayModal({
   const [datosTraficoDia, setDatosTraficoDia] = useState<DatosTraficoDia | null>(null);
   const [personalEstimado, setPersonalEstimado] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<'schedule' | 'traffic'>('schedule');
+  const [datosYaCargados, setDatosYaCargados] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     hours: true,
     schedule: true,
@@ -92,10 +103,10 @@ export function DayModal({
 
   // Cargar datos del día
   useEffect(() => {
-    if (isOpen && diaId && storeRecordId) {
+    if (isOpen && diaId && storeRecordId && !datosYaCargados) {
       cargarDatosDelDia();
     }
-  }, [isOpen, diaId, storeRecordId]);
+  }, [isOpen, diaId, storeRecordId, datosYaCargados]);
 
   // Función para cargar datos del día
   const cargarDatosDelDia = async () => {
@@ -109,19 +120,49 @@ export function DayModal({
       setIsLoading(true);
       setError(null);
 
-      // Obtener datos de la tienda
-      const tiendaResponse = await obtenerDatosTienda(storeRecordId);
+      // CARGAR TODOS LOS DATOS EN PARALELO PARA MÁXIMA VELOCIDAD (MÓVIL)
+      console.log(`🚀 Iniciando carga totalmente paralela de datos (móvil)...`);
+      const parallelStartTime = Date.now();
+      
+      const [tiendaResponse, actividadesResponse, diaResponse] = await Promise.all([
+        obtenerDatosTienda(storeRecordId),
+        obtenerActividadesDiarias(storeRecordId, diaId),
+        fetch(`/api/airtable?action=obtenerDiaLaboralPorId&diaId=${diaId}`).then(res => res.json())
+      ]);
+      
+      console.log(`⚡ TODOS los datos base obtenidos en ${Date.now() - parallelStartTime}ms (móvil)`);
+      
       if (!tiendaResponse) {
         throw new Error('No se pudo obtener información de la tienda');
       }
       setTiendaData(tiendaResponse);
       const tiendaData = tiendaResponse.fields;
 
-      // Obtener actividades diarias
-      const actividadesResponse = await obtenerActividadesDiarias(storeRecordId, diaId);
       if (!actividadesResponse) {
         throw new Error('No se pudieron obtener las actividades diarias');
       }
+      
+      if (!diaResponse) {
+        throw new Error('No se pudo obtener información del día laboral');
+      }
+      
+      // Obtener fecha del día desde la respuesta o usar la prop como fallback
+      const fechaFromDiaResponse = diaResponse.fields?.Fecha;
+      let fechaDelDia = fechaFromDiaResponse ? new Date(fechaFromDiaResponse) : null;
+      
+      // Fallback: usar la fecha prop si no se pudo obtener de la respuesta
+      if (!fechaDelDia && fecha) {
+        console.log(`⚠️ FALLBACK (móvil): Usando fecha prop como respaldo`);
+        fechaDelDia = fecha;
+      }
+      
+      console.log(`🔍 DEBUG (móvil) - Respuesta del día:`, {
+        diaResponseFields: diaResponse.fields,
+        fechaFromDiaResponse,
+        fechaProp: fecha,
+        fechaDelDiaFinal: fechaDelDia,
+        fechaDelDiaString: fechaDelDia ? fechaDelDia.toISOString().split('T')[0] : 'null'
+      });
       
       // Ordenar actividades por nombre (con VACANTE al final)
       const actividadesOrdenadas = [...actividadesResponse].sort((a, b) => {
@@ -144,12 +185,116 @@ export function DayModal({
       );
       setColumnasTiempo(columnas);
 
-      // Obtener datos de tráfico reales desde la API
-      const datosTraficoDiaAPI = await obtenerDatosTrafico(diaId, storeRecordId);
+      // OBTENER DATOS DE TRÁFICO CON LÓGICA HISTÓRICA ACTUALIZADA
+      let datosTraficoDiaFinal: DatosTraficoDia | null = null;
       
-      // Si no se pudieron obtener datos de la API, usar datos de ejemplo como fallback
-      const datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnas);
+      console.log(`🔍 Estado de tienda histórica (móvil):`, {
+        esHistorica,
+        tiendaId: storeRecordId,
+        diaId,
+        fecha: fechaDelDia ? fechaDelDia.toISOString().split('T')[0] : 'null',
+        tiendaData: tiendaResponse?.fields ? {
+          Name: tiendaResponse.fields.Name,
+          'Tienda Histórica?': tiendaResponse.fields['Tienda Histórica?'],
+          'Semanas Históricas': tiendaResponse.fields['Semanas Históricas']
+        } : 'null'
+      });
+      
+      // Verificación adicional: si la tienda no está marcada como histórica pero tiene configuración JSON
+      let esHistoricaReal = esHistorica;
+      if (!esHistorica && tiendaResponse?.fields['Semanas Históricas']) {
+        console.log(`⚠️ OVERRIDE (móvil): Tienda ${storeRecordId} no está marcada como histórica pero tiene configuración de semanas históricas`);
+        console.log(`📋 Configuración encontrada:`, tiendaResponse.fields['Semanas Históricas']);
+        console.log(`🔧 FORZANDO esHistorica = true para usar configuración JSON (móvil)`);
+        esHistoricaReal = true;
+      }
+      
+      try {
+        // Iniciar carga de datos de tráfico
+        setCargandoTrafico(true);
+        
+        // Mostrar estado de carga para datos históricos
+        const startTime = Date.now();
+        if (esHistoricaReal && fechaDelDia) {
+          console.log(`⏳ Iniciando carga de datos históricos (móvil)...`);
+        }
+        
+        // Si es una tienda histórica, usar la lógica histórica con formato JSON
+        if (esHistoricaReal && fechaDelDia) {
+          const fechaStr = fechaDelDia.toISOString().split('T')[0];
+          const { obtenerFormatoSemana } = await import('@/lib/airtable');
+          const semanaObjetivo = obtenerFormatoSemana(fechaDelDia);
+          
+          console.log(`🏛️ Tienda histórica detectada (móvil), procesando semana: ${semanaObjetivo}`);
+          
+          // Usar la función actualizada con lógica histórica JSON
+          const { obtenerDatosTraficoConLogicaHistorica } = await import('@/lib/api');
+          const resultado = await obtenerDatosTraficoConLogicaHistorica(
+            diaId,
+            storeRecordId,
+            true, // esHistorica
+            fechaStr,
+            semanaObjetivo
+          );
+          
+          // Convertir TraficoHistoricoAggregado a DatosTraficoDia si es necesario
+          if (resultado && 'esDatoHistorico' in resultado && resultado.esDatoHistorico) {
+            // Es TraficoHistoricoAggregado, convertir a DatosTraficoDia
+            const historicoData = resultado as import('@/lib/historical-traffic').TraficoHistoricoAggregado;
+            
+            // Convertir la estructura de datosPorDia para que sea compatible
+            const datosPorDiaConvertidos = {
+              lunes: historicoData.datosPorDia['lunes'] || {},
+              martes: historicoData.datosPorDia['martes'] || {},
+              miercoles: historicoData.datosPorDia['miercoles'] || {},
+              jueves: historicoData.datosPorDia['jueves'] || {},
+              viernes: historicoData.datosPorDia['viernes'] || {},
+              sabado: historicoData.datosPorDia['sabado'] || {},
+              domingo: historicoData.datosPorDia['domingo'] || {}
+            };
+            
+            datosTraficoDiaFinal = {
+              horas: historicoData.horas,
+              totalMañana: historicoData.totalMañana,
+              totalTarde: historicoData.totalTarde,
+              datosPorDia: datosPorDiaConvertidos,
+              fechaInicio: historicoData.fechaInicio,
+              fechaFin: historicoData.fechaFin,
+              esDatoHistorico: true,
+              semanasReferencia: historicoData.semanasReferencia.join(', ')
+            };
+            
+            console.log(`✅ Datos históricos obtenidos para semana ${semanaObjetivo} en ${Date.now() - startTime}ms:`, {
+              semanasReferencia: historicoData.semanasReferencia,
+              fechaInicio: historicoData.fechaInicio,
+              fechaFin: historicoData.fechaFin
+            });
+          } else if (resultado) {
+            // Es DatosTraficoDia normal
+            datosTraficoDiaFinal = resultado as DatosTraficoDia;
+            console.log(`📊 Datos estándar obtenidos para semana ${semanaObjetivo}`);
+          } else {
+            console.log(`📊 No se encontró configuración histórica específica para semana ${semanaObjetivo}`);
+            datosTraficoDiaFinal = null;
+          }
+        }
+        
+        // Si no se obtuvieron datos históricos, usar la lógica normal
+        if (!datosTraficoDiaFinal) {
+          console.log('📊 Usando lógica estándar de tráfico (móvil)');
+          const datosTraficoDiaAPI = await obtenerDatosTrafico(diaId, storeRecordId);
+          datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnas);
+        }
+        
+      } catch (error) {
+        console.error('Error al procesar datos de tráfico (móvil):', error);
+        datosTraficoDiaFinal = generarDatosTraficoEjemplo(columnas);
+      }
+      
       setDatosTraficoDia(datosTraficoDiaFinal);
+      
+      // Finalizar carga de datos de tráfico
+      setCargandoTrafico(false);
       
       // Calcular personal estimado
       const { estimado } = calcularPersonalEstimado(datosTraficoDiaFinal, columnas);
@@ -197,11 +342,16 @@ export function DayModal({
         }
       }
 
+      // Marcar datos como cargados exitosamente
+      setDatosYaCargados(true);
+
     } catch (error) {
       console.error('Error al cargar datos del día:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');
+      setDatosYaCargados(false); // Permitir reintento en caso de error
     } finally {
       setIsLoading(false);
+      setCargandoTrafico(false); // Asegurar que se limpie el estado de carga de tráfico
     }
   };
 
@@ -529,7 +679,7 @@ export function DayModal({
                 <TrafficTable
                   key={`traffic-mobile-${diaId}-${actividades.length}`}
                   datosTraficoDia={datosTraficoDia}
-                  isLoading={isLoading}
+                  isLoading={cargandoTrafico}
                   error={error}
                   actividades={actividades}
                   storeRecordId={storeRecordId || undefined}

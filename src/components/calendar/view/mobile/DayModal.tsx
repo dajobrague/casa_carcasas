@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Option } from '@/components/ui/Select';
+interface OptionType {
+  value: string;
+  label: string;
+  color?: string;
+}
 import { 
   obtenerActividadesDiarias, 
   obtenerDatosTienda, 
@@ -17,7 +21,10 @@ import {
   calcularPersonalEstimado,
   generarDatosTraficoEjemplo
 } from '@/lib/utils';
-import { obtenerDatosTrafico } from '@/lib/api';
+import { obtenerDatosTrafico, obtenerDatosTraficoConLogicaHistorica } from '@/lib/api';
+import { obtenerSemanasHistoricas } from '@/lib/airtable';
+import { obtenerDiaSemana } from '@/lib/historical-traffic';
+import { useAuth } from '@/context/AuthContext';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { HoursIndicatorsView } from './HoursIndicators';
 import { ScheduleCardView } from './ScheduleCard';
@@ -40,6 +47,9 @@ export function DayViewMobile({
   storeRecordId,
   horasEfectivasSemanalesIniciales
 }: DayViewProps) {
+  // Obtener datos de contexto
+  const { esHistorica } = useAuth();
+  
   // Estados del modal
   const [expandedSections, setExpandedSections] = useState({
     hours: true,
@@ -88,6 +98,51 @@ export function DayViewMobile({
     }
   };
 
+  // Función auxiliar para intentar obtener datos de tráfico histórico
+  const intentarCargarTraficoHistorico = async (): Promise<any> => {
+    console.log(`🔍 Debug histórico mobile - diaId: ${diaId}, storeRecordId: ${storeRecordId}, fecha: ${fecha}, esHistorica: ${esHistorica}`);
+    
+    if (!diaId || !storeRecordId || !fecha || esHistorica !== true) {
+      console.log(`❌ Condiciones no cumplidas para lógica histórica`);
+      return null;
+    }
+    
+    try {
+      console.log('🏛️ Detectada tienda histórica, verificando configuración...');
+      
+      // Determinar la fecha del día
+      const fechaStr = fecha.toISOString().split('T')[0];
+      const diaSemana = obtenerDiaSemana(fechaStr);
+      
+      // Calcular la semana objetivo basado en la fecha
+      const { obtenerFormatoSemana } = await import('@/lib/airtable');
+      const semanaObjetivo = obtenerFormatoSemana(fecha);
+      
+      console.log(`📅 Procesando fecha: ${fechaStr} (${diaSemana}), semana objetivo: ${semanaObjetivo}`);
+      
+      // Usar la función con lógica histórica incluyendo semana objetivo
+      const resultado = await obtenerDatosTraficoConLogicaHistorica(
+        diaId as string,
+        storeRecordId as string,
+        true, // Es histórica
+        fechaStr,
+        semanaObjetivo // Pasar la semana objetivo
+      );
+      
+      if (resultado && 'esDatoHistorico' in resultado && resultado.esDatoHistorico) {
+        console.log(`✅ Datos de tráfico histórico obtenidos exitosamente para semana ${semanaObjetivo}`);
+        return resultado;
+      } else {
+        console.log(`📊 No se obtuvieron datos históricos para semana ${semanaObjetivo}, usando fallback`);
+        return null;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error al intentar cargar tráfico histórico:', error);
+      return null;
+    }
+  };
+
   // Función para cargar datos de tráfico (separada para lazy loading)
   const cargarDatosTrafico = async () => {
     if (!diaId || !storeRecordId || !columnasTiempo.length) return;
@@ -97,12 +152,22 @@ export function DayViewMobile({
     
     try {
       console.log('Cargando datos de tráfico para el día:', diaId);
-      const datosTraficoDiaAPI = await obtenerDatosTrafico(
-        diaId as string, 
-        storeRecordId as string
-      );
+      
+      // ADDON: Intentar primero con lógica histórica si es aplicable
+      let datosTraficoDiaAPI = await intentarCargarTraficoHistorico();
+      
+      // Si no se obtuvieron datos históricos, usar lógica estándar (comportamiento original)
+      if (!datosTraficoDiaAPI) {
+        console.log('📊 Usando lógica estándar de tráfico');
+        datosTraficoDiaAPI = await obtenerDatosTrafico(
+          diaId as string, 
+          storeRecordId as string
+        );
+      }
+      
       const datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnasTiempo);
       setDatosTraficoDia(datosTraficoDiaFinal);
+      
     } catch (error) {
       console.error('Error al cargar datos de tráfico:', error);
       setDatosTraficoDia(generarDatosTraficoEjemplo(columnasTiempo));
@@ -187,7 +252,7 @@ export function DayViewMobile({
   };
 
   // Opciones para los dropdowns con formato correcto
-  const options: Option[] = [
+  const options: OptionType[] = [
     { value: '', label: 'Seleccionar...', color: '#E5E7EB' }, // Opción vacía con etiqueta clara
     ...opcionesDropdown.map(opcion => ({
       value: opcion,
@@ -203,7 +268,7 @@ export function DayViewMobile({
   ];
   
   // Opciones para asignar (todo excepto vacío)
-  const optionsAsignar: Option[] = options.filter(opt => opt.value !== '');
+  const optionsAsignar: OptionType[] = options.filter(opt => opt.value !== '');
 
   return (
     <div className={`fixed inset-0 z-50 bg-gray-50 flex flex-col`} style={{ display: isOpen ? 'flex' : 'none' }}>

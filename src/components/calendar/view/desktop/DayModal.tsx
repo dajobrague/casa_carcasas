@@ -20,7 +20,9 @@ import {
   calcularPersonalEstimado,
   generarDatosTraficoEjemplo
 } from '@/lib/utils';
-import { obtenerDatosTrafico } from '@/lib/api';
+import { obtenerDatosTrafico, obtenerDatosTraficoConLogicaHistorica } from '@/lib/api';
+import { obtenerSemanasHistoricas } from '@/lib/airtable';
+import { obtenerDiaSemana } from '@/lib/historical-traffic';
 import { 
   HoursIndicatorsViewDesktop,
   ScheduleTableDetailedView,
@@ -167,6 +169,51 @@ export function DayViewDesktop({
     }
   }, [diaId, storeRecordId, horasEfectivasSemanalesIniciales]);
 
+  // Función auxiliar para intentar obtener datos de tráfico histórico
+  const intentarCargarTraficoHistorico = useCallback(async (): Promise<any> => {
+    logger.log(`🔍 Debug histórico - diaId: ${diaId}, storeRecordId: ${storeRecordId}, fecha: ${fecha}, esHistorica: ${esHistorica}`);
+    
+    if (!diaId || !storeRecordId || !fecha || esHistorica !== true) {
+      logger.log(`❌ Condiciones no cumplidas para lógica histórica`);
+      return null;
+    }
+    
+    try {
+      logger.log('🏛️ Detectada tienda histórica, verificando configuración...');
+      
+      // Determinar la fecha del día
+      const fechaStr = fecha.toISOString().split('T')[0];
+      const diaSemana = obtenerDiaSemana(fechaStr);
+      
+      // Calcular la semana objetivo basado en la fecha
+      const { obtenerFormatoSemana } = await import('@/lib/airtable');
+      const semanaObjetivo = obtenerFormatoSemana(fecha);
+      
+      logger.log(`📅 Procesando fecha: ${fechaStr} (${diaSemana}), semana objetivo: ${semanaObjetivo}`);
+      
+      // Usar la función con lógica histórica incluyendo semana objetivo
+      const resultado = await obtenerDatosTraficoConLogicaHistorica(
+        diaId as string,
+        storeRecordId as string,
+        true, // Es histórica
+        fechaStr,
+        semanaObjetivo // Pasar la semana objetivo
+      );
+      
+      if (resultado && 'esDatoHistorico' in resultado && resultado.esDatoHistorico) {
+        logger.log(`✅ Datos de tráfico histórico obtenidos exitosamente para semana ${semanaObjetivo}`);
+        return resultado;
+      } else {
+        logger.log(`📊 No se obtuvieron datos históricos para semana ${semanaObjetivo}, usando fallback`);
+        return null;
+      }
+      
+    } catch (error) {
+      logger.error('❌ Error al intentar cargar tráfico histórico:', error);
+      return null;
+    }
+  }, [diaId, storeRecordId, fecha, esHistorica]);
+
   // Función para cargar datos de tráfico (separada para lazy loading)
   const cargarDatosTrafico = useCallback(async () => {
     if (!diaId || !storeRecordId || !columnasTiempo.length) return;
@@ -176,12 +223,22 @@ export function DayViewDesktop({
     
     try {
       logger.log('Iniciando obtención de datos de tráfico para el día:', diaId);
-      const datosTraficoDiaAPI = await obtenerDatosTrafico(
-        diaId as string, 
-        storeRecordId as string
-      );
+      
+      // ADDON: Intentar primero con lógica histórica si es aplicable
+      let datosTraficoDiaAPI = await intentarCargarTraficoHistorico();
+      
+      // Si no se obtuvieron datos históricos, usar lógica estándar (comportamiento original)
+      if (!datosTraficoDiaAPI) {
+        logger.log('📊 Usando lógica estándar de tráfico');
+        datosTraficoDiaAPI = await obtenerDatosTrafico(
+          diaId as string, 
+          storeRecordId as string
+        );
+      }
+      
       const datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnasTiempo);
       setDatosTraficoDia(datosTraficoDiaFinal);
+      
     } catch (error) {
       logger.error('Error al cargar datos de tráfico:', error);
       setDatosTraficoDia(generarDatosTraficoEjemplo(columnasTiempo));
@@ -190,7 +247,7 @@ export function DayViewDesktop({
       setTraficoLoading(false);
       setTraficoYaCargado(true);
     }
-  }, [diaId, storeRecordId, columnasTiempo]);
+  }, [diaId, storeRecordId, columnasTiempo, intentarCargarTraficoHistorico]);
 
   // Función para alternar la sección de tráfico
   const toggleTrafico = useCallback(() => {

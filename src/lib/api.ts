@@ -1,6 +1,12 @@
 import { DatosTraficoDia } from './utils';
 import logger from './logger';
-import { memoryCache } from './cache';
+import { obtenerSemanasHistoricas } from './airtable';
+import { 
+  obtenerTraficoHistorico, 
+  obtenerTraficoNoHistorico,
+  obtenerDiaSemana,
+  TraficoHistoricoAggregado
+} from './historical-traffic';
 
 /**
  * Función para obtener datos de tráfico para un día específico
@@ -8,18 +14,6 @@ import { memoryCache } from './cache';
  */
 export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: string): Promise<DatosTraficoDia | null> {
   try {
-    // Crear clave de caché combinando día e ID de tienda
-    const cacheKey = `trafico_${diaLaboralId}_${storeRecordId}`;
-    
-    // Verificar si ya tenemos los datos en caché
-    const cachedData = memoryCache.get<DatosTraficoDia>(cacheKey);
-    if (cachedData) {
-      logger.log('Usando datos de tráfico en caché para:', diaLaboralId);
-      return cachedData;
-    }
-    
-    logger.log('Iniciando obtención de datos de tráfico para el día:', diaLaboralId);
-    
     // 1. Obtener información del día laboral
     const diaLaboral = await obtenerDiaLaboral(diaLaboralId);
     if (!diaLaboral) {
@@ -37,6 +31,11 @@ export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: s
     // 3. Obtener código de tienda
     const tiendaData = await obtenerDatosTienda(storeRecordId);
     const storeCode = tiendaData["Tienda Numero"];
+    
+    // Debug solo en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🏪 Tienda:', { storeRecordId, storeCode });
+    }
     
     if (!storeCode) {
       throw new Error('Código de tienda no encontrado');
@@ -61,9 +60,9 @@ export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: s
       // Reutilizar la misma promesa si ya estamos obteniendo datos para esta fecha
       if (!fetchPromises.has(formattedDate)) {
         // Parámetros correctos según la definición de la API
-        const fetchPromise = fetch(
-          `/api/trafico?tiendaId=${storeCode}&fechaInicio=${formattedDate}&fechaFin=${formattedDate}`,
-          {
+        const apiUrl = `/api/trafico?tiendaId=${storeCode}&fechaInicio=${formattedDate}&fechaFin=${formattedDate}`;
+        
+        const fetchPromise = fetch(apiUrl, {
             headers: {
               'Accept': 'application/json',
               'Cache-Control': 'max-age=300' // 5 minutos de caché HTTP
@@ -71,9 +70,16 @@ export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: s
           }
         ).then(async response => {
           if (!response.ok) {
-            throw new Error(`Error en la API: ${response.status} ${response.statusText}`);
+            throw new Error(`API_ERROR_${response.status}`);
           }
-          return response.json();
+          const data = await response.json();
+          return data;
+        }).catch(error => {
+          // Simplificar errores de fetch
+          if (error instanceof Error) {
+            throw new Error(error.message.substring(0, 30));
+          }
+          throw new Error('FETCH_ERROR');
         });
         
         fetchPromises.set(formattedDate, fetchPromise);
@@ -90,17 +96,16 @@ export async function obtenerDatosTrafico(diaLaboralId: string, storeRecordId: s
     }));
     
     // 6. Procesar los datos obtenidos
-    const result = procesarDatosTrafico(allData, fechaLunes.toISOString().split('T')[0], fechaDomingo.toISOString().split('T')[0]);
     
-    // 7. Guardar en caché antes de devolver (30 minutos)
-    memoryCache.set(cacheKey, result, 30 * 60);
+    const result = procesarDatosTrafico(allData, fechaLunes.toISOString().split('T')[0], fechaDomingo.toISOString().split('T')[0]);
     
     return result;
     
-  } catch (error) {
-    logger.error('Error detallado en obtenerDatosTrafico:', error);
-    return null;
-  }
+      } catch (error) {
+      // Log simplificado sin detalles largos
+      console.warn('⚠️ Error obteniendo tráfico:', error instanceof Error ? error.message.substring(0, 50) : 'Error desconocido');
+      return null;
+    }
 }
 
 /**
@@ -116,7 +121,7 @@ async function obtenerDiaLaboral(diaLaboralId: string) {
     
     return await response.json();
   } catch (error) {
-    logger.error('Error al obtener día laboral:', error);
+    console.warn('⚠️ Error día laboral:', error instanceof Error ? error.message.substring(0, 30) : 'Error');
     return null;
   }
 }
@@ -135,7 +140,7 @@ async function obtenerDatosTienda(recordId: string) {
     const data = await response.json();
     return data.fields || {};
   } catch (error) {
-    logger.error('Error al obtener datos de tienda:', error);
+    console.warn('⚠️ Error datos tienda:', error instanceof Error ? error.message.substring(0, 30) : 'Error');
     return {};
   }
 }
@@ -143,6 +148,7 @@ async function obtenerDatosTienda(recordId: string) {
 /**
  * Función para procesar los datos de tráfico
  * Versión optimizada usando Map para mejorar rendimiento
+ * Ahora soporta entradas, tickets y euros
  */
 function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: string): DatosTraficoDia {
   try {
@@ -158,12 +164,12 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
     
     // Inicializar estructura de datos usando Maps para mejor rendimiento
     const diaSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-    const datosDiasMap = new Map<string, Map<string, number>>();
+    const datosDiasMap = new Map<string, Map<string, { entradas: number; tickets: number; euros: number }>>();
     
     // Inicializar maps para cada día con horas en 0
     diaSemana.forEach(dia => {
-      const horasMap = new Map<string, number>();
-      timeSlots.forEach(hora => horasMap.set(hora, 0));
+      const horasMap = new Map<string, { entradas: number; tickets: number; euros: number }>();
+      timeSlots.forEach(hora => horasMap.set(hora, { entradas: 0, tickets: 0, euros: 0 }));
       datosDiasMap.set(dia, horasMap);
     });
     
@@ -171,12 +177,12 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
     const mapaDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     
     // Contadores para totales
-    let totalMañana = 0;
-    let totalTarde = 0;
+    let totalMañana = { entradas: 0, tickets: 0, euros: 0 };
+    let totalTarde = { entradas: 0, tickets: 0, euros: 0 };
     
     // Map para acumular el total por hora (para calcular promedios)
-    const totalHorasMap = new Map<string, number>();
-    timeSlots.forEach(hora => totalHorasMap.set(hora, 0));
+    const totalHorasMap = new Map<string, { entradas: number; tickets: number; euros: number }>();
+    timeSlots.forEach(hora => totalHorasMap.set(hora, { entradas: 0, tickets: 0, euros: 0 }));
     
     // Procesar datos más eficientemente
     for (const dayData of datosAPI) {
@@ -187,27 +193,50 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
       // Verificar que tenemos el mapa del día
       if (!horasDelDia) continue;
       
-      // Los datos ahora están en formato {hora: entradas}
+      // Los datos ahora están en formato {hora: {entradas, tickets, euros}}
       if (dayData.data && typeof dayData.data === 'object') {
-        for (const [hora, entradas] of Object.entries(dayData.data)) {
+        for (const [hora, datos] of Object.entries(dayData.data)) {
           // Verificar que la hora está en el formato correcto y dentro de nuestro rango
           if (timeSlots.includes(hora)) {
-            const entradasNum = typeof entradas === 'number' ? entradas : parseInt(String(entradas));
+            // Manejar tanto el formato nuevo como el formato legacy
+            let datosFormateados: { entradas: number; tickets: number; euros: number };
             
-            if (!isNaN(entradasNum)) {
-              // Guardar dato en el map del día
-              horasDelDia.set(hora, entradasNum);
-              
-              // Actualizar total de esa hora para calcular promedio después
-              totalHorasMap.set(hora, (totalHorasMap.get(hora) || 0) + entradasNum);
-              
-              // Actualizar totales según mañana/tarde
-              const hourNum = parseInt(hora.split(':')[0]);
-              if (hourNum < 14) {
-                totalMañana += entradasNum;
-              } else {
-                totalTarde += entradasNum;
-              }
+            if (typeof datos === 'number') {
+              // Formato legacy: solo entradas
+              datosFormateados = { entradas: datos, tickets: 0, euros: 0 };
+                         } else if (typeof datos === 'object' && datos !== null) {
+               // Formato nuevo: objeto con entradas, tickets, euros
+               const datosObj = datos as any;
+               datosFormateados = {
+                 entradas: Number(datosObj.entradas || 0),
+                 tickets: Number(datosObj.tickets || 0),
+                 euros: Number(datosObj.euros || 0)
+               };
+            } else {
+              continue;
+            }
+            
+            // Guardar dato en el map del día
+            horasDelDia.set(hora, datosFormateados);
+            
+            // Actualizar total de esa hora para calcular promedio después
+            const totalActual = totalHorasMap.get(hora) || { entradas: 0, tickets: 0, euros: 0 };
+            totalHorasMap.set(hora, {
+              entradas: totalActual.entradas + datosFormateados.entradas,
+              tickets: totalActual.tickets + datosFormateados.tickets,
+              euros: totalActual.euros + datosFormateados.euros
+            });
+            
+            // Actualizar totales según mañana/tarde
+            const hourNum = parseInt(hora.split(':')[0]);
+            if (hourNum < 14) {
+              totalMañana.entradas += datosFormateados.entradas;
+              totalMañana.tickets += datosFormateados.tickets;
+              totalMañana.euros += datosFormateados.euros;
+            } else {
+              totalTarde.entradas += datosFormateados.entradas;
+              totalTarde.tickets += datosFormateados.tickets;
+              totalTarde.euros += datosFormateados.euros;
             }
           }
         }
@@ -215,19 +244,27 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
     }
     
     // Calcular totales por día
-    const totalMañanaPorDia = Math.round(totalMañana / 7);
-    const totalTardePorDia = Math.round(totalTarde / 7);
+    const totalMañanaPorDia = {
+      entradas: Math.round(totalMañana.entradas / 7),
+      tickets: Math.round(totalMañana.tickets / 7),
+      euros: Math.round(totalMañana.euros / 7)
+    };
+    const totalTardePorDia = {
+      entradas: Math.round(totalTarde.entradas / 7),
+      tickets: Math.round(totalTarde.tickets / 7),
+      euros: Math.round(totalTarde.euros / 7)
+    };
     
     // Convertir Maps a objetos para la interfaz esperada
     // Definir con la estructura específica requerida por DatosTraficoDia
     const datosPorDia: {
-      lunes: Record<string, number>;
-      martes: Record<string, number>;
-      miercoles: Record<string, number>;
-      jueves: Record<string, number>;
-      viernes: Record<string, number>;
-      sabado: Record<string, number>;
-      domingo: Record<string, number>;
+      lunes: Record<string, { entradas: number; tickets: number; euros: number }>;
+      martes: Record<string, { entradas: number; tickets: number; euros: number }>;
+      miercoles: Record<string, { entradas: number; tickets: number; euros: number }>;
+      jueves: Record<string, { entradas: number; tickets: number; euros: number }>;
+      viernes: Record<string, { entradas: number; tickets: number; euros: number }>;
+      sabado: Record<string, { entradas: number; tickets: number; euros: number }>;
+      domingo: Record<string, { entradas: number; tickets: number; euros: number }>;
     } = {
       lunes: {},
       martes: {},
@@ -244,12 +281,16 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
     }
     
     // Crear estructura de horas para compatibilidad con la interfaz existente
-    const horas: Record<string, number> = {};
+    const horas: Record<string, { entradas: number; tickets: number; euros: number }> = {};
     for (const [hora, total] of totalHorasMap.entries()) {
-      horas[hora] = Math.round(total / 7); // Promedio por día
+      horas[hora] = {
+        entradas: Math.round(total.entradas / 7),
+        tickets: Math.round(total.tickets / 7),
+        euros: Math.round(total.euros / 7)
+      };
     }
     
-    return {
+    const resultado = {
       horas,
       totalMañana: totalMañanaPorDia,
       totalTarde: totalTardePorDia,
@@ -257,12 +298,23 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
       fechaInicio,
       fechaFin
     };
+    
+    // Debug solo en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 Tráfico procesado:', {
+        horas: Object.keys(horas).length,
+        totalMañana: totalMañana.entradas,
+        totalTarde: totalTarde.entradas
+      });
+    }
+    
+    return resultado;
   } catch (error) {
     logger.error('Error procesando datos de tráfico:', error);
     return {
       horas: {},
-      totalMañana: 0,
-      totalTarde: 0,
+      totalMañana: { entradas: 0, tickets: 0, euros: 0 },
+      totalTarde: { entradas: 0, tickets: 0, euros: 0 },
       datosPorDia: {
         lunes: {},
         martes: {},
@@ -275,5 +327,127 @@ function procesarDatosTrafico(datosAPI: any[], fechaInicio: string, fechaFin: st
       fechaInicio,
       fechaFin
     };
+  }
+}
+
+/**
+ * Función addon para obtener datos de tráfico con lógica histórica
+ * @param diaLaboralId - ID del día laboral
+ * @param storeRecordId - ID de la tienda
+ * @param esHistorica - Boolean que indica si la tienda es histórica
+ * @param fecha - Fecha del día en formato YYYY-MM-DD (opcional)
+ * @param semanaObjetivo - Semana objetivo en formato "W26 2025" (opcional, se calcula automáticamente si no se proporciona)
+ * @returns Promise que resuelve con datos de tráfico (histórico o estándar)
+ */
+export async function obtenerDatosTraficoConLogicaHistorica(
+  diaLaboralId: string,
+  storeRecordId: string,
+  esHistorica: boolean,
+  fecha?: string,
+  semanaObjetivo?: string
+): Promise<DatosTraficoDia | TraficoHistoricoAggregado | null> {
+  try {
+    // Si no es histórica, usar lógica estándar existente
+    if (!esHistorica) {
+      return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+    }
+
+    // Determinar la fecha y día de la semana
+    let fechaObjetivo = fecha;
+    if (!fechaObjetivo) {
+      // Si no se proporciona fecha, usar la fecha actual
+      fechaObjetivo = new Date().toISOString().split('T')[0];
+    }
+
+    // Determinar la semana objetivo
+    let semanaObjetivoFinal = semanaObjetivo;
+    if (!semanaObjetivoFinal) {
+      // Calcular automáticamente la semana objetivo basado en la fecha
+      const { obtenerFormatoSemana } = await import('@/lib/airtable');
+      const fechaObj = new Date(fechaObjetivo);
+      semanaObjetivoFinal = obtenerFormatoSemana(fechaObj);
+    }
+
+    console.log(`🎯 Procesando tráfico histórico para fecha: ${fechaObjetivo}, semana objetivo: ${semanaObjetivoFinal}`);
+
+    // Para tiendas históricas, verificar si tienen semanas configuradas para esta semana específica
+    const { obtenerSemanasHistoricasPorSemana } = await import('@/lib/airtable');
+    console.log(`🔍 Buscando configuración histórica para tienda ${storeRecordId}, semana: ${semanaObjetivoFinal}`);
+    const semanasReferencia = await obtenerSemanasHistoricasPorSemana(storeRecordId, semanaObjetivoFinal);
+    console.log(`📋 Resultado de búsqueda:`, semanasReferencia);
+    
+    // Si no tiene semanas configuradas para esta semana específica, usar lógica estándar
+    if (!semanasReferencia || semanasReferencia.length === 0) {
+      console.log(`📊 No hay configuración histórica para semana ${semanaObjetivoFinal}, usando lógica estándar`);
+      return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+    }
+
+    console.log(`📋 Semanas de referencia encontradas para ${semanaObjetivoFinal}:`, semanasReferencia);
+
+    const diaObjetivo = obtenerDiaSemana(fechaObjetivo);
+    
+    console.log(`📈 Obteniendo tráfico histórico para: ${fechaObjetivo} (${diaObjetivo}), semanas: ${semanasReferencia.join(', ')}`);
+
+    // Obtener datos históricos
+    const datosHistoricos = await obtenerTraficoHistorico(
+      semanasReferencia,
+      storeRecordId,
+      diaObjetivo
+    );
+
+    if (datosHistoricos) {
+      // Agregar metadata sobre la configuración usada
+      datosHistoricos.semanaObjetivo = semanaObjetivoFinal;
+      datosHistoricos.semanasReferencia = semanasReferencia;
+      
+      console.log(`✅ Datos históricos obtenidos exitosamente para semana ${semanaObjetivoFinal}`);
+      return datosHistoricos;
+    } else {
+      // Si falla la obtención histórica, usar lógica estándar como fallback
+      console.warn(`⚠️ Falló la obtención de datos históricos para semana ${semanaObjetivoFinal}, usando lógica estándar como fallback`);
+      return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+    }
+
+  } catch (error) {
+    console.error('Error en obtenerDatosTraficoConLogicaHistorica:', error);
+    // En caso de error, usar lógica estándar como fallback
+    return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+  }
+}
+
+/**
+ * Función addon para tiendas NO históricas que usa promedios de 4 semanas
+ * @param diaLaboralId - ID del día laboral
+ * @param storeRecordId - ID de la tienda
+ * @param fecha - Fecha del día en formato YYYY-MM-DD
+ * @returns Promise que resuelve con datos de tráfico promediados
+ */
+export async function obtenerDatosTraficoPromedio4Semanas(
+  diaLaboralId: string,
+  storeRecordId: string,
+  fecha: string
+): Promise<DatosTraficoDia | TraficoHistoricoAggregado | null> {
+  try {
+    const diaObjetivo = obtenerDiaSemana(fecha);
+    
+    console.log(`Obteniendo tráfico promedio 4 semanas para: ${fecha} (${diaObjetivo})`);
+
+    const datosPromedio = await obtenerTraficoNoHistorico(
+      storeRecordId,
+      fecha,
+      diaObjetivo
+    );
+
+    if (datosPromedio) {
+      return datosPromedio;
+    } else {
+      // Si falla, usar lógica estándar como fallback
+      console.warn('Falló la obtención de promedio 4 semanas, usando lógica estándar como fallback');
+      return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+    }
+
+  } catch (error) {
+    console.error('Error en obtenerDatosTraficoPromedio4Semanas:', error);
+    return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
   }
 } 

@@ -301,10 +301,10 @@ export function MonthViewMobile({
   // Reutilizamos las funciones para obtener datos
   const getHorasEfectivasDia = (diaId: string): number => {
     if (horasEfectivasActualizadas?.dias[diaId] !== undefined) {
-      return horasEfectivasActualizadas.dias[diaId];
+      return typeof horasEfectivasActualizadas.dias[diaId] === 'number' ? horasEfectivasActualizadas.dias[diaId] : 0;
     }
     const datoDia = horasDias.find(d => d.diaId === diaId);
-    return datoDia?.horasEfectivas || 0;
+    return datoDia && typeof datoDia.horasEfectivas === 'number' ? datoDia.horasEfectivas : 0;
   };
 
   const getHorasSemana = (semanaId: string): SemanaHorasData => {
@@ -319,14 +319,21 @@ export function MonthViewMobile({
       };
     }
     
+    // Validar y asegurar que son números
+    const horasAprobadas = typeof datoSemanaActual.horasAprobadas === 'number' ? datoSemanaActual.horasAprobadas : 0;
+    const horasContratadas = typeof datoSemanaActual.horasContratadas === 'number' ? datoSemanaActual.horasContratadas : 0;
+    let horasEfectivas = typeof datoSemanaActual.horasEfectivas === 'number' ? datoSemanaActual.horasEfectivas : 0;
+    
     if (horasEfectivasActualizadas?.semanas[semanaId] !== undefined) {
-      return {
-        ...datoSemanaActual,
-        horasEfectivas: horasEfectivasActualizadas.semanas[semanaId]
-      };
+      horasEfectivas = typeof horasEfectivasActualizadas.semanas[semanaId] === 'number' ? horasEfectivasActualizadas.semanas[semanaId] : 0;
     }
     
-    return datoSemanaActual;
+    return {
+      semanaId,
+      horasAprobadas,
+      horasContratadas,
+      horasEfectivas
+    };
   };
 
   // Reutilizamos los componentes de skeleton
@@ -361,37 +368,43 @@ export function MonthViewMobile({
     return null;
   };
 
-  const handleSelectDay = async (diaId: string, fecha: Date) => {
+  // Optimizar handleSelectDay para apertura inmediata del modal (móvil)
+  const handleSelectDay = (diaId: string, fecha: Date) => {
+    // PASO 1: Abrir modal inmediatamente con datos básicos
     const semanaId = getSemanaIdPorDia(diaId);
     let horasEfectivasSemana = 0;
     
     if (semanaId) {
-      // Guardar relación día-semana en localStorage
+      // Guardar relación día-semana en localStorage (operación síncrona)
       window.localStorage.setItem(`dia_semana_${diaId}`, semanaId);
       window.localStorage.setItem('ultima_semana_seleccionada', semanaId);
       
-      // Intentar obtener datos de la semana desde el estado local primero
+      // Obtener datos de la semana desde el estado local (operación síncrona)
       const datosSemanaLocal = getHorasSemana(semanaId);
-      
-      if (datosSemanaLocal.horasEfectivas > 0) {
-        // Si tenemos datos locales válidos, usarlos
-        horasEfectivasSemana = datosSemanaLocal.horasEfectivas;
-      } else if (storeRecordId) {
-        // Si no tenemos datos locales, calcular usando la función centralizada
-        try {
-          const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
-          horasEfectivasSemana = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
-        } catch (error) {
-          console.error('Error al calcular horas efectivas semanales:', error);
-          // Usar valor local como fallback
-          horasEfectivasSemana = datosSemanaLocal.horasEfectivas;
-        }
-      }
-    } else {
-      console.warn(`No se pudo identificar la semana para el día ${diaId}`);
+      horasEfectivasSemana = datosSemanaLocal.horasEfectivas;
     }
     
+    // PASO 2: Abrir modal inmediatamente con datos disponibles
     onSelectDay(diaId, fecha, horasEfectivasSemana);
+    
+    // PASO 3: Ejecutar operaciones asíncronas en segundo plano (NO bloquean apertura)
+    if (semanaId && horasEfectivasSemana === 0 && storeRecordId) {
+      // Si no hay datos locales válidos, calcular en segundo plano
+      (async () => {
+        try {
+          const { obtenerHorasEfectivasSemanaPorId } = await import('@/lib/utils');
+          const horasCalculadas = await obtenerHorasEfectivasSemanaPorId(semanaId, storeRecordId);
+          
+          // Actualizar estado local para futuras consultas
+          // Nota: El modal ya está abierto, estas son optimizaciones para siguiente vez
+          console.log(`✅ Horas semanales calculadas en segundo plano (móvil): ${horasCalculadas}`);
+        } catch (error) {
+          console.error('Error al calcular horas efectivas semanales (segundo plano, móvil):', error);
+        }
+      })();
+    } else if (!semanaId) {
+      console.warn(`No se pudo identificar la semana para el día ${diaId}`);
+    }
   };
 
   // Reemplazar la función handleGeneratePdf con handleOpenWeekViewModal

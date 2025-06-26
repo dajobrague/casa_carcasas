@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { DatosTraficoDia } from '@/lib/utils';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 
 interface TrafficTableViewProps {
@@ -149,9 +149,29 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
 
   return (
     <div className="space-y-3">
-      {/* Fechas del período */}
-      {datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin && (
+      {/* Información del período - Histórico o Normal */}
+      {datosTraficoDia && (
         <div className="flex flex-wrap items-center gap-2 p-3 bg-white rounded-lg shadow-sm">
+          {/* Mostrar información histórica si aplica */}
+          {datosTraficoDia.esDatoHistorico && datosTraficoDia.semanasReferencia ? (
+            <>
+              <div className="flex items-center">
+                <div className="flex items-center gap-1">
+                  <BarChart3 className="w-3 h-3 text-orange-600" />
+                  <span className="text-xs font-medium uppercase text-orange-600">Promedio Histórico:</span>
+                </div>
+                <span className="text-xs bg-orange-50 px-2 py-0.5 rounded-full ml-1 border border-orange-200 text-orange-700">
+                  {datosTraficoDia.semanasReferencia}
+                </span>
+              </div>
+              <div className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                Año anterior
+              </div>
+            </>
+          ) : (
+            /* Mostrar fechas normales si no es histórico */
+            datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin && (
+              <>
           <div className="flex items-center">
             <span className="text-xs font-medium uppercase text-gray-600">Inicio:</span>
             <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaInicio}</span>
@@ -160,6 +180,9 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
             <span className="text-xs font-medium uppercase text-gray-600">Fin:</span>
             <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaFin}</span>
           </div>
+              </>
+            )
+          )}
         </div>
       )}
       
@@ -220,11 +243,19 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
         <div className="grid grid-cols-2 gap-3">
           <div className="text-center p-2 bg-blue-50 rounded-lg">
             <div className="text-xs text-blue-600 font-medium">Total Mañanas</div>
-            <div className="text-lg font-bold text-blue-700">{datosTraficoDia.totalMañana * 7}</div>
+            <div className="text-lg font-bold text-blue-700">
+              {typeof datosTraficoDia.totalMañana === 'number' 
+                ? datosTraficoDia.totalMañana * 7 
+                : datosTraficoDia.totalMañana.entradas * 7}
+            </div>
           </div>
           <div className="text-center p-2 bg-blue-50 rounded-lg">
             <div className="text-xs text-blue-600 font-medium">Total Tardes</div>
-            <div className="text-lg font-bold text-blue-700">{datosTraficoDia.totalTarde * 7}</div>
+            <div className="text-lg font-bold text-blue-700">
+              {typeof datosTraficoDia.totalTarde === 'number' 
+                ? datosTraficoDia.totalTarde * 7 
+                : datosTraficoDia.totalTarde.entradas * 7}
+            </div>
           </div>
         </div>
       </div>
