@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { obtenerDatosTienda, ActividadDiariaRecord, TiendaSupervisorRecord } from '@/lib/airtable';
-import { DatosTraficoDia } from '@/lib/utils';
+import { DatosTraficoDia, formatNumber, formatCurrency } from '@/lib/utils';
 import { Users, Ticket, Euro, BarChart3 } from 'lucide-react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
@@ -222,6 +222,74 @@ export function TrafficTable({
     return Math.round(estimado);
   };
 
+  // Función para detectar si es una configuración por día específico
+  const esConfiguracionPorDia = (): boolean => {
+    const referencias = datosTraficoDia?.semanasReferencia;
+    if (!referencias) return false;
+    
+    if (Array.isArray(referencias)) {
+      return referencias.some((ref: string) => 
+        ref.includes('Días específicos:') || ref.includes('Día exacto:')
+      );
+    } else {
+      return referencias.includes('Días específicos:') || referencias.includes('Día exacto:');
+    }
+  };
+
+  // Función para detectar si es promedio de 4 semanas (tienda no histórica)
+  const esPromedio4Semanas = (): boolean => {
+    const referencias = datosTraficoDia?.semanasReferencia;
+    if (!referencias) return false;
+    
+    if (Array.isArray(referencias)) {
+      return referencias.some((ref: string) => 
+        ref.includes('Promedio últimas 4 semanas')
+      );
+    } else {
+      return referencias.includes('Promedio últimas 4 semanas');
+    }
+  };
+
+  // Función para extraer las fechas específicas usando el mapping del datosPorDia
+  const obtenerFechasEspecificas = (): Record<string, string> => {
+    const fechasMap: Record<string, string> = {};
+    
+    if (!datosTraficoDia?.datosPorDia) return fechasMap;
+    
+    // Obtener las fechas de referencia del header de la respuesta
+    const fechaInicio = datosTraficoDia.fechaInicio;
+    const fechaFin = datosTraficoDia.fechaFin;
+    
+    if (!fechaInicio || !fechaFin) return fechasMap;
+    
+    // Generar fechas desde fechaInicio hasta fechaFin
+    const fechaInicioObj = new Date(fechaInicio);
+    const fechaFinObj = new Date(fechaFin);
+    const fechasReferencia: string[] = [];
+    
+    for (let fecha = new Date(fechaInicioObj); fecha <= fechaFinObj; fecha.setDate(fecha.getDate() + 1)) {
+      fechasReferencia.push(fecha.toISOString().split('T')[0]);
+    }
+    
+    // Mapear cada día de la semana con su fecha de referencia correspondiente
+    const diasSemanaOrdenados = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    const diasDisponibles = Object.keys(datosTraficoDia.datosPorDia);
+    
+    diasDisponibles.forEach((dia, index) => {
+      if (index < fechasReferencia.length) {
+        const fechaReferencia = fechasReferencia[index];
+        // Formatear fecha para mostrar día/mes con indicación del año anterior
+        const fechaObj = new Date(fechaReferencia);
+        const diaNum = fechaObj.getDate().toString().padStart(2, '0');
+        const mes = (fechaObj.getMonth() + 1).toString().padStart(2, '0');
+        const año = fechaObj.getFullYear();
+        fechasMap[dia] = `${diaNum}/${mes}/${año}`;
+      }
+    });
+    
+    return fechasMap;
+  };
+
   // Si hay error, mostrar mensaje
   if (error) {
     return (
@@ -301,35 +369,71 @@ export function TrafficTable({
   return (
     <div className="space-y-3">
       {/* Fechas del período o información histórica */}
-      {datosTraficoDia && (
-        <div className="flex flex-wrap items-center gap-2 p-3 bg-white rounded-lg shadow-sm">
-          {datosTraficoDia.esDatoHistorico && datosTraficoDia.semanasReferencia ? (
+      {!isLoading && datosTraficoDia && (
+        <div className="p-3 bg-gray-50 border-b">
+          {(datosTraficoDia.esDatoHistorico || esPromedio4Semanas()) && datosTraficoDia.semanasReferencia ? (
             <>
-              <div className="flex items-center">
-                                  <div className="flex items-center gap-1">
-                    <BarChart3 className="w-3 h-3 text-orange-600" />
-                    <span className="text-xs font-medium">Promedio Histórico:</span>
-                  </div>
-                <span className="text-xs bg-orange-50 px-2 py-0.5 rounded-full ml-1 text-orange-700 font-medium">
-                  {datosTraficoDia.semanasReferencia}
-                </span>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-1">
+                  {Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:')) ? (
+                    <>
+                      <BarChart3 className="w-3 h-3 text-purple-600" />
+                      <span className="text-xs font-medium">Día Específico:</span>
+                    </>
+                  ) : Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Días específicos:')) ? (
+                    <>
+                      <BarChart3 className="w-3 h-3 text-purple-600" />
+                      <span className="text-xs font-medium">Días Específicos:</span>
+                    </>
+                  ) : esPromedio4Semanas() ? (
+                    <>
+                      <BarChart3 className="w-3 h-3 text-blue-600" />
+                      <span className="text-xs font-medium">Promedio 4 Semanas:</span>
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="w-3 h-3 text-orange-600" />
+                      <span className="text-xs font-medium">Promedio Histórico:</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-medium">
-                Año anterior
-              </span>
+              {!esConfiguracionPorDia() && !esPromedio4Semanas() && (
+                <div className={`text-xs px-2 py-1 rounded-full font-medium inline-block mb-2 ${
+                  Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:') || ref.includes('Días específicos:'))
+                    ? 'bg-purple-50 text-purple-700'
+                    : 'bg-orange-50 text-orange-700'
+                }`}>
+                  {Array.isArray(datosTraficoDia.semanasReferencia) ? datosTraficoDia.semanasReferencia.join(', ') : datosTraficoDia.semanasReferencia}
+                </div>
+              )}
+              <div className={`text-xs px-2 py-1 rounded-full font-medium inline-block ${
+                Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:') || ref.includes('Días específicos:'))
+                  ? 'bg-purple-100 text-purple-800'
+                  : esPromedio4Semanas()
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-orange-100 text-orange-800'
+              }`}>
+                {Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:') || ref.includes('Días específicos:'))
+                  ? 'Comparable por día'
+                  : esPromedio4Semanas()
+                  ? 'Últimas 4 semanas'
+                  : 'Año anterior'
+                }
+              </div>
             </>
           ) : (
             datosTraficoDia.fechaInicio && datosTraficoDia.fechaFin && (
-              <>
-          <div className="flex items-center">
-            <span className="text-xs font-medium uppercase text-gray-600">Inicio:</span>
-            <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaInicio}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-xs font-medium uppercase text-gray-600">Fin:</span>
-            <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaFin}</span>
-          </div>
-              </>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase">Inicio:</span>
+                  <span className="text-xs bg-blue-50 px-2 py-1 rounded-full">{datosTraficoDia.fechaInicio}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase">Fin:</span>
+                  <span className="text-xs bg-blue-50 px-2 py-1 rounded-full">{datosTraficoDia.fechaFin}</span>
+                </div>
+              </div>
             )
           )}
         </div>
@@ -384,22 +488,36 @@ export function TrafficTable({
       <div className="bg-white rounded-lg shadow-sm p-3">
         <div className="mb-2 text-sm font-medium text-gray-700">Seleccionar día:</div>
         <div className="flex overflow-x-auto pb-2 gap-1 hide-scrollbar">
-          {diasDisponibles.map(dia => (
-            <button
-              key={dia}
-              onClick={(event) => {
-                event.stopPropagation();
-                setSelectedDay(dia);
-              }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                diaActual === dia 
-                  ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                  : 'bg-gray-100 text-gray-700 border border-gray-200'
-              }`}
-            >
-              {diasSemana[dia as keyof typeof diasSemana] || dia}
-            </button>
-          ))}
+          {diasDisponibles.map(dia => {
+            const fechasEspecificas = obtenerFechasEspecificas();
+            const fechaEspecifica = fechasEspecificas[dia];
+            const esPorDia = esConfiguracionPorDia();
+            const nombreDia = diasSemana[dia as keyof typeof diasSemana] || dia;
+            
+            return (
+              <button
+                key={dia}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedDay(dia);
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                  diaActual === dia 
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                    : 'bg-gray-100 text-gray-700 border border-gray-200'
+                }`}
+              >
+                {esPorDia && fechaEspecifica ? (
+                  <div className="flex flex-col items-center">
+                    <span>{nombreDia}</span>
+                    <span className="text-xs text-purple-600">{fechaEspecifica}</span>
+                  </div>
+                ) : (
+                  nombreDia
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
       
@@ -407,7 +525,16 @@ export function TrafficTable({
       <div className="bg-white rounded-lg shadow-sm p-3">
         <div className="mb-2 flex justify-between items-center">
           <h4 className="text-sm font-medium text-gray-700">
-            Tráfico para {diasSemana[diaActual as keyof typeof diasSemana] || diaActual}:
+            {(() => {
+              const fechasEspecificas = obtenerFechasEspecificas();
+              const fechaEspecifica = fechasEspecificas[diaActual];
+              const esPorDia = esConfiguracionPorDia();
+              const nombreDia = diasSemana[diaActual as keyof typeof diasSemana] || diaActual;
+              
+              return esPorDia && fechaEspecifica 
+                ? `${nombreDia} (${fechaEspecifica})`
+                : `Tráfico para ${nombreDia}:`;
+            })()}
           </h4>
           <div className="text-xs bg-blue-100 px-2 py-0.5 rounded-full">
             Total: {Object.values(datosDia).reduce((sum: number, datosHora: any) => {
@@ -496,11 +623,12 @@ export function TrafficTable({
               {(() => {
                 if (typeof datosTraficoDia.totalMañana === 'number') {
                   // Formato legacy
-                  return tabActivo === 'entradas' ? (datosTraficoDia.totalMañana * 7) : 0;
+                  const valor = tabActivo === 'entradas' ? (datosTraficoDia.totalMañana * 7) : 0;
+                  return tabActivo === 'euros' ? formatCurrency(valor) : formatNumber(valor);
                 } else {
                   // Formato nuevo
                   const valor = datosTraficoDia.totalMañana[tabActivo] * 7;
-                  return tabActivo === 'euros' ? `€${valor.toFixed(2)}` : valor;
+                  return tabActivo === 'euros' ? formatCurrency(valor) : formatNumber(valor);
                 }
               })()}
             </div>
@@ -523,11 +651,12 @@ export function TrafficTable({
               {(() => {
                 if (typeof datosTraficoDia.totalTarde === 'number') {
                   // Formato legacy
-                  return tabActivo === 'entradas' ? (datosTraficoDia.totalTarde * 7) : 0;
+                  const valor = tabActivo === 'entradas' ? (datosTraficoDia.totalTarde * 7) : 0;
+                  return tabActivo === 'euros' ? formatCurrency(valor) : formatNumber(valor);
                 } else {
                   // Formato nuevo
                   const valor = datosTraficoDia.totalTarde[tabActivo] * 7;
-                  return tabActivo === 'euros' ? `€${valor.toFixed(2)}` : valor;
+                  return tabActivo === 'euros' ? formatCurrency(valor) : formatNumber(valor);
                 }
               })()}
             </div>

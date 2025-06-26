@@ -7,6 +7,29 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Formatea un número como entero con separadores de miles
+ * @param value - Número a formatear
+ * @returns Número formateado como string
+ */
+export function formatNumber(value: number): string {
+  return Math.round(value).toLocaleString('es-ES');
+}
+
+/**
+ * Formatea un número como moneda en euros
+ * @param value - Número a formatear
+ * @returns Número formateado como moneda
+ */
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+/**
  * Extrae un valor numérico de un campo de Airtable que puede ser número o array
  */
 export function extraerValorNumerico(campo: any): number {

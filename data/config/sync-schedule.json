@@ -4,7 +4,7 @@
     "schedule": "daily",
     "time": "23:00",
     "dayOfWeek": "1",
-    "lastRun": "2025-06-11T05:05:29.756Z"
+    "lastRun": "2025-06-26T05:21:37.550Z"
   },
   "tiendas": {
     "enabled": false,

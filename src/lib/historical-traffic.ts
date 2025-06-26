@@ -331,16 +331,16 @@ async function obtenerDatosTraficoMultiplesFechasIndividual(
         
         const data = await response.json();
         
-        if (data && data.datosPorHora && typeof data.datosPorHora === 'object') {
+        if (data && data.entradasPorHora && typeof data.entradasPorHora === 'object') {
           const datosTraficoDia: DatosTraficoDia = {
-            horas: data.datosPorHora,
+            horas: data.entradasPorHora,
             totalMañana: { entradas: 0, tickets: 0, euros: 0 },
             totalTarde: { entradas: 0, tickets: 0, euros: 0 },
             fechaInicio: fecha,
             fechaFin: fecha
           };
           
-          Object.entries(data.datosPorHora).forEach(([hora, datos]) => {
+          Object.entries(data.entradasPorHora).forEach(([hora, datos]) => {
             const horaNum = parseInt(hora.split(':')[0]);
             
             if (!isNaN(horaNum) && datos && typeof datos === 'object') {
@@ -554,6 +554,197 @@ export async function obtenerTraficoNoHistorico(
 }
 
 /**
+ * Función para obtener tráfico promedio de las últimas 4 semanas 
+ * para tiendas no históricas (día de la semana vs día de la semana)
+ * @param storeRecordId - ID de la tienda
+ * @param fechaObjetivo - Fecha objetivo de la semana a calcular
+ * @returns Promise con los datos de tráfico promedio de las últimas 4 semanas
+ */
+export async function obtenerTraficoPromedioUltimas4Semanas(
+  storeRecordId: string,
+  fechaObjetivo: string
+): Promise<TraficoHistoricoAggregado | null> {
+  try {
+    console.log(`📊 Calculando tráfico promedio últimas 4 semanas para semana de ${fechaObjetivo}`);
+    
+    // Obtener todas las fechas de la semana objetivo
+    const fechasSemanaObjetivo = obtenerFechasSemana(fechaObjetivo);
+    console.log(`📅 Fechas semana objetivo:`, fechasSemanaObjetivo);
+    
+    // Generar fechas para las últimas 4 semanas completas
+    const todasLasFechas: string[] = [];
+    const fechaBase = new Date(fechaObjetivo);
+    
+    // Para cada una de las últimas 4 semanas
+    for (let semanaAtras = 1; semanaAtras <= 4; semanaAtras++) {
+      // Calcular la fecha del mismo día de la semana, pero X semanas atrás
+      const fechaReferencia = new Date(fechaBase);
+      fechaReferencia.setDate(fechaBase.getDate() - (semanaAtras * 7));
+      
+      // Obtener todas las fechas de esa semana
+      const fechasSemanaReferencia = obtenerFechasSemana(fechaReferencia.toISOString().split('T')[0]);
+      todasLasFechas.push(...fechasSemanaReferencia);
+    }
+    
+    console.log(`📊 Obteniendo datos para ${todasLasFechas.length} fechas de las últimas 4 semanas`);
+    
+    // Para promedio 4 semanas, usar método individual directamente (más confiable para 28 fechas)
+    const datosTrafico = await obtenerDatosTraficoMultiplesFechasIndividual(todasLasFechas, storeRecordId);
+    
+    // Filtrar datos válidos
+    const datosValidos = datosTrafico.filter(item => item.datos !== null) as Array<{
+      fecha: string;
+      datos: DatosTraficoDia;
+    }>;
+    
+    console.log(`✅ Datos válidos obtenidos: ${datosValidos.length} de ${todasLasFechas.length} fechas`);
+    
+    // Si no hay datos en absoluto, retornar null
+    if (datosValidos.length === 0) {
+      console.warn(`❌ No se encontraron datos para ninguna de las últimas 4 semanas`);
+      return null;
+    }
+    
+    // Calcular promedios por día de la semana con la nueva lógica
+    const promediosPorDia = calcularPromediosPorDiaConNuevaLogica(datosValidos);
+    
+    // Calcular horas de toda la semana combinando todos los días
+    const horasSemanales: Record<string, { entradas: number; tickets: number; euros: number }> = {};
+    Object.values(promediosPorDia).forEach(datosDelDia => {
+      Object.entries(datosDelDia).forEach(([hora, datos]) => {
+        if (!horasSemanales[hora]) {
+          horasSemanales[hora] = { entradas: 0, tickets: 0, euros: 0 };
+        }
+        horasSemanales[hora].entradas += datos.entradas;
+        horasSemanales[hora].tickets += datos.tickets;
+        horasSemanales[hora].euros += datos.euros;
+      });
+    });
+    
+    // Calcular totales de mañana y tarde (promedio de las 4 semanas)
+    const totalMañanaSuma = Object.entries(horasSemanales)
+      .filter(([hora]) => parseInt(hora.split(':')[0]) < 14)
+      .reduce((sum, [, valor]) => ({
+        entradas: sum.entradas + valor.entradas,
+        tickets: sum.tickets + valor.tickets,
+        euros: sum.euros + valor.euros
+      }), { entradas: 0, tickets: 0, euros: 0 });
+    
+    const totalTardeSuma = Object.entries(horasSemanales)
+      .filter(([hora]) => parseInt(hora.split(':')[0]) >= 14)
+      .reduce((sum, [, valor]) => ({
+        entradas: sum.entradas + valor.entradas,
+        tickets: sum.tickets + valor.tickets,
+        euros: sum.euros + valor.euros
+      }), { entradas: 0, tickets: 0, euros: 0 });
+
+    // Dividir entre 4 para obtener el promedio real
+    const totalMañana = {
+      entradas: Math.round(totalMañanaSuma.entradas / 4),
+      tickets: Math.round(totalMañanaSuma.tickets / 4),
+      euros: Math.round((totalMañanaSuma.euros / 4) * 100) / 100
+    };
+    
+    const totalTarde = {
+      entradas: Math.round(totalTardeSuma.entradas / 4),
+      tickets: Math.round(totalTardeSuma.tickets / 4),
+      euros: Math.round((totalTardeSuma.euros / 4) * 100) / 100
+    };
+
+    console.log(`✅ Promedio 4 semanas calculado: ${datosValidos.length} días válidos de ${todasLasFechas.length} posibles`);
+
+    return {
+      horas: horasSemanales,
+      totalMañana,
+      totalTarde,
+      datosPorDia: promediosPorDia,
+      fechaInicio: fechasSemanaObjetivo[0],
+      fechaFin: fechasSemanaObjetivo[6],
+      esDatoHistorico: false,
+      semanasReferencia: [`Promedio últimas 4 semanas`],
+      semanaObjetivo: `Semana de ${fechaObjetivo}`
+    };
+    
+  } catch (error) {
+    console.error('❌ Error al calcular promedio últimas 4 semanas:', error instanceof Error ? error.message : 'Error desconocido');
+    return null;
+  }
+}
+
+/**
+ * Calcula promedios por día de la semana con la nueva lógica:
+ * - Si alguna semana no tiene datos, se trata como 0
+ * - El promedio se divide entre las semanas que sí tenían datos
+ * - Si un día no tiene datos en ninguna semana, se muestra como 0
+ */
+function calcularPromediosPorDiaConNuevaLogica(
+  datosValidos: Array<{ fecha: string; datos: DatosTraficoDia }>
+): Record<string, Record<string, { entradas: number; tickets: number; euros: number }>> {
+  
+  const diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  const promedios: Record<string, Record<string, { entradas: number; tickets: number; euros: number }>> = {};
+  
+  // Agrupar datos por día de la semana
+  const datosAgrupados = agruparDatosPorDiaSemana(datosValidos);
+  
+  // Para cada día de la semana
+  diasSemana.forEach(diaSemana => {
+    const datosDelDia = datosAgrupados[diaSemana] || [];
+    
+    // Si no hay datos para este día en ninguna semana, mostrar como 0
+    if (datosDelDia.length === 0) {
+      promedios[diaSemana] = {};
+      return;
+    }
+    
+    // Obtener todas las horas únicas que aparecen en cualquier semana
+    const horasUnicas = new Set<string>();
+    datosDelDia.forEach(datos => {
+      Object.keys(datos).forEach(hora => horasUnicas.add(hora));
+    });
+    
+    // Para cada hora, calcular el promedio considerando las 4 semanas
+    const promedioHoras: Record<string, { entradas: number; tickets: number; euros: number }> = {};
+    
+    horasUnicas.forEach(hora => {
+      // Extraer valores de las semanas que tienen datos para esta hora
+      let sumaEntradas = 0;
+      let sumaTickets = 0;
+      let sumaEuros = 0;
+      let semanasConDatos = 0;
+      
+      // Iterar sobre los datos disponibles (puede ser menos de 4 semanas)
+      datosDelDia.forEach(datos => {
+        const datoHora = datos[hora];
+        if (datoHora) {
+          sumaEntradas += datoHora.entradas || 0;
+          sumaTickets += datoHora.tickets || 0;
+          sumaEuros += datoHora.euros || 0;
+          semanasConDatos++;
+        }
+        // Si no hay datos para esta hora en esta semana, se cuenta como 0 (no se suma nada)
+      });
+      
+      // El promedio se calcula dividiendo entre el número de semanas que SÍ tenían datos
+      // Si ninguna semana tenía datos para esta hora, el resultado es 0
+      if (semanasConDatos > 0) {
+        promedioHoras[hora] = {
+          entradas: Math.round(sumaEntradas / semanasConDatos),
+          tickets: Math.round(sumaTickets / semanasConDatos),
+          euros: Math.round((sumaEuros / semanasConDatos) * 100) / 100
+        };
+      } else {
+        promedioHoras[hora] = { entradas: 0, tickets: 0, euros: 0 };
+      }
+    });
+    
+    promedios[diaSemana] = promedioHoras;
+  });
+  
+  return promedios;
+}
+
+/**
  * Función para obtener el día de la semana en español
  * @param fecha - Fecha en formato YYYY-MM-DD
  * @returns Nombre del día en español
@@ -562,4 +753,257 @@ export function obtenerDiaSemana(fecha: string): string {
   const fechaObj = new Date(fecha);
   const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
   return diasSemana[fechaObj.getDay()];
+}
+
+/**
+ * Función para obtener todas las fechas de una semana basada en una fecha específica
+ * @param fechaReferencia - Fecha de referencia en formato YYYY-MM-DD
+ * @returns Array con las 7 fechas de la semana (lunes a domingo)
+ */
+export function obtenerFechasSemana(fechaReferencia: string): string[] {
+  const fecha = new Date(fechaReferencia);
+  
+  // Encontrar el lunes de esa semana
+  const diaSemana = fecha.getDay(); // 0 = domingo, 1 = lunes, etc.
+  const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana; // Si es domingo, retroceder 6 días
+  
+  const lunes = new Date(fecha);
+  lunes.setDate(fecha.getDate() + diasHastaLunes);
+  
+  // Generar todas las fechas de la semana (lunes a domingo)
+  const fechasSemana: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const fechaDia = new Date(lunes);
+    fechaDia.setDate(lunes.getDate() + i);
+    fechasSemana.push(fechaDia.toISOString().split('T')[0]);
+  }
+  
+  return fechasSemana;
+}
+
+/**
+ * Función para obtener datos de tráfico usando mapping por día específico
+ * @param mappingDias - Mapeo de fechas objetivo a fechas de referencia {"2025-06-23": "2024-06-24"}
+ * @param storeRecordId - ID de la tienda
+ * @param fechaObjetivo - Fecha objetivo en formato YYYY-MM-DD
+ * @returns Promise con los datos de tráfico para el día específico
+ */
+export async function obtenerTraficoPorDia(
+  mappingDias: Record<string, string>,
+  storeRecordId: string,
+  fechaObjetivo: string
+): Promise<TraficoHistoricoAggregado | null> {
+  try {
+    console.log(`🎯 Calculando tráfico por día específico para ${fechaObjetivo}`);
+    console.log(`📋 Mapping configurado:`, mappingDias);
+    
+    // Verificar que existe mapping para la fecha objetivo
+    const fechaReferencia = mappingDias[fechaObjetivo];
+    if (!fechaReferencia) {
+      console.warn(`❌ No hay configuración de día para la fecha ${fechaObjetivo}`);
+      return null;
+    }
+    
+    console.log(`🔗 Fecha objetivo: ${fechaObjetivo} → Fecha referencia: ${fechaReferencia}`);
+    
+    // Obtener datos de tráfico para la fecha de referencia específica
+    const datosTrafico = await obtenerDatosTraficoMultiplesFechas([fechaReferencia], storeRecordId);
+    
+    // Filtrar datos válidos
+    const datosValidos = datosTrafico.filter(item => item.datos !== null) as Array<{
+      fecha: string;
+      datos: DatosTraficoDia;
+    }>;
+    
+    if (datosValidos.length === 0) {
+      console.warn(`❌ No se obtuvieron datos válidos para la fecha de referencia ${fechaReferencia}`);
+      return null;
+    }
+    
+    const datosDiaReferencia = datosValidos[0].datos;
+    
+    // Obtener día de la semana de la fecha objetivo
+    const diaObjetivo = obtenerDiaSemana(fechaObjetivo);
+    
+    // Crear estructura de datos compatible con TraficoHistoricoAggregado
+    // pero usando datos exactos de un día específico en lugar de promedios
+    const horasDelDia = datosDiaReferencia.horas || {};
+    
+    // Calcular totales de mañana y tarde
+    const totalMañana = Object.entries(horasDelDia)
+      .filter(([hora]) => parseInt(hora.split(':')[0]) < 14)
+      .reduce((sum, [, valor]) => ({
+        entradas: sum.entradas + (valor.entradas || 0),
+        tickets: sum.tickets + (valor.tickets || 0),
+        euros: sum.euros + (valor.euros || 0)
+      }), { entradas: 0, tickets: 0, euros: 0 });
+    
+    const totalTarde = Object.entries(horasDelDia)
+      .filter(([hora]) => parseInt(hora.split(':')[0]) >= 14)
+      .reduce((sum, [, valor]) => ({
+        entradas: sum.entradas + (valor.entradas || 0),
+        tickets: sum.tickets + (valor.tickets || 0),
+        euros: sum.euros + (valor.euros || 0)
+      }), { entradas: 0, tickets: 0, euros: 0 });
+    
+    // Crear datosPorDia con solo el día objetivo
+    const datosPorDia: Record<string, Record<string, { entradas: number; tickets: number; euros: number }>> = {};
+    datosPorDia[diaObjetivo.toLowerCase()] = horasDelDia;
+    
+    // Construir respuesta
+    const resultado: TraficoHistoricoAggregado = {
+      horas: horasDelDia,
+      totalMañana,
+      totalTarde,
+      datosPorDia,
+      fechaInicio: fechaReferencia,
+      fechaFin: fechaReferencia,
+      esDatoHistorico: true,
+      semanasReferencia: [`Día exacto: ${fechaReferencia}`], // Indicar que es día específico
+      semanaObjetivo: `Comparable por día: ${fechaObjetivo}`
+    };
+    
+    console.log(`✅ Tráfico por día específico calculado: ${Object.keys(horasDelDia).length} horas, Total: ${totalMañana.entradas + totalTarde.entradas}`);
+    console.log(`📊 Referencia usada: ${fechaReferencia} para objetivo: ${fechaObjetivo}`);
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error('❌ Error al obtener tráfico por día específico:', error instanceof Error ? error.message : 'Error desconocido');
+    return null;
+  }
+}
+
+/**
+ * Función para obtener datos de tráfico usando configuración por día (múltiples días de una semana)
+ * @param mappingDias - Mapeo de fechas objetivo a fechas de referencia
+ * @param storeRecordId - ID de la tienda
+ * @param fechasObjetivo - Array de fechas objetivo de la semana
+ * @returns Promise con los datos de tráfico histórico usando días específicos
+ */
+export async function obtenerTraficoPorSemanaComparable(
+  mappingDias: Record<string, string>,
+  storeRecordId: string,
+  fechasObjetivo: string[]
+): Promise<TraficoHistoricoAggregado | null> {
+  try {
+    console.log(`🎯 Calculando tráfico por semana comparable`);
+    console.log(`📅 Fechas objetivo:`, fechasObjetivo);
+    console.log(`📋 Mapping configurado:`, mappingDias);
+    
+    // Obtener todas las fechas de referencia únicas
+    const fechasReferencia = Array.from(new Set(
+      fechasObjetivo
+        .map(fecha => mappingDias[fecha])
+        .filter(fecha => fecha !== undefined)
+    ));
+    
+    if (fechasReferencia.length === 0) {
+      console.warn(`❌ No hay fechas de referencia configuradas para las fechas objetivo`);
+      return null;
+    }
+    
+    console.log(`🔗 Fechas de referencia únicas:`, fechasReferencia);
+    
+    // Obtener datos de tráfico para todas las fechas de referencia
+    const datosTrafico = await obtenerDatosTraficoMultiplesFechas(fechasReferencia, storeRecordId);
+    
+    // Filtrar datos válidos y crear un mapa por fecha
+    const datosPorFecha = new Map<string, DatosTraficoDia>();
+    datosTrafico.forEach(({ fecha, datos }) => {
+      if (datos) {
+        console.log(`📊 Datos encontrados para fecha ${fecha}:`, {
+          tieneHoras: !!datos.horas,
+          numHoras: datos.horas ? Object.keys(datos.horas).length : 0
+        });
+        datosPorFecha.set(fecha, datos);
+      } else {
+        console.warn(`❌ No hay datos para fecha ${fecha}`);
+      }
+    });
+    
+    if (datosPorFecha.size === 0) {
+      console.warn(`❌ No se obtuvieron datos válidos para las fechas de referencia`);
+      return null;
+    }
+    
+    console.log(`📋 Total fechas con datos válidos: ${datosPorFecha.size}`);
+    console.log(`📊 Fechas disponibles:`, Array.from(datosPorFecha.keys()));
+    
+    // Crear estructura de datosPorDia usando el mapping
+    const datosPorDia: Record<string, Record<string, { entradas: number; tickets: number; euros: number }>> = {};
+    const todasLasHoras = new Set<string>();
+    
+    // Procesar cada fecha objetivo
+    fechasObjetivo.forEach(fechaObjetivo => {
+      const fechaReferencia = mappingDias[fechaObjetivo];
+      if (!fechaReferencia) {
+        console.warn(`⚠️ No hay mapping para fecha objetivo ${fechaObjetivo}`);
+        return;
+      }
+      
+      const datosReferencia = datosPorFecha.get(fechaReferencia);
+      if (!datosReferencia) {
+        console.warn(`⚠️ No hay datos de tráfico para fecha de referencia ${fechaReferencia}`);
+        return;
+      }
+      
+      if (!datosReferencia.horas) {
+        console.warn(`⚠️ No hay datos de horas para fecha de referencia ${fechaReferencia}`);
+        return;
+      }
+      
+      const diaObjetivo = obtenerDiaSemana(fechaObjetivo).toLowerCase();
+      datosPorDia[diaObjetivo] = datosReferencia.horas;
+      
+      // Recopilar todas las horas disponibles
+      Object.keys(datosReferencia.horas).forEach(hora => todasLasHoras.add(hora));
+      
+      console.log(`📅 ${fechaObjetivo} (${diaObjetivo}) → ${fechaReferencia} ✅ ${Object.keys(datosReferencia.horas).length} horas`);
+    });
+    
+    // Determinar día principal (el primero de la semana objetivo)
+    const fechaPrincipal = fechasObjetivo[0];
+    const diaPrincipal = obtenerDiaSemana(fechaPrincipal).toLowerCase();
+    const horasDelDiaPrincipal = datosPorDia[diaPrincipal] || {};
+    
+    // Calcular totales de mañana y tarde del día principal
+    const totalMañana = Object.entries(horasDelDiaPrincipal)
+      .filter(([hora]) => parseInt(hora.split(':')[0]) < 14)
+      .reduce((sum, [, valor]) => ({
+        entradas: sum.entradas + (valor.entradas || 0),
+        tickets: sum.tickets + (valor.tickets || 0),
+        euros: sum.euros + (valor.euros || 0)
+      }), { entradas: 0, tickets: 0, euros: 0 });
+    
+    const totalTarde = Object.entries(horasDelDiaPrincipal)
+      .filter(([hora]) => parseInt(hora.split(':')[0]) >= 14)
+      .reduce((sum, [, valor]) => ({
+        entradas: sum.entradas + (valor.entradas || 0),
+        tickets: sum.tickets + (valor.tickets || 0),
+        euros: sum.euros + (valor.euros || 0)
+      }), { entradas: 0, tickets: 0, euros: 0 });
+    
+    // Construir respuesta
+    const resultado: TraficoHistoricoAggregado = {
+      horas: horasDelDiaPrincipal,
+      totalMañana,
+      totalTarde,
+      datosPorDia,
+      fechaInicio: fechasReferencia.sort()[0] || '',
+      fechaFin: fechasReferencia.sort().reverse()[0] || '',
+      esDatoHistorico: true,
+      semanasReferencia: [`Días específicos: ${fechasReferencia.join(', ')}`],
+      semanaObjetivo: `Semana comparable por días`
+    };
+    
+    console.log(`✅ Tráfico por semana comparable calculado: ${Object.keys(horasDelDiaPrincipal).length} horas para día principal`);
+    console.log(`📊 ${Object.keys(datosPorDia).length} días procesados:`, Object.keys(datosPorDia));
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error('❌ Error al obtener tráfico por semana comparable:', error instanceof Error ? error.message : 'Error desconocido');
+    return null;
+  }
 } 

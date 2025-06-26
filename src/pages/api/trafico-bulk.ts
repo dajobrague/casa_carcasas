@@ -68,8 +68,8 @@ export default async function handler(
     
     const useExternalAPI = TRAFICO_API_TOKEN && TRAFICO_API_BASE_URL;
 
-    // Procesar en chunks de 8 para optimizar concurrencia
-    const chunkSize = 8;
+    // Procesar en chunks más pequeños para evitar sobrecarga
+    const chunkSize = 3; // Reducido de 8 a 3
     const chunks = [];
     for (let i = 0; i < requests.length; i += chunkSize) {
       chunks.push(requests.slice(i, i + chunkSize));
@@ -77,8 +77,8 @@ export default async function handler(
 
     const allResults: TraficoResponse[] = [];
 
-    // Procesar todos los chunks en paralelo
-    const chunkPromises = chunks.map(async (chunk) => {
+    // Procesar chunks secuencialmente con delay para evitar rate limiting
+    for (const chunk of chunks) {
       const chunkPromises = chunk.map(async (request): Promise<TraficoResponse> => {
         try {
           if (useExternalAPI) {
@@ -88,7 +88,7 @@ export default async function handler(
             apiUrl.searchParams.append('date', request.fecha);
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos timeout
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // Aumentado a 5 segundos
 
             const response = await fetch(apiUrl.toString(), {
               method: 'GET',
@@ -143,16 +143,15 @@ export default async function handler(
         }
       });
 
-      return Promise.all(chunkPromises);
-    });
-
-    // Esperar a que todos los chunks terminen
-    const chunkResults = await Promise.all(chunkPromises);
-    
-    // Aplanar resultados
-    chunkResults.forEach(chunkResult => {
-      allResults.push(...chunkResult);
-    });
+      // Procesar chunk actual en paralelo
+      const chunkResults = await Promise.all(chunkPromises);
+      allResults.push(...chunkResults);
+      
+      // Pequeño delay entre chunks para evitar sobrecarga
+      if (chunks.indexOf(chunk) < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
 
     return res.status(200).json({
       success: true,

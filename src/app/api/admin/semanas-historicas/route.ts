@@ -47,15 +47,16 @@ export async function GET(request: NextRequest) {
         records.forEach((record) => {
           const numero = record.get('N°');
           const nombre = record.get('TIENDA');
+          const semanasHistoricas = String(record.get('Semanas Históricas') || '');
           
-          // Solo incluir tiendas que tengan número y nombre válidos
-          if (numero && nombre) {
+          // Solo incluir tiendas que tengan número, nombre válidos Y configuraciones históricas
+          if (numero && nombre && semanasHistoricas && semanasHistoricas.trim() !== '') {
             tiendas.push({
               id: record.id,
               numero: Number(numero),
               nombre: String(nombre),
               pais: String(record.get('PAIS') || ''),
-              semanasHistoricas: String(record.get('Semanas Históricas') || '')
+              semanasHistoricas: semanasHistoricas
             });
           }
         });

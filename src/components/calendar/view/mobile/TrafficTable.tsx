@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DatosTraficoDia } from '@/lib/utils';
+import { DatosTraficoDia, formatNumber, formatCurrency } from '@/lib/utils';
 import { ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 
@@ -12,7 +12,7 @@ interface TrafficTableViewProps {
 }
 
 export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficTableViewProps) {
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string>('lunes');
   
   // Función para obtener las horas ordenadas
   const getHorasOrdenadas = (datos: any) => {
@@ -70,6 +70,74 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
       <span className="px-2 py-0.5 bg-red-200 rounded-full shadow-sm">90+</span>
     </div>
   );
+
+  // Función para detectar si es una configuración por día específico
+  const esConfiguracionPorDia = (): boolean => {
+    const referencias = datosTraficoDia?.semanasReferencia;
+    if (!referencias) return false;
+    
+    if (Array.isArray(referencias)) {
+      return referencias.some((ref: string) => 
+        ref.includes('Días específicos:') || ref.includes('Día exacto:')
+      );
+    } else {
+      return referencias.includes('Días específicos:') || referencias.includes('Día exacto:');
+    }
+  };
+
+  // Función para detectar si es promedio de 4 semanas (tienda no histórica)
+  const esPromedio4Semanas = (): boolean => {
+    const referencias = datosTraficoDia?.semanasReferencia;
+    if (!referencias) return false;
+    
+    if (Array.isArray(referencias)) {
+      return referencias.some((ref: string) => 
+        ref.includes('Promedio últimas 4 semanas')
+      );
+    } else {
+      return referencias.includes('Promedio últimas 4 semanas');
+    }
+  };
+
+  // Función para extraer las fechas específicas usando el mapping del datosPorDia
+  const obtenerFechasEspecificas = (): Record<string, string> => {
+    const fechasMap: Record<string, string> = {};
+    
+    if (!datosTraficoDia?.datosPorDia) return fechasMap;
+    
+    // Obtener las fechas de referencia del header de la respuesta
+    const fechaInicio = datosTraficoDia.fechaInicio;
+    const fechaFin = datosTraficoDia.fechaFin;
+    
+    if (!fechaInicio || !fechaFin) return fechasMap;
+    
+    // Generar fechas desde fechaInicio hasta fechaFin
+    const fechaInicioObj = new Date(fechaInicio);
+    const fechaFinObj = new Date(fechaFin);
+    const fechasReferencia: string[] = [];
+    
+    for (let fecha = new Date(fechaInicioObj); fecha <= fechaFinObj; fecha.setDate(fecha.getDate() + 1)) {
+      fechasReferencia.push(fecha.toISOString().split('T')[0]);
+    }
+    
+    // Mapear cada día de la semana con su fecha de referencia correspondiente
+    const diasSemanaOrdenados = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    const diasDisponibles = Object.keys(datosTraficoDia.datosPorDia);
+    
+    diasDisponibles.forEach((dia, index) => {
+      if (index < fechasReferencia.length) {
+        const fechaReferencia = fechasReferencia[index];
+        // Formatear fecha para mostrar día/mes con indicación del año anterior
+        const fechaObj = new Date(fechaReferencia);
+        const diaNum = fechaObj.getDate().toString().padStart(2, '0');
+        const mes = (fechaObj.getMonth() + 1).toString().padStart(2, '0');
+        const año = fechaObj.getFullYear();
+        fechasMap[dia] = `${diaNum}/${mes}/${año}`;
+      }
+    });
+    
+    return fechasMap;
+  };
 
   // Si hay error, mostrar mensaje
   if (error) {
@@ -153,35 +221,74 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
       {datosTraficoDia && (
         <div className="flex flex-wrap items-center gap-2 p-3 bg-white rounded-lg shadow-sm">
           {/* Mostrar información histórica si aplica */}
-          {datosTraficoDia.esDatoHistorico && datosTraficoDia.semanasReferencia ? (
-            <>
-              <div className="flex items-center">
-                <div className="flex items-center gap-1">
-                  <BarChart3 className="w-3 h-3 text-orange-600" />
-                  <span className="text-xs font-medium uppercase text-orange-600">Promedio Histórico:</span>
-                </div>
-                <span className="text-xs bg-orange-50 px-2 py-0.5 rounded-full ml-1 border border-orange-200 text-orange-700">
-                  {datosTraficoDia.semanasReferencia}
-                </span>
-              </div>
-              <div className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
-                Año anterior
-              </div>
-            </>
-          ) : (
-            /* Mostrar fechas normales si no es histórico */
-            datosTraficoDia?.fechaInicio && datosTraficoDia?.fechaFin && (
-              <>
-          <div className="flex items-center">
-            <span className="text-xs font-medium uppercase text-gray-600">Inicio:</span>
-            <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaInicio}</span>
-          </div>
-          <div className="flex items-center">
-            <span className="text-xs font-medium uppercase text-gray-600">Fin:</span>
-            <span className="text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">{datosTraficoDia.fechaFin}</span>
-          </div>
-              </>
-            )
+          {!isLoading && datosTraficoDia && (
+            <div className="p-3 bg-gray-50">
+              {(datosTraficoDia.esDatoHistorico || esPromedio4Semanas()) && datosTraficoDia.semanasReferencia ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-1">
+                      {Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:')) ? (
+                        <>
+                          <BarChart3 className="w-3 h-3 text-purple-600" />
+                          <span className="text-xs font-medium uppercase text-purple-600">Día Específico:</span>
+                        </>
+                      ) : Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Días específicos:')) ? (
+                        <>
+                          <BarChart3 className="w-3 h-3 text-purple-600" />
+                          <span className="text-xs font-medium uppercase text-purple-600">Días Específicos:</span>
+                        </>
+                      ) : esPromedio4Semanas() ? (
+                        <>
+                          <BarChart3 className="w-3 h-3 text-blue-600" />
+                          <span className="text-xs font-medium uppercase text-blue-600">Promedio 4 Semanas:</span>
+                        </>
+                      ) : (
+                        <>
+                          <BarChart3 className="w-3 h-3 text-orange-600" />
+                          <span className="text-xs font-medium uppercase text-orange-600">Promedio Histórico:</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {!esConfiguracionPorDia() && !esPromedio4Semanas() && (
+                    <div className={`text-xs px-2 py-1 rounded-full font-medium inline-block mb-2 ${
+                      Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:') || ref.includes('Días específicos:'))
+                        ? 'bg-purple-50 text-purple-700'
+                        : 'bg-orange-50 text-orange-700'
+                    }`}>
+                      {Array.isArray(datosTraficoDia.semanasReferencia) ? datosTraficoDia.semanasReferencia.join(', ') : datosTraficoDia.semanasReferencia}
+                    </div>
+                  )}
+                  <div className={`text-xs px-2 py-1 rounded-full font-medium inline-block ${
+                    Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:') || ref.includes('Días específicos:'))
+                      ? 'bg-purple-100 text-purple-800'
+                      : esPromedio4Semanas()
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-orange-100 text-orange-800'
+                  }`}>
+                    {Array.isArray(datosTraficoDia.semanasReferencia) && datosTraficoDia.semanasReferencia.some(ref => ref.includes('Día exacto:') || ref.includes('Días específicos:'))
+                      ? 'Comparable por día'
+                      : esPromedio4Semanas()
+                      ? 'Últimas 4 semanas'
+                      : 'Año anterior'
+                    }
+                  </div>
+                </>
+              ) : (
+                datosTraficoDia.fechaInicio && datosTraficoDia.fechaFin && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium uppercase">Inicio:</span>
+                      <span className="text-xs bg-blue-50 px-2 py-1 rounded-full">{datosTraficoDia.fechaInicio}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium uppercase">Fin:</span>
+                      <span className="text-xs bg-blue-50 px-2 py-1 rounded-full">{datosTraficoDia.fechaFin}</span>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
           )}
         </div>
       )}
@@ -190,22 +297,36 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
       <div className="bg-white rounded-lg shadow-sm p-3">
         <div className="mb-2 text-sm font-medium text-gray-700">Seleccionar día:</div>
         <div className="flex overflow-x-auto pb-2 gap-1 hide-scrollbar">
-          {diasDisponibles.map(dia => (
-            <button
-              key={dia}
-              onClick={(event) => {
-                event.stopPropagation();
-                setSelectedDay(dia);
-              }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                diaActual === dia 
-                  ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                  : 'bg-gray-100 text-gray-700 border border-gray-200'
-              }`}
-            >
-              {diasSemana[dia as keyof typeof diasSemana] || dia}
-            </button>
-          ))}
+          {diasDisponibles.map(dia => {
+            const fechasEspecificas = obtenerFechasEspecificas();
+            const fechaEspecifica = fechasEspecificas[dia];
+            const esPorDia = esConfiguracionPorDia();
+            const nombreDia = diasSemana[dia as keyof typeof diasSemana] || dia;
+            
+            return (
+              <button
+                key={dia}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedDay(dia);
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${
+                  diaActual === dia 
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                    : 'bg-gray-100 text-gray-700 border border-gray-200'
+                }`}
+              >
+                {esPorDia && fechaEspecifica ? (
+                  <div className="flex flex-col items-center">
+                    <span>{nombreDia}</span>
+                    <span className="text-xs text-purple-600">{fechaEspecifica}</span>
+                  </div>
+                ) : (
+                  nombreDia
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
       
@@ -213,7 +334,16 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
       <div className="bg-white rounded-lg shadow-sm p-3">
         <div className="mb-2 flex justify-between items-center">
           <h4 className="text-sm font-medium text-gray-700">
-            Tráfico para {diasSemana[diaActual as keyof typeof diasSemana] || diaActual}:
+            {(() => {
+              const fechasEspecificas = obtenerFechasEspecificas();
+              const fechaEspecifica = fechasEspecificas[diaActual];
+              const esPorDia = esConfiguracionPorDia();
+              const nombreDia = diasSemana[diaActual as keyof typeof diasSemana] || diaActual;
+              
+              return esPorDia && fechaEspecifica 
+                ? `${nombreDia} (${fechaEspecifica})`
+                : `Tráfico para ${nombreDia}:`;
+            })()}
           </h4>
           <div className="text-xs bg-blue-100 px-2 py-0.5 rounded-full">
             Total: {Object.values(datosDia).reduce((sum: number, valor: any) => sum + (valor || 0), 0)}
@@ -244,17 +374,17 @@ export function TrafficTableView({ datosTraficoDia, isLoading, error }: TrafficT
           <div className="text-center p-2 bg-blue-50 rounded-lg">
             <div className="text-xs text-blue-600 font-medium">Total Mañanas</div>
             <div className="text-lg font-bold text-blue-700">
-              {typeof datosTraficoDia.totalMañana === 'number' 
+              {formatNumber(typeof datosTraficoDia.totalMañana === 'number' 
                 ? datosTraficoDia.totalMañana * 7 
-                : datosTraficoDia.totalMañana.entradas * 7}
+                : datosTraficoDia.totalMañana.entradas * 7)}
             </div>
           </div>
           <div className="text-center p-2 bg-blue-50 rounded-lg">
             <div className="text-xs text-blue-600 font-medium">Total Tardes</div>
             <div className="text-lg font-bold text-blue-700">
-              {typeof datosTraficoDia.totalTarde === 'number' 
+              {formatNumber(typeof datosTraficoDia.totalTarde === 'number' 
                 ? datosTraficoDia.totalTarde * 7 
-                : datosTraficoDia.totalTarde.entradas * 7}
+                : datosTraficoDia.totalTarde.entradas * 7)}
             </div>
           </div>
         </div>

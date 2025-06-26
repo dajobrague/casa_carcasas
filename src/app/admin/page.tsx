@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -24,18 +24,46 @@ function LoadingSpinner() {
   );
 }
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   // Usamos la autenticación de administrador
   const { isAdminLoggedIn, loading, adminLogout } = useAuth();
   
-  // Estado para contenido actual
-  const [currentView, setCurrentView] = useState<'dashboard' | 'api' | 'semanal' | 'historial' | 'semanas-historicas'>('dashboard');
+  // Obtener vista actual de la URL o usar 'dashboard' como default
+  const getInitialView = (): 'dashboard' | 'api' | 'semanal' | 'historial' | 'semanas-historicas' => {
+    if (!searchParams) return 'dashboard';
+    
+    const view = searchParams.get('view');
+    const validViews: ('dashboard' | 'api' | 'semanal' | 'historial' | 'semanas-historicas')[] = 
+      ['dashboard', 'api', 'semanal', 'historial', 'semanas-historicas'];
+    
+    if (view && validViews.includes(view as any)) {
+      return view as 'dashboard' | 'api' | 'semanal' | 'historial' | 'semanas-historicas';
+    }
+    return 'dashboard';
+  };
+  
+  // Estado para contenido actual (inicializado desde URL)
+  const [currentView, setCurrentView] = useState<'dashboard' | 'api' | 'semanal' | 'historial' | 'semanas-historicas'>(getInitialView());
   
   // Estado para mostrar cuál es el importador activo cuando se navega a uno
   const [activeImporter, setActiveImporter] = useState<'semanal' | null>(null);
   
+  // Sincronizar vista con URL cuando cambie
+  useEffect(() => {
+    const newView = getInitialView();
+    if (newView !== currentView) {
+      setCurrentView(newView);
+      if (newView === 'semanal') {
+        setActiveImporter('semanal');
+      } else {
+        setActiveImporter(null);
+      }
+    }
+  }, [searchParams]);
+
   // Protección de ruta para administradores
   useEffect(() => {
     if (!loading && !isAdminLoggedIn) {
@@ -45,6 +73,10 @@ export default function AdminDashboardPage() {
   
   // Función para cambiar la vista dentro del dashboard
   const changeView = (view: 'dashboard' | 'api' | 'semanal' | 'historial' | 'semanas-historicas') => {
+    // Actualizar URL con la nueva vista
+    const newUrl = view === 'dashboard' ? '/admin' : `/admin?view=${view}`;
+    router.replace(newUrl, { scroll: false });
+    
     setCurrentView(view);
     if (view === 'semanal') {
       setActiveImporter('semanal');
@@ -205,8 +237,8 @@ export default function AdminDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo y título */}
-            <div className="flex items-center">
-              <div className="relative h-10 w-24 mr-3">
+            <div className="flex items-center min-w-0 flex-1">
+              <div className="relative h-10 w-24 mr-3 flex-shrink-0">
                 <Image 
                   src="/images/a1f5f4d1aeb6ac161feb1b4d91bda0240020897d.png" 
                   alt="Casa de las Carcasas Logo"
@@ -215,67 +247,79 @@ export default function AdminDashboardPage() {
                   priority
                 />
               </div>
-              <div className="border-l-2 border-gray-200 pl-3">
-                <div className="text-gray-900 text-lg font-bold">Administración</div>
-                <div className="text-sm text-blue-600 font-medium">
+              <div className="border-l-2 border-gray-200 pl-3 min-w-0 flex-1">
+                <div className="text-gray-900 text-lg font-bold truncate">
+                  {currentView === 'dashboard' ? (
+                    'Administración'
+                  ) : (
+                    <button 
+                      onClick={() => changeView('dashboard')}
+                      className="hover:text-blue-600 transition-colors truncate"
+                      title="Volver al panel principal"
+                    >
+                      Administración
+                    </button>
+                  )}
+                </div>
+                <div className="text-sm text-blue-600 font-medium truncate">
                   {currentView === 'dashboard' && 'Panel de Control'}
                   {currentView === 'api' && 'Sincronización de Datos'}
-                  {currentView === 'semanal' && 'Importación Semanal CSV'}
-                  {currentView === 'historial' && 'Tiendas • Historial de Tiendas'}
-                  {currentView === 'semanas-historicas' && 'Tiendas • Semanas Históricas'}
+                  {currentView === 'semanal' && 'Importación de CSV'}
+                  {currentView === 'historial' && 'Gestión de Estados'}
+                  {currentView === 'semanas-historicas' && 'Configuración de Referencias'}
                 </div>
               </div>
             </div>
 
             {/* Tabs para cambiar entre vistas */}
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+            <div className="hidden md:ml-6 md:flex md:space-x-2 lg:space-x-4 flex-shrink-0">
               <button
                 onClick={() => changeView('dashboard')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                   currentView === 'dashboard' 
                     ? 'bg-blue-100 text-blue-700' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <Database className="h-4 w-4 inline mr-2" />
-                Dashboard
+                <Database className="h-4 w-4 inline mr-1" />
+                <span className="hidden lg:inline">Dashboard</span>
               </button>
 
               <button
                 onClick={() => changeView('api')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                   currentView === 'api' 
                     ? 'bg-blue-100 text-blue-700' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <RefreshCw className="h-4 w-4 inline mr-2" />
-                API Sync
+                <RefreshCw className="h-4 w-4 inline mr-1" />
+                <span className="hidden lg:inline">API Sync</span>
               </button>
 
               <button
                 onClick={() => changeView('semanal')}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                   currentView === 'semanal'
                     ? 'bg-blue-100 text-blue-700' 
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <BarChart4 className="h-4 w-4 inline mr-2" />
-                Importador Semanal
+                <BarChart4 className="h-4 w-4 inline mr-1" />
+                <span className="hidden lg:inline">Importador</span>
               </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors inline-flex items-center ${
+                    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors inline-flex items-center ${
                       currentView === 'historial' || currentView === 'semanas-historicas'
                         ? 'bg-blue-100 text-blue-700' 
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    <Building className="h-4 w-4 inline mr-2" />
-                    Tiendas
+                    <Building className="h-4 w-4 inline mr-1" />
+                    <span className="hidden lg:inline">Tiendas</span>
                     <ChevronDown className="h-4 w-4 ml-1" />
                   </button>
                 </DropdownMenuTrigger>
@@ -295,10 +339,11 @@ export default function AdminDashboardPage() {
             {/* Botón de cerrar sesión */}
             <button
               onClick={handleLogout}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200"
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 flex-shrink-0 ml-4"
+              title="Cerrar sesión"
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Cerrar sesión
+              <LogOut className="h-4 w-4 mr-1" />
+              <span className="hidden lg:inline">Cerrar sesión</span>
             </button>
           </div>
         </div>
@@ -330,4 +375,12 @@ export default function AdminDashboardPage() {
       </footer>
     </div>
   );
-} 
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AdminDashboardContent />
+    </Suspense>
+  );
+}

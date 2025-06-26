@@ -1,10 +1,20 @@
 import { DatosTraficoDia } from './utils';
 import logger from './logger';
-import { obtenerSemanasHistoricas } from './airtable';
+import { 
+  obtenerSemanasHistoricas, 
+  obtenerConfiguracionHistoricaPorSemana,
+  isConfiguracionPorDia,
+  isConfiguracionPorSemanas,
+  type ConfiguracionHistoricaItem 
+} from './airtable';
 import { 
   obtenerTraficoHistorico, 
   obtenerTraficoNoHistorico,
+  obtenerTraficoPromedioUltimas4Semanas,
   obtenerDiaSemana,
+  obtenerTraficoPorDia,
+  obtenerTraficoPorSemanaComparable,
+  obtenerFechasSemana,
   TraficoHistoricoAggregado
 } from './historical-traffic';
 
@@ -347,9 +357,25 @@ export async function obtenerDatosTraficoConLogicaHistorica(
   semanaObjetivo?: string
 ): Promise<DatosTraficoDia | TraficoHistoricoAggregado | null> {
   try {
-    // Si no es histórica, usar lógica estándar existente
+    // Si no es histórica, usar promedio de últimas 4 semanas
     if (!esHistorica) {
-      return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+      // Determinar la fecha objetivo
+      let fechaObjetivo = fecha;
+      if (!fechaObjetivo) {
+        // Si no se proporciona fecha, usar la fecha actual
+        fechaObjetivo = new Date().toISOString().split('T')[0];
+      }
+
+      console.log(`📊 Tienda no histórica: usando promedio últimas 4 semanas para ${fechaObjetivo}`);
+      const datosPromedio = await obtenerTraficoPromedioUltimas4Semanas(storeRecordId, fechaObjetivo);
+      
+      if (datosPromedio) {
+        return datosPromedio;
+      } else {
+        // Fallback a lógica estándar si falla
+        console.warn('⚠️ Falló promedio 4 semanas, usando lógica estándar como fallback');
+        return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+      }
     }
 
     // Determinar la fecha y día de la semana
@@ -370,43 +396,68 @@ export async function obtenerDatosTraficoConLogicaHistorica(
 
     console.log(`🎯 Procesando tráfico histórico para fecha: ${fechaObjetivo}, semana objetivo: ${semanaObjetivoFinal}`);
 
-    // Para tiendas históricas, verificar si tienen semanas configuradas para esta semana específica
-    const { obtenerSemanasHistoricasPorSemana } = await import('@/lib/airtable');
+    // Para tiendas históricas, verificar configuración para esta semana específica
     console.log(`🔍 Buscando configuración histórica para tienda ${storeRecordId}, semana: ${semanaObjetivoFinal}`);
-    const semanasReferencia = await obtenerSemanasHistoricasPorSemana(storeRecordId, semanaObjetivoFinal);
-    console.log(`📋 Resultado de búsqueda:`, semanasReferencia);
+    const configuracion = await obtenerConfiguracionHistoricaPorSemana(storeRecordId, semanaObjetivoFinal);
+    console.log(`📋 Resultado de búsqueda:`, configuracion);
     
-    // Si no tiene semanas configuradas para esta semana específica, usar lógica estándar
-    if (!semanasReferencia || semanasReferencia.length === 0) {
+    // Si no tiene configuración para esta semana específica, usar lógica estándar
+    if (!configuracion) {
       console.log(`📊 No hay configuración histórica para semana ${semanaObjetivoFinal}, usando lógica estándar`);
       return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
     }
 
-    console.log(`📋 Semanas de referencia encontradas para ${semanaObjetivoFinal}:`, semanasReferencia);
-
     const diaObjetivo = obtenerDiaSemana(fechaObjetivo);
-    
-    console.log(`📈 Obteniendo tráfico histórico para: ${fechaObjetivo} (${diaObjetivo}), semanas: ${semanasReferencia.join(', ')}`);
 
-    // Obtener datos históricos
-    const datosHistoricos = await obtenerTraficoHistorico(
-      semanasReferencia,
-      storeRecordId,
-      diaObjetivo
-    );
+    // Detectar tipo de configuración y aplicar lógica correspondiente
+    if (isConfiguracionPorSemanas(configuracion)) {
+      // Lógica por semanas (existente)
+      console.log(`📋 Configuración por semanas encontrada para ${semanaObjetivoFinal}:`, configuracion);
+      console.log(`📈 Obteniendo tráfico histórico promedio para: ${fechaObjetivo} (${diaObjetivo}), semanas: ${configuracion.join(', ')}`);
 
-    if (datosHistoricos) {
-      // Agregar metadata sobre la configuración usada
-      datosHistoricos.semanaObjetivo = semanaObjetivoFinal;
-      datosHistoricos.semanasReferencia = semanasReferencia;
+      const datosHistoricos = await obtenerTraficoHistorico(
+        configuracion,
+        storeRecordId,
+        diaObjetivo
+      );
+
+      if (datosHistoricos) {
+        // Agregar metadata sobre la configuración usada
+        datosHistoricos.semanaObjetivo = semanaObjetivoFinal;
+        datosHistoricos.semanasReferencia = configuracion;
+        
+        console.log(`✅ Datos históricos por semanas obtenidos exitosamente para semana ${semanaObjetivoFinal}`);
+        return datosHistoricos;
+      }
+    } else if (isConfiguracionPorDia(configuracion)) {
+      // Nueva lógica por día específico - obtener toda la semana
+      console.log(`🎯 Configuración por día encontrada para ${semanaObjetivoFinal}:`, configuracion.mapping);
       
-      console.log(`✅ Datos históricos obtenidos exitosamente para semana ${semanaObjetivoFinal}`);
-      return datosHistoricos;
+      // Obtener todas las fechas de la semana basándose en la fecha objetivo
+      const fechasSemanaObjetivo = obtenerFechasSemana(fechaObjetivo);
+      console.log(`📅 Fechas de la semana objetivo:`, fechasSemanaObjetivo);
+      console.log(`📈 Obteniendo tráfico por semana comparable (día a día) para: ${fechasSemanaObjetivo.join(', ')}`);
+
+      const datosHistoricos = await obtenerTraficoPorSemanaComparable(
+        configuracion.mapping,
+        storeRecordId,
+        fechasSemanaObjetivo
+      );
+
+      if (datosHistoricos) {
+        // Agregar metadata sobre la configuración usada
+        datosHistoricos.semanaObjetivo = semanaObjetivoFinal;
+        
+        console.log(`✅ Datos históricos por semana comparable obtenidos exitosamente para semana ${semanaObjetivoFinal}`);
+        return datosHistoricos;
+      }
     } else {
-      // Si falla la obtención histórica, usar lógica estándar como fallback
-      console.warn(`⚠️ Falló la obtención de datos históricos para semana ${semanaObjetivoFinal}, usando lógica estándar como fallback`);
-      return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
+      console.warn(`⚠️ Tipo de configuración no reconocido para semana ${semanaObjetivoFinal}`);
     }
+
+    // Si falla cualquier obtención histórica, usar lógica estándar como fallback
+    console.warn(`⚠️ Falló la obtención de datos históricos para semana ${semanaObjetivoFinal}, usando lógica estándar como fallback`);
+    return await obtenerDatosTrafico(diaLaboralId, storeRecordId);
 
   } catch (error) {
     console.error('Error en obtenerDatosTraficoConLogicaHistorica:', error);

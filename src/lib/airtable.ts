@@ -550,11 +550,11 @@ export async function obtenerMesesEditor(): Promise<string[]> {
 
 /**
  * Función auxiliar para obtener las semanas históricas configuradas de una tienda
- * Ahora maneja formato JSON: {"W26 2025": ["W26 2024", "W25 2024", "W27 2024"]}
+ * Ahora maneja formato JSON: {"W26 2025": ["W26 2024", "W25 2024", "W27 2024"]} o {"W26 2025": {"type": "comparable_por_dia", "mapping": {...}}}
  * @param storeRecordId - ID del registro de la tienda
  * @returns Promise que resuelve con el objeto JSON de semanas históricas o null
  */
-export async function obtenerSemanasHistoricas(storeRecordId: string): Promise<Record<string, string[]> | null> {
+export async function obtenerSemanasHistoricas(storeRecordId: string): Promise<Record<string, ConfiguracionHistoricaItem> | null> {
   try {
     if (!storeRecordId) {
       return null;
@@ -585,15 +585,31 @@ export async function obtenerSemanasHistoricas(storeRecordId: string): Promise<R
       if (typeof semanasJSON === 'object' && semanasJSON !== null && !Array.isArray(semanasJSON)) {
         // Validar que todas las claves y valores tienen el formato correcto
         const isValid = Object.entries(semanasJSON).every(([key, value]) => {
-          return typeof key === 'string' && 
-                 key.match(/^W\d{1,2} \d{4}$/) && 
-                 Array.isArray(value) && 
-                 value.every(semana => typeof semana === 'string' && semana.match(/^W\d{1,2} \d{4}$/));
+          // La clave debe ser formato de semana
+          if (typeof key !== 'string' || !key.match(/^W\d{1,2} \d{4}$/)) {
+            return false;
+          }
+          
+          // El valor puede ser array de semanas (formato clásico) o objeto de configuración por día
+          if (Array.isArray(value)) {
+            // Formato clásico: array de semanas
+            return value.every(semana => typeof semana === 'string' && semana.match(/^W\d{1,2} \d{4}$/));
+          } else if (typeof value === 'object' && value !== null) {
+            // Formato por día: debe tener type y mapping
+            const obj = value as any;
+            return obj.type === 'comparable_por_dia' && 
+                   typeof obj.mapping === 'object' && 
+                   obj.mapping !== null;
+          }
+          
+          return false;
         });
         
         if (isValid) {
           console.log(`✅ JSON válido encontrado para tienda ${storeRecordId}:`, semanasJSON);
           return semanasJSON;
+        } else {
+          console.warn(`⚠️ Estructura JSON no válida para tienda ${storeRecordId}:`, semanasJSON);
         }
       }
     } catch (jsonError) {
@@ -663,6 +679,129 @@ export async function obtenerSemanasHistoricasPorSemana(
     
   } catch (error) {
     console.error('Error al obtener semanas históricas por semana:', error);
+    return null;
+  }
+}
+
+// Tipos para configuraciones por día
+export interface ConfiguracionPorDia {
+  type: 'comparable_por_dia';
+  mapping: Record<string, string>;
+}
+
+export type ConfiguracionHistoricaItem = string[] | ConfiguracionPorDia;
+
+// Type guards
+export function isConfiguracionPorDia(config: ConfiguracionHistoricaItem): config is ConfiguracionPorDia {
+  return typeof config === 'object' && config !== null && !Array.isArray(config) && 'type' in config && config.type === 'comparable_por_dia';
+}
+
+export function isConfiguracionPorSemanas(config: ConfiguracionHistoricaItem): config is string[] {
+  return Array.isArray(config);
+}
+
+/**
+ * Función para obtener la configuración histórica completa para una semana específica
+ * Puede retornar configuración por semanas o por día
+ * @param storeRecordId - ID del registro de la tienda
+ * @param semanaObjetivo - Semana objetivo en formato "W26 2025"
+ * @returns Promise que resuelve con la configuración (semanas array o mapping por día) o null
+ */
+export async function obtenerConfiguracionHistoricaPorSemana(
+  storeRecordId: string,
+  semanaObjetivo: string
+): Promise<ConfiguracionHistoricaItem | null> {
+  try {
+    console.log(`🔍 obtenerConfiguracionHistoricaPorSemana - Tienda: ${storeRecordId}, Semana objetivo: ${semanaObjetivo}`);
+    const semanasHistoricas = await obtenerSemanasHistoricas(storeRecordId);
+    
+    if (!semanasHistoricas) {
+      console.log(`❌ No se encontró configuración JSON para tienda ${storeRecordId}`);
+      return null;
+    }
+
+    console.log(`✅ Configuración JSON encontrada:`, semanasHistoricas);
+
+    // Buscar la semana objetivo en las configuraciones
+    const configuracion = semanasHistoricas[semanaObjetivo];
+    
+    if (!configuracion) {
+      console.log(`📅 No hay configuración histórica para semana ${semanaObjetivo} en tienda ${storeRecordId}`);
+      console.log(`📋 Semanas disponibles en configuración:`, Object.keys(semanasHistoricas));
+      return null;
+    }
+
+    // Validar el tipo de configuración
+    if (isConfiguracionPorSemanas(configuracion)) {
+      if (configuracion.length === 0) {
+        console.log(`⚠️ Configuración por semanas vacía para ${semanaObjetivo}`);
+        return null;
+      }
+      console.log(`📋 Configuración por semanas para ${semanaObjetivo}:`, configuracion);
+      return configuracion;
+    } else if (isConfiguracionPorDia(configuracion)) {
+      if (Object.keys(configuracion.mapping).length === 0) {
+        console.log(`⚠️ Configuración por día vacía para ${semanaObjetivo}`);
+        return null;
+      }
+      console.log(`🎯 Configuración por día para ${semanaObjetivo}:`, configuracion.mapping);
+      return configuracion;
+    } else {
+      console.warn(`⚠️ Tipo de configuración no válido para ${semanaObjetivo}:`, configuracion);
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('Error al obtener configuración histórica por semana:', error);
+    return null;
+  }
+}
+
+/**
+ * Función para obtener la fecha de referencia para un día específico
+ * @param storeRecordId - ID del registro de la tienda
+ * @param fechaObjetivo - Fecha objetivo en formato YYYY-MM-DD
+ * @returns Promise que resuelve con la fecha de referencia o null
+ */
+export async function obtenerConfiguracionDia(
+  storeRecordId: string,
+  fechaObjetivo: string
+): Promise<string | null> {
+  try {
+    console.log(`🔍 obtenerConfiguracionDia - Tienda: ${storeRecordId}, Fecha objetivo: ${fechaObjetivo}`);
+    
+    // Determinar a qué semana pertenece la fecha objetivo
+    const fechaObj = new Date(fechaObjetivo);
+    const semanaObjetivo = obtenerFormatoSemana(fechaObj);
+    
+    console.log(`📅 Fecha ${fechaObjetivo} pertenece a semana ${semanaObjetivo}`);
+    
+    // Obtener configuración para esa semana
+    const configuracion = await obtenerConfiguracionHistoricaPorSemana(storeRecordId, semanaObjetivo);
+    
+    if (!configuracion) {
+      console.log(`❌ No hay configuración para semana ${semanaObjetivo}`);
+      return null;
+    }
+    
+    // Si es configuración por día, buscar la fecha específica
+    if (isConfiguracionPorDia(configuracion)) {
+      const fechaReferencia = configuracion.mapping[fechaObjetivo];
+      if (fechaReferencia) {
+        console.log(`🎯 Fecha de referencia encontrada: ${fechaObjetivo} → ${fechaReferencia}`);
+        return fechaReferencia;
+      } else {
+        console.log(`❌ No hay configuración específica para fecha ${fechaObjetivo} en mapping por día`);
+        return null;
+      }
+    }
+    
+    // Si es configuración por semanas, no aplica para búsqueda de día específico
+    console.log(`ℹ️ Configuración por semanas encontrada, no aplica para día específico`);
+    return null;
+    
+  } catch (error) {
+    console.error('Error al obtener configuración de día:', error);
     return null;
   }
 }

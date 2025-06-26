@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, FileText, Menu, UserCircle, LogOut, Clock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TiendaNavigationContext, ViewType } from '@/hooks/useTiendaNavigation';
 
 export default function TiendaLayout({
@@ -15,7 +15,30 @@ export default function TiendaLayout({
 }) {
   const { storeName, storeNumber, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Función para obtener la vista guardada en localStorage
+  const getSavedView = (): ViewType => {
+    if (typeof window === 'undefined') return 'dashboard';
+    try {
+      const saved = localStorage.getItem('tienda-current-view');
+      if (saved && ['dashboard', 'editor', 'gestor-mensual', 'horarios'].includes(saved)) {
+        return saved as ViewType;
+      }
+    } catch (error) {
+      console.error('Error al leer localStorage:', error);
+    }
+    return 'dashboard';
+  };
+  
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+
+  // useEffect para cargar la vista guardada después del montaje
+  useEffect(() => {
+    const savedView = getSavedView();
+    if (savedView !== 'dashboard') {
+      setCurrentView(savedView);
+    }
+  }, []);
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
@@ -24,11 +47,28 @@ export default function TiendaLayout({
   const navigateTo = (view: ViewType) => {
     setCurrentView(view);
     setMenuOpen(false);
+    
+    // Guardar la vista actual en localStorage
+    try {
+      localStorage.setItem('tienda-current-view', view);
+    } catch (error) {
+      console.error('Error al guardar en localStorage:', error);
+    }
+  };
+
+  // Función personalizada setCurrentView que también guarda en localStorage
+  const setCurrentViewWithPersistence = (view: ViewType) => {
+    setCurrentView(view);
+    try {
+      localStorage.setItem('tienda-current-view', view);
+    } catch (error) {
+      console.error('Error al guardar en localStorage:', error);
+    }
   };
 
   return (
     <RouteGuard>
-      <TiendaNavigationContext.Provider value={{ currentView, setCurrentView }}>
+      <TiendaNavigationContext.Provider value={{ currentView, setCurrentView: setCurrentViewWithPersistence }}>
         <div className="min-h-screen bg-gray-50 flex flex-col">
           {/* Header */}
           <header className="bg-white shadow-sm">

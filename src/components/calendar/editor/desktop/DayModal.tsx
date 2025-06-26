@@ -108,16 +108,11 @@ export function DayModal({
       setError(null);
 
       // CARGAR TODOS LOS DATOS EN PARALELO PARA MÁXIMA VELOCIDAD
-      console.log(`🚀 Iniciando carga totalmente paralela de datos...`);
-      const parallelStartTime = Date.now();
-      
       const [tiendaResponse, actividadesResponse, diaResponse] = await Promise.all([
         obtenerDatosTienda(storeRecordId),
         obtenerActividadesDiarias(storeRecordId, diaId),
         fetch(`/api/airtable?action=obtenerDiaLaboralPorId&diaId=${diaId}`).then(res => res.json())
       ]);
-      
-      console.log(`⚡ TODOS los datos base obtenidos en ${Date.now() - parallelStartTime}ms`);
       
       if (!tiendaResponse) {
         throw new Error('No se pudo obtener información de la tienda');
@@ -139,17 +134,8 @@ export function DayModal({
       
       // Fallback: usar la fecha prop si no se pudo obtener de la respuesta
       if (!fechaDelDia && fecha) {
-        console.log(`⚠️ FALLBACK: Usando fecha prop como respaldo`);
         fechaDelDia = fecha;
       }
-      
-      console.log(`🔍 DEBUG - Respuesta del día:`, {
-        diaResponseFields: diaResponse.fields,
-        fechaFromDiaResponse,
-        fechaProp: fecha,
-        fechaDelDiaFinal: fechaDelDia,
-        fechaDelDiaString: fechaDelDia ? fechaDelDia.toISOString().split('T')[0] : 'null'
-      });
       
       // Ordenar actividades por nombre (con VACANTE al final)
       const actividadesOrdenadas = [...actividadesResponse].sort((a, b) => {
@@ -175,65 +161,24 @@ export function DayModal({
       // OBTENER DATOS DE TRÁFICO CON LÓGICA HISTÓRICA ACTUALIZADA
       let datosTraficoDiaFinal: DatosTraficoDia | null = null;
       
-      console.log(`🔍 Estado de tienda histórica:`, {
-        esHistorica,
-        tiendaId: storeRecordId,
-        diaId,
-        fecha: fechaDelDia ? fechaDelDia.toISOString().split('T')[0] : 'null',
-        tiendaData: tiendaResponse?.fields ? {
-          Name: tiendaResponse.fields.Name,
-          'Tienda Histórica?': tiendaResponse.fields['Tienda Histórica?'],
-          'Semanas Históricas': tiendaResponse.fields['Semanas Históricas']
-        } : 'null'
-      });
-      
-      console.log(`🔍 DECISIÓN: ¿Usar lógica histórica?`, {
-        esHistorica,
-        tieneFecha: !!fechaDelDia,
-        condicion: esHistorica && fechaDelDia,
-        siguientePaso: esHistorica && fechaDelDia ? 'HISTÓRICA' : 'ESTÁNDAR'
-      });
-      
-      // Verificación adicional: si la tienda no está marcada como histórica pero tiene configuración JSON
-      let esHistoricaReal = esHistorica;
-      if (!esHistorica && tiendaResponse?.fields['Semanas Históricas']) {
-        console.log(`⚠️ OVERRIDE: Tienda ${storeRecordId} no está marcada como histórica pero tiene configuración de semanas históricas`);
-        console.log(`📋 Configuración encontrada:`, tiendaResponse.fields['Semanas Históricas']);
-        console.log(`🔧 FORZANDO esHistorica = true para usar configuración JSON`);
-        esHistoricaReal = true;
-      }
-      
       try {
-        // Mostrar estado de carga para datos históricos
-        const startTime = Date.now();
-        if (esHistoricaReal && fechaDelDia) {
-          console.log(`⏳ Iniciando carga de datos históricos...`);
-        }
+        // Mostrar estado de carga para datos históricos o de promedio 4 semanas
         
         // Si es una tienda histórica, usar la lógica histórica con formato JSON
-        if (esHistoricaReal && fechaDelDia) {
+        // Si NO es histórica, usar promedio de 4 semanas (ignorando JSON completamente)
+        if (fechaDelDia) {
           setCargandoTrafico(true);
           const fechaStr = fechaDelDia.toISOString().split('T')[0];
           const { obtenerFormatoSemana } = await import('@/lib/airtable');
           const semanaObjetivo = obtenerFormatoSemana(fechaDelDia);
           
-          console.log(`🏛️ Tienda histórica detectada, procesando semana: ${semanaObjetivo}`);
-                    console.log(`📅 Detalles - Fecha: ${fechaStr}, Día de semana: ${fechaDelDia.toLocaleDateString('es-ES', { weekday: 'long' })}`);          
-          
-          // Usar la función actualizada con lógica histórica JSON
+          // Usar la función que maneja tanto histórica como promedio 4 semanas
           const { obtenerDatosTraficoConLogicaHistorica } = await import('@/lib/api');
-          console.log(`🔄 Llamando a obtenerDatosTraficoConLogicaHistorica con:`, {
-            diaId,
-            storeRecordId,
-            esHistorica: true,
-            fechaStr,
-            semanaObjetivo
-          });
           
           const resultado = await obtenerDatosTraficoConLogicaHistorica(
             diaId,
             storeRecordId,
-            true, // esHistorica
+            esHistorica || false, // Usar el valor real de la tienda
             fechaStr,
             semanaObjetivo
           );
@@ -265,25 +210,18 @@ export function DayModal({
               semanasReferencia: historicoData.semanasReferencia.join(', ')
             };
             
-            console.log(`✅ Datos históricos obtenidos para semana ${semanaObjetivo} en ${Date.now() - startTime}ms:`, {
-              semanasReferencia: historicoData.semanasReferencia,
-              fechaInicio: historicoData.fechaInicio,
-              fechaFin: historicoData.fechaFin
-            });
-          } else if (resultado) {
-            // Es DatosTraficoDia normal, asegurarse de que es el tipo correcto
-            datosTraficoDiaFinal = resultado as DatosTraficoDia;
-            console.log(`📊 Datos estándar obtenidos para semana ${semanaObjetivo}`);
-          } else {
-            console.log(`📊 No se encontró configuración histórica específica para semana ${semanaObjetivo}`);
-            datosTraficoDiaFinal = null;
-          }
+
+                      } else if (resultado) {
+              // Es DatosTraficoDia normal, asegurarse de que es el tipo correcto
+              datosTraficoDiaFinal = resultado as DatosTraficoDia;
+            } else {
+              datosTraficoDiaFinal = null;
+            }
         }
         
         // Si no se obtuvieron datos históricos, usar la lógica normal
         if (!datosTraficoDiaFinal) {
-          console.log('📊 Usando lógica estándar de tráfico');
-      const datosTraficoDiaAPI = await obtenerDatosTrafico(diaId, storeRecordId);
+          const datosTraficoDiaAPI = await obtenerDatosTrafico(diaId, storeRecordId);
           datosTraficoDiaFinal = datosTraficoDiaAPI || generarDatosTraficoEjemplo(columnas);
         }
         
@@ -485,7 +423,7 @@ export function DayModal({
         
         // Log solo en desarrollo
         if (process.env.NODE_ENV === 'development') {
-          console.log('⚡ Horas efectivas actualizadas:', horasEfectivasInmediatas);
+  
         }
         
         // Actualizar las horas efectivas diarias inmediatamente
@@ -500,7 +438,7 @@ export function DayModal({
           
           // Log solo en desarrollo
           if (process.env.NODE_ENV === 'development') {
-            console.log(`⚡ Horas semanales: ${baseValue} + ${diferenciaDiariaInmediata} = ${nuevoValor}`);
+  
           }
           
           return nuevoValor;
@@ -676,15 +614,7 @@ export function DayModal({
           fecha={fecha || undefined}
         />
         
-        {/* Debug temporal - solo durante desarrollo */}
-        {datosTraficoDia && process.env.NODE_ENV === 'development' && (() => {
-          console.log('📊 TrafficTable datos:', {
-            hasHoras: !!datosTraficoDia.horas,
-            hasDatosPorDia: !!datosTraficoDia.datosPorDia,
-            fechas: `${datosTraficoDia.fechaInicio} - ${datosTraficoDia.fechaFin}`
-          });
-          return null;
-        })()}
+
       </div>
     </Modal>
   );
